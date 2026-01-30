@@ -1,0 +1,234 @@
+Project parking_space_rental {
+  database_type: "PostgreSQL"
+  Note: "Marketplace parking app with multi-role users, driver verification, vehicles, host locations, slot-based availability, occupancy, and internal wallet system"
+}
+
+/* ===================== USERS & ROLES ===================== */
+
+Table users {
+  id uuid [pk]
+  email varchar [unique, not null]
+  password varchar [not null]
+  status varchar [not null, note: "PENDING | APPROVED | BLOCKED"]
+  created_at timestamp
+}
+
+Table roles {
+  id uuid [pk]
+  name varchar [unique, not null, note: "DRIVER | HOST | ADMIN"]
+}
+
+Table user_roles {
+  user_id uuid [not null]
+  role_id uuid [not null]
+
+  indexes {
+    (user_id, role_id) [unique]
+  }
+}
+
+/* ===================== WALLET ===================== */
+
+Table wallets {
+  id uuid [pk]
+  user_id uuid [not null, unique]
+
+  /* Cached balance (source of truth = transactions) */
+  balance decimal [default: 0]
+
+  status varchar [not null, default: "ACTIVE", note: "ACTIVE | SUSPENDED"]
+  created_at timestamp
+}
+
+Table wallet_transactions {
+  id uuid [pk]
+  wallet_id uuid [not null]
+
+  type varchar [not null, note: "CREDIT | DEBIT"]
+  source varchar [not null, note: "TOP_UP | RESERVATION_PAYMENT | REFUND | ADMIN_ADJUSTMENT"]
+
+  amount decimal [not null]
+  reference_id uuid [note: "reservation_id or admin_log_id"]
+
+  balance_before decimal
+  balance_after decimal
+
+  created_at timestamp
+
+  indexes {
+    (wallet_id, created_at)
+  }
+}
+
+/* ===================== DRIVER ===================== */
+
+Table drivers {
+  id uuid [pk]
+  user_id uuid [not null, unique]
+  license_number varchar
+  license_image_url varchar
+  verification_status varchar [not null, note: "PENDING | VERIFIED | REJECTED"]
+  created_at timestamp
+}
+
+Table driver_vehicles {
+  id uuid [pk]
+  driver_id uuid [not null]
+  plate_number varchar
+  vehicle_type varchar [note: "CAR | MOTORCYCLE | SUV"]
+  brand varchar
+  color varchar
+  is_active boolean [default: true]
+  created_at timestamp
+}
+
+/* ===================== HOST ===================== */
+
+Table hosts {
+  id uuid [pk]
+  user_id uuid [not null, unique]
+  verification_status varchar [not null, note: "PENDING | VERIFIED | REJECTED"]
+  created_at timestamp
+}
+
+/* ===================== PARKING LOCATIONS ===================== */
+
+Table parking_locations {
+  id uuid [pk]
+  host_id uuid [not null]
+  title varchar
+  description text
+  address varchar
+  latitude decimal
+  longitude decimal
+  base_price_per_hour decimal
+
+  status varchar [not null, note: "PENDING | APPROVED | REJECTED"]
+
+  /* Cached / optional */
+  total_slots int
+  available_slots int
+
+  created_at timestamp
+}
+
+Table parking_location_images {
+  id uuid [pk]
+  parking_location_id uuid [not null]
+  image_url varchar
+  is_primary boolean [default: false]
+  created_at timestamp
+}
+
+/* ===================== PARKING SLOTS ===================== */
+
+Table parking_spaces {
+  id uuid [pk]
+  parking_location_id uuid [not null]
+  slot_number int
+
+  status varchar [not null, default: "AVAILABLE", note: "AVAILABLE | OCCUPIED | DISABLED"]
+  is_active boolean [default: true]
+
+  created_at timestamp
+
+  indexes {
+    (parking_location_id, slot_number) [unique]
+  }
+}
+
+/* ===================== RESERVATIONS ===================== */
+
+Table reservations {
+  id uuid [pk]
+  driver_id uuid [not null]
+  parking_space_id uuid [not null]
+
+  start_time timestamp
+  end_time timestamp
+
+  status varchar [not null, note: "PENDING | CONFIRMED | ACTIVE | COMPLETED | CANCELLED"]
+
+  qr_code varchar
+  total_amount decimal
+
+  /* Wallet payment support */
+  wallet_transaction_id uuid
+
+  created_at timestamp
+
+  indexes {
+    (parking_space_id, start_time, end_time)
+  }
+}
+
+/* ===================== PAYMENTS (FUTURE EXTERNAL) ===================== */
+
+Table payments {
+  id uuid [pk]
+  reservation_id uuid [not null]
+  amount decimal
+  payment_method varchar
+  status varchar [not null, note: "PENDING | PAID | FAILED"]
+  transaction_ref varchar
+  created_at timestamp
+}
+
+/* ===================== REVIEWS ===================== */
+
+Table reviews {
+  id uuid [pk]
+  reservation_id uuid [not null]
+  rating int
+  comment text
+  created_at timestamp
+}
+
+/* ===================== NOTIFICATIONS ===================== */
+
+Table notifications {
+  id uuid [pk]
+  user_id uuid [not null]
+  title varchar
+  message text
+  is_read boolean [default: false]
+  created_at timestamp
+}
+
+/* ===================== ADMIN ===================== */
+
+Table admin_logs {
+  id uuid [pk]
+  admin_id uuid [not null]
+  action varchar
+  target_id uuid
+  created_at timestamp
+}
+
+/* ===================== RELATIONSHIPS ===================== */
+
+Ref: user_roles.user_id > users.id
+Ref: user_roles.role_id > roles.id
+
+Ref: wallets.user_id > users.id
+Ref: wallet_transactions.wallet_id > wallets.id
+
+Ref: drivers.user_id > users.id
+Ref: driver_vehicles.driver_id > drivers.id
+
+Ref: hosts.user_id > users.id
+Ref: parking_locations.host_id > hosts.id
+
+Ref: parking_spaces.parking_location_id > parking_locations.id
+Ref: parking_location_images.parking_location_id > parking_locations.id
+
+Ref: reservations.driver_id > drivers.id
+Ref: reservations.parking_space_id > parking_spaces.id
+Ref: reservations.wallet_transaction_id > wallet_transactions.id
+
+Ref: payments.reservation_id > reservations.id
+Ref: reviews.reservation_id > reservations.id
+
+Ref: notifications.user_id > users.id
+Ref: admin_logs.admin_id > users.id
+ 
