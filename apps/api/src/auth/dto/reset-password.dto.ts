@@ -1,18 +1,27 @@
 import {
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsString,
   MinLength,
   Matches,
+  Length,
 } from 'class-validator';
 
-import { RoleName } from '@prisma/client';
-
-export class RegisterDto {
+export class ForgotPasswordDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+}
+
+export class ResetPasswordDto {
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @Length(6, 6)
+  @IsNotEmpty()
+  code: string;
 
   @IsString()
   @MinLength(8)
@@ -20,9 +29,5 @@ export class RegisterDto {
     message:
       'Password must contain uppercase, lowercase, number and special character',
   })
-  password: string;
-
-  @IsEnum(RoleName)
-  @IsNotEmpty()
-  role: RoleName;
+  newPassword: string;
 }
