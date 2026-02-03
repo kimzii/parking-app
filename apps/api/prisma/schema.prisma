@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
   id                  String         @id @default(uuid()) @db.Uuid
   email               String         @unique
@@ -19,6 +18,10 @@ model User {
   verificationExpiry  DateTime?      @map("verification_expiry")
   googleId            String?        @unique @map("google_id")
   passwordSetRequired Boolean        @default(false) @map("password_set_required")
+  lastLoginAt         DateTime?      @map("last_login_at")
+  lastLoginIp         String?        @map("last_login_ip")
+  lockedUntil         DateTime?      @map("locked_until")
+  loginAttempts       Int            @default(0) @map("login_attempts")
   adminLogs           AdminLog[]
   driver              Driver?
   host                Host?

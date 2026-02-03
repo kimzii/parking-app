@@ -151,7 +151,7 @@ export class AuthService {
   }
 
   // Login
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, ipAddress?: string) {
     const { email, password } = loginDto;
 
     // Find user with roles
@@ -170,10 +170,45 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check if account is locked
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingMinutes = Math.ceil(
+        (user.lockedUntil.getTime() - Date.now()) / 1000 / 60,
+      );
+      throw new UnauthorizedException(
+        `Account locked. Try again in ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`,
+      );
+    }
+
     // Check password
     const isPasswordValid = await this.comparePassword(password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      // Increment failed attempts
+      const attempts = user.loginAttempts + 1;
+      const maxAttempts = 5;
+      const lockDuration = attempts >= maxAttempts ? 30 : 0; // Lock for 30 min after 5 attempts
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          loginAttempts: attempts,
+          lockedUntil:
+            lockDuration > 0
+              ? new Date(Date.now() + lockDuration * 60000)
+              : null,
+        },
+      });
+
+      const attemptsRemaining = Math.max(0, maxAttempts - attempts);
+      if (lockDuration > 0) {
+        throw new UnauthorizedException(
+          `Too many failed attempts. Account locked for ${lockDuration} minutes`,
+        );
+      }
+
+      throw new UnauthorizedException(
+        `Invalid credentials. ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining`,
+      );
     }
 
     // Check if email verified
@@ -185,6 +220,17 @@ export class AuthService {
     if (user.status === UserStatus.BLOCKED) {
       throw new UnauthorizedException('Your account has been blocked');
     }
+
+    // Reset login attempts and update last login
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        loginAttempts: 0,
+        lockedUntil: null,
+        lastLoginAt: new Date(),
+        lastLoginIp: ipAddress,
+      },
+    });
 
     // Generate tokens
     const roles = user.userRoles.map((ur) => ur.role.name);
@@ -325,6 +371,48 @@ export class AuthService {
 
     return {
       message: 'Password reset successfully',
+    };
+  }
+
+  // Resend Verification Code
+  async resendVerificationCode(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      // Don't reveal if user exists
+      return {
+        message: 'If the email exists, a verification code has been sent',
+      };
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email already verified');
+    }
+
+    // Generate new code
+    const verificationCode = this.generateVerificationCode();
+    const verificationExpiry = new Date();
+    verificationExpiry.setMinutes(
+      verificationExpiry.getMinutes() +
+        parseInt(process.env.VERIFICATION_CODE_EXPIRY_MINUTES || '15'),
+    );
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationCode,
+        verificationExpiry,
+      },
+    });
+
+    // TODO: Send email
+    console.log(`New verification code for ${email}: ${verificationCode}`);
+
+    return {
+      message: 'If the email exists, a verification code has been sent',
+      verificationCode, // Remove in production
     };
   }
 }
