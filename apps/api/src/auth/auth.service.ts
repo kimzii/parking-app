@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   Injectable,
   UnauthorizedException,
@@ -203,6 +204,13 @@ export class AuthService {
   // Refresh Token
   async refreshToken(refreshToken: string) {
     try {
+      console.log('Attempting to verify refresh token...');
+      console.log('Using JWT_REFRESH_SECRET:', process.env.JWT_REFRESH_SECRET);
+      console.log(
+        'Refresh token received:',
+        refreshToken.substring(0, 20) + '...',
+      );
+
       const payload = await this.jwtService.verifyAsync<{
         sub: string;
         email: string;
@@ -210,6 +218,8 @@ export class AuthService {
       }>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-key',
       });
+
+      console.log('Token verified successfully, payload:', payload);
 
       // Find user
       const user = await this.prisma.user.findUnique({
@@ -224,6 +234,7 @@ export class AuthService {
       });
 
       if (!user || user.status === UserStatus.BLOCKED) {
+        console.log('User not found or blocked:', user);
         throw new UnauthorizedException('Invalid token');
       }
 
@@ -232,7 +243,9 @@ export class AuthService {
 
       return tokens;
     } catch (error) {
-      console.error('Token verification failed:', error);
+      console.error('Token verification failed:', error.message);
+      console.error('Error name:', error.name);
+      console.error('Full error:', error);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
