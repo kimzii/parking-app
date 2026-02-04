@@ -2,90 +2,107 @@ import {
   Controller,
   Post,
   Body,
+  Get,
+  UseGuards,
+  Request,
   HttpCode,
   HttpStatus,
-  Get,
-  Req,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { ForgotPasswordDto, ResetPasswordDto } from './dto/reset-password.dto';
-import type { AuthUser } from './types/user.type';
-import { CurrentUser } from './decorators/current-user.decorator';
-import { Public } from './decorators/public.decorator';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import type { RequestWithIp } from './types/request.type';
 
-@Controller('auth') // Mark entire auth controller as public
+@ApiTags('Auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @Public()
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({ status: 201, description: 'User registered successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - Invalid input' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
   @Post('verify-email')
-  @Public()
-  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email with code' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired code' })
   async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
     return this.authService.verifyEmail(verifyEmailDto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @Post('login')
-  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto, @Req() request: Request) {
-    const ipAddress =
-      (request.headers['x-forwarded-for'] as string)?.split(',')[0] ||
-      request.ip;
-    return this.authService.login(loginDto, ipAddress);
+  @ApiOperation({ summary: 'Login with email and password' })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  async login(@Body() loginDto: LoginDto, @Request() req: RequestWithIp) {
+    const ip = req.ip || 'unknown';
+    return this.authService.login(loginDto, ip);
   }
 
-  @Post('refresh')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshToken(refreshTokenDto.refreshToken);
-  }
-
-  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 attempts per minute
   @Post('resend-verification')
-  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async resendVerification(@Body() dto: { email: string }) {
-    return this.authService.resendVerificationCode(dto.email);
+  @ApiOperation({ summary: 'Resend verification code' })
+  @ApiResponse({ status: 200, description: 'Verification code sent' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  async resendVerification(
+    @Body() resendVerificationDto: ResendVerificationDto,
+  ) {
+    return this.authService.resendVerificationCode(resendVerificationDto.email);
   }
 
   @Post('forgot-password')
-  @Public()
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset code' })
+  @ApiResponse({ status: 200, description: 'Reset code sent if email exists' })
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
   @Post('reset-password')
-  @Public()
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with code' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired code' })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
-  // ===== PROTECTED TEST ENDPOINT =====
-  @Get('test') // Override the controller-level @Public() decorator
-  testAuth(@CurrentUser() user: AuthUser) {
+
+  @Get('test')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Test protected endpoint' })
+  @ApiResponse({ status: 200, description: 'Authentication successful' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  test(
+    @Request()
+    req: {
+      user: { userId: string; email: string; roles: string[] };
+    },
+  ) {
     return {
       message: 'Authentication successful!',
-      user: {
-        id: user.id,
-        email: user.email,
-        status: user.status,
-        roles: user.roles,
-      },
+      user: req.user,
       timestamp: new Date().toISOString(),
     };
   }

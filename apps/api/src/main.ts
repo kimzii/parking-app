@@ -1,25 +1,26 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Security headers
-  app.use(helmet());
-
-  // CORS configuration
+  // CORS
   app.enableCors({
     origin: [
-      'http://localhost:3000', // Admin app
-      'http://localhost:5173', // Vite dev server
-      'http://localhost:8081', // Expo mobile
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:8081',
     ],
     credentials: true,
   });
 
-  // Global validation pipe
+  // Security
+  app.use(helmet());
+
+  // Validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -28,7 +29,32 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3001);
-  console.log(`🚀 API running on http://localhost:${process.env.PORT ?? 3001}`);
+  // Swagger Configuration
+  const config = new DocumentBuilder()
+    .setTitle('Parking App API')
+    .setDescription('API documentation for the Parking App')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth', // This name will be used in controllers
+    )
+    .addTag('Auth', 'Authentication endpoints')
+    .addTag('Users', 'User management endpoints')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  await app.listen(3001);
+  console.log('🚀 Server running on http://localhost:3001');
+  console.log('📚 Swagger docs available at http://localhost:3001/api/docs');
 }
+
 bootstrap();
