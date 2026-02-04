@@ -1,6 +1,8 @@
 /* eslint-disable */
 const { PrismaClient } = require('@prisma/client');
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+require('dotenv').config({
+  path: require('path').resolve(__dirname, '../.env'),
+});
 
 const prisma = new PrismaClient();
 

@@ -9,25 +9,34 @@ datasource db {
 
 model User {
   id                  String         @id @default(uuid()) @db.Uuid
-  email               String         @unique
-  password            String
-  status              UserStatus     @default(PENDING)
-  createdAt           DateTime       @default(now()) @map("created_at")
-  emailVerified       Boolean        @default(false) @map("email_verified")
-  verificationCode    String?        @map("verification_code")
-  verificationExpiry  DateTime?      @map("verification_expiry")
-  googleId            String?        @unique @map("google_id")
-  passwordSetRequired Boolean        @default(false) @map("password_set_required")
-  lastLoginAt         DateTime?      @map("last_login_at")
-  lastLoginIp         String?        @map("last_login_ip")
-  lockedUntil         DateTime?      @map("locked_until")
-  loginAttempts       Int            @default(0) @map("login_attempts")
-  adminLogs           AdminLog[]
-  driver              Driver?
-  host                Host?
-  notifications       Notification[]
-  userRoles           UserRole[]
-  wallet              Wallet?
+  email                 String      @unique
+  password              String
+  googleId              String?     @unique
+  
+  // Profile fields
+  firstName             String?
+  lastName              String?
+  phoneNumber           String?
+  profilePicture        String?
+  
+  status                UserStatus  @default(PENDING)
+  emailVerified         Boolean     @default(false)
+  verificationCode      String?
+  verificationExpiry    DateTime?
+  passwordSetRequired   Boolean     @default(false)
+  loginAttempts         Int         @default(0)
+  lockedUntil           DateTime?
+  lastLoginAt           DateTime?
+  lastLoginIp           String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  userRoles             UserRole[]
+  wallet                Wallet?
+  driver                Driver?
+  host                  Host?
+  notifications         Notification[]
+  adminLogs             AdminLog[]
 
   @@map("users")
 }
