@@ -155,6 +155,8 @@ export class AuthService {
   async login(loginDto: LoginDto, ipAddress?: string) {
     const { email, password } = loginDto;
 
+    console.log('🔵 Login attempt:', { email, ipAddress });
+
     // Find user with roles
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -168,14 +170,26 @@ export class AuthService {
     });
 
     if (!user) {
+      console.log('❌ User not found:', email);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    console.log('✅ User found:', {
+      id: user.id,
+      email: user.email,
+      status: user.status,
+      emailVerified: user.emailVerified,
+      loginAttempts: user.loginAttempts,
+      lockedUntil: user.lockedUntil,
+      roles: user.userRoles.map((ur) => ur.role.name),
+    });
 
     // Check if account is locked
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const remainingMinutes = Math.ceil(
         (user.lockedUntil.getTime() - Date.now()) / 1000 / 60,
       );
+      console.log('🔒 Account locked until:', user.lockedUntil);
       throw new UnauthorizedException(
         `Account locked. Try again in ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`,
       );
@@ -184,6 +198,7 @@ export class AuthService {
     // Check password
     const isPasswordValid = await this.comparePassword(password, user.password);
     if (!isPasswordValid) {
+      console.log('❌ Invalid password for:', email);
       // Increment failed attempts
       const attempts = user.loginAttempts + 1;
       const maxAttempts = 5;
@@ -212,15 +227,29 @@ export class AuthService {
       );
     }
 
+    console.log('✅ Password valid');
+
     // Check if email verified
     if (!user.emailVerified) {
+      console.log('❌ Email not verified:', email);
       throw new UnauthorizedException('Please verify your email first');
     }
 
+    console.log('✅ Email verified');
+
     // Check if user is blocked
     if (user.status === UserStatus.BLOCKED) {
+      console.log('❌ User is blocked:', email);
       throw new UnauthorizedException('Your account has been blocked');
     }
+
+    // Check if user is approved
+    if (user.status === UserStatus.PENDING) {
+      console.log('❌ User status is PENDING:', email);
+      throw new UnauthorizedException('Your account is pending approval');
+    }
+
+    console.log('✅ User status is APPROVED');
 
     // Reset login attempts and update last login
     await this.prisma.user.update({
@@ -236,6 +265,8 @@ export class AuthService {
     // Generate tokens
     const roles = user.userRoles.map((ur) => ur.role.name);
     const tokens = await this.generateTokens(user.id, user.email, roles);
+
+    console.log('✅ Login successful for:', email, 'with roles:', roles);
 
     return {
       ...tokens,
