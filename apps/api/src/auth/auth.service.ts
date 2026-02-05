@@ -152,12 +152,13 @@ export class AuthService {
   }
 
   // Login
-  async login(loginDto: LoginDto, ipAddress?: string) {
+  async login(loginDto: LoginDto, ip: string) {
+    console.log('🔵 Login attempt:', { email: loginDto.email, ipAddress: ip });
+
     const { email, password } = loginDto;
 
-    console.log('🔵 Login attempt:', { email, ipAddress });
-
-    // Find user with roles
+    // Find user
+    console.log('🔍 Looking up user...');
     const user = await this.prisma.user.findUnique({
       where: { email },
       include: {
@@ -179,8 +180,6 @@ export class AuthService {
       email: user.email,
       status: user.status,
       emailVerified: user.emailVerified,
-      loginAttempts: user.loginAttempts,
-      lockedUntil: user.lockedUntil,
       roles: user.userRoles.map((ur) => ur.role.name),
     });
 
@@ -195,87 +194,56 @@ export class AuthService {
       );
     }
 
-    // Check password
-    const isPasswordValid = await this.comparePassword(password, user.password);
+    // Validate password
+    console.log('🔒 Validating password...');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
-      console.log('❌ Invalid password for:', email);
-      // Increment failed attempts
-      const attempts = user.loginAttempts + 1;
-      const maxAttempts = 5;
-      const lockDuration = attempts >= maxAttempts ? 30 : 0; // Lock for 30 min after 5 attempts
-
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          loginAttempts: attempts,
-          lockedUntil:
-            lockDuration > 0
-              ? new Date(Date.now() + lockDuration * 60000)
-              : null,
-        },
-      });
-
-      const attemptsRemaining = Math.max(0, maxAttempts - attempts);
-      if (lockDuration > 0) {
-        throw new UnauthorizedException(
-          `Too many failed attempts. Account locked for ${lockDuration} minutes`,
-        );
-      }
-
-      throw new UnauthorizedException(
-        `Invalid credentials. ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining`,
-      );
+      console.log('❌ Invalid password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     console.log('✅ Password valid');
 
-    // Check if email verified
+    // Check email verified
     if (!user.emailVerified) {
-      console.log('❌ Email not verified:', email);
+      console.log('❌ Email not verified');
       throw new UnauthorizedException('Please verify your email first');
     }
 
     console.log('✅ Email verified');
 
-    // Check if user is blocked
+    // Only block BLOCKED users, allow PENDING and APPROVED
     if (user.status === UserStatus.BLOCKED) {
-      console.log('❌ User is blocked:', email);
+      console.log('❌ User blocked');
       throw new UnauthorizedException('Your account has been blocked');
     }
 
-    // Check if user is approved
-    if (user.status === UserStatus.PENDING) {
-      console.log('❌ User status is PENDING:', email);
-      throw new UnauthorizedException('Your account is pending approval');
-    }
+    console.log('✅ User status check passed:', user.status);
 
-    console.log('✅ User status is APPROVED');
+    // Generate JWT tokens
+    console.log('🎫 Generating tokens...');
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      roles: user.userRoles.map((ur) => ur.role.name),
+    };
 
-    // Reset login attempts and update last login
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        loginAttempts: 0,
-        lockedUntil: null,
-        lastLoginAt: new Date(),
-        lastLoginIp: ipAddress,
-      },
-    });
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-    // Generate tokens
-    const roles = user.userRoles.map((ur) => ur.role.name);
-    const tokens = await this.generateTokens(user.id, user.email, roles);
-
-    console.log('✅ Login successful for:', email, 'with roles:', roles);
+    console.log('✅ Login successful');
 
     return {
-      ...tokens,
       user: {
         id: user.id,
         email: user.email,
-        status: user.status,
-        roles,
+        emailVerified: user.emailVerified,
+        status: user.status, // Include status in response
+        roles: user.userRoles.map((ur) => ur.role.name),
       },
+      accessToken,
+      refreshToken,
     };
   }
 
