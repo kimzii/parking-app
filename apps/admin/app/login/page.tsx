@@ -1,12 +1,16 @@
+// apps/admin/app/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import axios from "axios"; // Import axios directly
+import { z } from "zod";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -14,37 +18,77 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import api from "@/lib/api";
+import { ParkingCircle, AlertCircle, Shield } from "lucide-react";
 
 // Validation schema
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const form = useForm<LoginFormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
   });
+
+  // Check for error parameters on page load
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "admin_required") {
+      setError("Access denied. Only administrators can access this portal.");
+    }
+  }, [searchParams]);
+
+  // Check if already authenticated on page load
+  useEffect(() => {
+    const checkExistingAuth = () => {
+      const token = localStorage.getItem("accessToken");
+      const userStr = localStorage.getItem("user");
+
+      if (token && userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (user.roles && user.roles.includes("ADMIN")) {
+            // Already authenticated as admin, redirect to dashboard
+            router.replace("/dashboard");
+          } else {
+            // Not admin, clear storage
+            localStorage.clear();
+            // Clear cookies too
+            document.cookie =
+              "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie =
+              "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie =
+              "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          }
+        } catch (_error) {
+          // Invalid user data, clear storage
+          localStorage.clear();
+          // Clear cookies too
+          document.cookie =
+            "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie =
+            "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie =
+            "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
+      }
+    };
+
+    checkExistingAuth();
+  }, [router]);
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
@@ -53,22 +97,24 @@ export default function LoginPage() {
 
       console.log("🔵 Starting login with:", data.email);
 
-      // Clear any old tokens before login attempt
+      // Clear any existing auth data
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
 
+      // Clear cookies too
+      document.cookie =
+        "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie =
+        "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
+      // Make direct API call
       const response = await axios.post(
-        "http://localhost:3001/auth/login",
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
         {
           email: data.email,
           password: data.password,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
         },
       );
 
@@ -78,151 +124,124 @@ export default function LoginPage() {
 
       console.log("👤 User data:", user);
       console.log("🔑 Has access token:", !!accessToken);
-      console.log("🎫 User roles:", user?.roles);
+      console.log("🎫 User roles:", user.roles);
 
-      // IMPORTANT: Check if user has ADMIN role
+      // Check if user has ADMIN role
       if (!user.roles || !user.roles.includes("ADMIN")) {
-        console.log("❌ Access denied - not an admin");
+        console.log("❌ User is not an admin:", user.roles);
         setError("Access denied. Only administrators can access this portal.");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
         return;
       }
 
       console.log("✅ Admin role verified");
 
-      // Store tokens and user data
+      // Store tokens in localStorage
       localStorage.setItem("accessToken", accessToken);
-      if (refreshToken) {
-        localStorage.setItem("refreshToken", refreshToken);
-      }
+      localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("user", JSON.stringify(user));
 
-      console.log("💾 Tokens and user stored in localStorage");
+      // Set cookies for server-side access (expire in 7 days)
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 7);
+      const expires = expiryDate.toUTCString();
+
+      document.cookie = `accessToken=${accessToken}; path=/; expires=${expires}; secure; samesite=strict`;
+      document.cookie = `refreshToken=${refreshToken}; path=/; expires=${expires}; secure; samesite=strict`;
+      document.cookie = `user=${encodeURIComponent(JSON.stringify(user))}; path=/; expires=${expires}; secure; samesite=strict`;
+
+      console.log("💾 Tokens stored in both localStorage and cookies");
       console.log("🚀 Redirecting to dashboard...");
 
-      // Add small delay to see logs
+      // Add small delay to see the logs
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Redirect to dashboard
       router.push("/dashboard");
-    } catch (err: any) {
-      console.error("❌ Login error:", err);
-      console.error("📄 Error response:", err.response?.data);
-      console.error("📊 Error status:", err.response?.status);
-      setError(
-        err.response?.data?.message || "Login failed. Please try again.",
-      );
+    } catch (error: unknown) {
+      console.log("❌ Login error:", error);
+
+      // Type guard for axios error
+      if (axios.isAxiosError(error)) {
+        console.log("📄 Error response:", error.response?.data);
+        console.log("📊 Error status:", error.response?.status);
+
+        if (error.response?.status === 401) {
+          setError("Invalid email or password. Please try again.");
+        } else {
+          setError("Login failed. Please try again later.");
+        }
+      } else {
+        console.log("📄 Unknown error:", error);
+        setError("Login failed. Please try again later.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="space-y-1">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <span className="text-3xl">🅿️</span>
-            </div>
+            <ParkingCircle className="h-12 w-12 text-blue-600" />
           </div>
-          <CardTitle className="text-3xl font-bold text-center">
+          <CardTitle className="text-2xl font-bold text-gray-900">
             Admin Portal
           </CardTitle>
-          <CardDescription className="text-center text-base">
-            Sign in to access the admin dashboard
+          <CardDescription>
+            Sign in to access the ParkUp admin dashboard
           </CardDescription>
-          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-xs text-blue-800 dark:text-blue-200 text-center">
-              🔒 Admin access only - ADMIN role required
-            </p>
+          <div className="flex items-center justify-center gap-2 mt-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-sm text-blue-700">
+            <Shield className="h-4 w-4" />
+            Admin access only
           </div>
         </CardHeader>
+
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="admin@example.com"
-                        {...field}
-                        disabled={isLoading}
-                        className="h-11"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="••••••••"
-                        {...field}
-                        disabled={isLoading}
-                        className="h-11"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {error && (
-                <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  {error}
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full h-11 text-base font-semibold"
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="admin@parkup.com"
+                {...register("email")}
                 disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-            </form>
-          </Form>
+                className={errors.email ? "border-red-500" : ""}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                {...register("password")}
+                disabled={isLoading}
+                className={errors.password ? "border-red-500" : ""}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-500">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
