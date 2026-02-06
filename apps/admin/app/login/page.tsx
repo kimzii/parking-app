@@ -1,18 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import axios from "axios"; // Import axios directly
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -20,55 +21,97 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import api from '@/lib/api';
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import api from "@/lib/api";
 
 // Validation schema
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setIsLoading(true);
-      setError('');
+      setError("");
 
-      const response = await api.post('/auth/login', data);
-      const { user, accessToken } = response.data;
+      console.log("🔵 Starting login with:", data.email);
 
-      // Check if user has ADMIN role
-      if (!user.roles.includes('ADMIN')) {
-        setError('Access denied. Admin privileges required.');
+      // Clear any old tokens before login attempt
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+
+
+      const response = await axios.post(
+        "http://localhost:3001/auth/login",
+        {
+          email: data.email,
+          password: data.password,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      console.log("✅ Login response:", response.data);
+
+      const { user, accessToken, refreshToken } = response.data;
+
+      console.log("👤 User data:", user);
+      console.log("🔑 Has access token:", !!accessToken);
+      console.log("🎫 User roles:", user?.roles);
+
+      // IMPORTANT: Check if user has ADMIN role
+      if (!user.roles || !user.roles.includes("ADMIN")) {
+        console.log("❌ Access denied - not an admin");
+        setError("Access denied. Only administrators can access this portal.");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
         return;
       }
 
-      // Store token and user
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('user', JSON.stringify(user));
+      console.log("✅ Admin role verified");
+
+      // Store tokens and user data
+      localStorage.setItem("accessToken", accessToken);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
+      localStorage.setItem("user", JSON.stringify(user));
+
+      console.log("💾 Tokens and user stored in localStorage");
+      console.log("🚀 Redirecting to dashboard...");
+
+      // Add small delay to see logs
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Redirect to dashboard
-      router.push('/dashboard');
+      router.push("/dashboard");
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error("❌ Login error:", err);
+      console.error("📄 Error response:", err.response?.data);
+      console.error("📊 Error status:", err.response?.status);
       setError(
-        err.response?.data?.message || 'Login failed. Please try again.'
+        err.response?.data?.message || "Login failed. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -90,6 +133,11 @@ export default function LoginPage() {
           <CardDescription className="text-center text-base">
             Sign in to access the admin dashboard
           </CardDescription>
+          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-xs text-blue-800 dark:text-blue-200 text-center">
+              🔒 Admin access only - ADMIN role required
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -170,7 +218,7 @@ export default function LoginPage() {
                     Signing in...
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </Button>
             </form>
