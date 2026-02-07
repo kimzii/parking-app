@@ -34,7 +34,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b px-6 py-4">
+    <header className="bg-white shadow-sm border-b px-6 py-4 ml-64 sticky top-0 z-10">
       <div className="flex items-center justify-between">
         <div className="flex-1 max-w-lg">
           <div className="relative">

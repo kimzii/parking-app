@@ -89,11 +89,13 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="h-screen bg-gray-100">
+      {/* SIDEBAR */}
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="">
+        {/* HEADER */}
         <Header user={user} onLogout={handleLogout} />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="ml-64 p-4">{children}</main>
       </div>
     </div>
   );
