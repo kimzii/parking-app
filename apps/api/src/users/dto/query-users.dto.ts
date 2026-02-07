@@ -1,18 +1,9 @@
 import { IsOptional, IsEnum, IsString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { UserStatus, RoleName } from '@prisma/client';
+import { RoleName } from '@prisma/client';
 
 export class QueryUsersDto {
-  @ApiPropertyOptional({
-    example: 'APPROVED',
-    description: 'Filter by user status',
-    enum: UserStatus,
-  })
-  @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
-
   @ApiPropertyOptional({
     example: 'DRIVER',
     description: 'Filter by user role',

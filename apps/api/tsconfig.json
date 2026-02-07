@@ -23,6 +23,11 @@
     "noFallthroughCasesInSwitch": false,
     "typeRoots": ["./node_modules/@types", "./src/auth/types"]
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "prisma/**/*", 
+    "*.js", 
+    "*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

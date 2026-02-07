@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { UserStatus } from '@prisma/client';
 
 interface JwtPayload {
   sub: string;
@@ -13,7 +12,6 @@ interface JwtPayload {
 interface ValidatedUser {
   userId: string;
   email: string;
-  status: UserStatus;
   roles: string[];
 }
 
@@ -44,15 +42,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Only block BLOCKED users, allow PENDING and APPROVED
-    if (user.status === UserStatus.BLOCKED) {
-      throw new UnauthorizedException('Your account has been blocked');
+    // Check if user has any verified roles
+    const hasVerifiedRole = user.userRoles.some(
+      (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
+    );
+
+    if (!hasVerifiedRole) {
+      throw new UnauthorizedException('User account not verified');
     }
 
     return {
       userId: user.id,
       email: user.email,
-      status: user.status,
       roles: user.userRoles.map((ur) => ur.role.name),
     };
   }

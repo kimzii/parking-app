@@ -13,7 +13,6 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcrypt';
-import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -93,10 +92,10 @@ export class AuthService {
         password: hashedPassword,
         verificationCode,
         verificationExpiry,
-        status: UserStatus.PENDING,
         userRoles: {
           create: {
             roleId: roleRecord.id,
+            status: 'PENDING',
           },
         },
       },
@@ -178,7 +177,6 @@ export class AuthService {
     console.log('✅ User found:', {
       id: user.id,
       email: user.email,
-      status: user.status,
       emailVerified: user.emailVerified,
       roles: user.userRoles.map((ur) => ur.role.name),
     });
@@ -213,13 +211,22 @@ export class AuthService {
 
     console.log('✅ Email verified');
 
-    // Only block BLOCKED users, allow PENDING and APPROVED
-    if (user.status === UserStatus.BLOCKED) {
-      console.log('❌ User blocked');
-      throw new UnauthorizedException('Your account has been blocked');
+    // Check if user has any verified/admin roles
+    const hasAccessRole = user.userRoles.some(
+      (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
+    );
+
+    if (!hasAccessRole) {
+      console.log('❌ No verified roles found');
+      throw new UnauthorizedException(
+        'Your account is pending verification or blocked',
+      );
     }
 
-    console.log('✅ User status check passed:', user.status);
+    console.log(
+      '✅ User has verified roles:',
+      user.userRoles.map((ur) => `${ur.role.name}:${ur.status}`),
+    );
 
     // Generate JWT tokens
     console.log('🎫 Generating tokens...');
@@ -239,8 +246,11 @@ export class AuthService {
         id: user.id,
         email: user.email,
         emailVerified: user.emailVerified,
-        status: user.status, // Include status in response
         roles: user.userRoles.map((ur) => ur.role.name),
+        roleStatuses: user.userRoles.map((ur) => ({
+          role: ur.role.name,
+          status: ur.status,
+        })),
       },
       accessToken,
       refreshToken,
@@ -279,8 +289,13 @@ export class AuthService {
         },
       });
 
-      if (!user || user.status === UserStatus.BLOCKED) {
-        console.log('User not found or blocked:', user);
+      // Check if user has any verified roles
+      const hasVerifiedRole = user?.userRoles.some(
+        (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
+      );
+
+      if (!user || !hasVerifiedRole) {
+        console.log('User not found or no verified roles:', user?.id);
         throw new UnauthorizedException('Invalid token');
       }
 
