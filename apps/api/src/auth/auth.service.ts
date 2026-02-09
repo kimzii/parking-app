@@ -95,9 +95,20 @@ export class AuthService {
         userRoles: {
           create: {
             roleId: roleRecord.id,
-            status: 'PENDING',
+            status: role === 'HOST' ? 'VERIFIED' : 'PENDING', // Auto-approve HOST, DRIVER needs approval
           },
         },
+        // Create role-specific profiles
+        ...(role === 'HOST' && {
+          host: {
+            create: {},
+          },
+        }),
+        ...(role === 'DRIVER' && {
+          driver: {
+            create: {},
+          },
+        }),
       },
     });
 

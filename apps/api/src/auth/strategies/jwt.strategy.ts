@@ -10,7 +10,7 @@ interface JwtPayload {
 }
 
 interface ValidatedUser {
-  userId: string;
+  id: string;
   email: string;
   roles: string[];
 }
@@ -52,7 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
-      userId: user.id,
+      id: user.id,
       email: user.email,
       roles: user.userRoles.map((ur) => ur.role.name),
     };

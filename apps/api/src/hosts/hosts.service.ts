@@ -1,0 +1,528 @@
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateParkingLocationDto } from './dto/create-parking-location.dto';
+import { UpdateParkingLocationDto } from './dto/update-parking-location.dto';
+import { QueryParkingLocationsDto } from './dto/query-parking-locations.dto';
+import { UpdateLocationStatusDto } from './dto/update-location-status.dto';
+import { Prisma } from '@prisma/client';
+
+@Injectable()
+export class HostsService {
+  constructor(private prisma: PrismaService) {}
+
+  // Create host profile if not exists
+  async createHostProfile(userId: string) {
+    const existingHost = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (existingHost) {
+      return existingHost;
+    }
+
+    return this.prisma.host.create({
+      data: {
+        userId,
+      },
+    });
+  }
+
+  // Get host profile with locations
+  async getHostProfile(userId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true,
+            profilePicture: true,
+            createdAt: true,
+          },
+        },
+        parkingLocations: {
+          include: {
+            images: true,
+            parkingSpaces: true,
+            _count: {
+              select: {
+                parkingSpaces: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    return {
+      ...host,
+      totalLocations: host.parkingLocations.length,
+      approvedLocations: host.parkingLocations.filter(
+        (loc) => loc.status === 'APPROVED',
+      ).length,
+      pendingLocations: host.parkingLocations.filter(
+        (loc) => loc.status === 'PENDING',
+      ).length,
+    };
+  }
+
+  // Create parking location
+  async createParkingLocation(
+    userId: string,
+    createLocationDto: CreateParkingLocationDto,
+  ) {
+    // Ensure host profile exists
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException(
+        'Host profile not found. Please contact support.',
+      );
+    }
+
+    const { imageUrls, ...locationData } = createLocationDto;
+
+    return this.prisma.$transaction(async (tx) => {
+      // Create parking location
+      const location = await tx.parkingLocation.create({
+        data: {
+          ...locationData,
+          hostId: host.id,
+          availableSlots: createLocationDto.totalSlots || 1,
+          status: 'PENDING', // Requires admin approval
+        },
+      });
+
+      // Add images if provided
+      if (imageUrls && imageUrls.length > 0) {
+        await tx.parkingLocationImage.createMany({
+          data: imageUrls.map((url, index) => ({
+            parkingLocationId: location.id,
+            imageUrl: url,
+            isPrimary: index === 0, // First image is primary
+          })),
+        });
+      }
+
+      // Create parking spaces if totalSlots specified
+      if (createLocationDto.totalSlots && createLocationDto.totalSlots > 0) {
+        const spaces = Array.from(
+          { length: createLocationDto.totalSlots },
+          (_, i) => ({
+            parkingLocationId: location.id,
+            slotNumber: i + 1,
+          }),
+        );
+
+        await tx.parkingSpace.createMany({
+          data: spaces,
+        });
+      }
+
+      return location;
+    });
+  }
+
+  // Get host's parking locations
+  async getHostParkingLocations(
+    userId: string,
+    queryDto: QueryParkingLocationsDto,
+  ) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const { page = 1, limit = 10, search, status } = queryDto;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ParkingLocationWhereInput = {
+      hostId: host.id,
+    };
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const [locations, total] = await Promise.all([
+      this.prisma.parkingLocation.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          images: true,
+          parkingSpaces: true,
+          _count: {
+            select: {
+              parkingSpaces: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.parkingLocation.count({ where }),
+    ]);
+
+    return {
+      data: locations,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // Get single parking location
+  async getParkingLocation(userId: string, locationId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const location = await this.prisma.parkingLocation.findFirst({
+      where: {
+        id: locationId,
+        hostId: host.id,
+      },
+      include: {
+        images: true,
+        parkingSpaces: {
+          include: {
+            reservations: {
+              where: {
+                status: 'ACTIVE',
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            parkingSpaces: true,
+          },
+        },
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Parking location not found');
+    }
+
+    return location;
+  }
+
+  // Update parking location
+  async updateParkingLocation(
+    userId: string,
+    locationId: string,
+    updateLocationDto: UpdateParkingLocationDto,
+  ) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const location = await this.prisma.parkingLocation.findFirst({
+      where: {
+        id: locationId,
+        hostId: host.id,
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Parking location not found');
+    }
+
+    // If location is approved, changes require re-approval
+    const newStatus =
+      location.status === 'APPROVED' ? 'PENDING' : location.status;
+
+    const { imageUrls, ...locationData } = updateLocationDto;
+
+    return this.prisma.$transaction(async (tx) => {
+      // Update location
+      const updatedLocation = await tx.parkingLocation.update({
+        where: { id: locationId },
+        data: {
+          ...locationData,
+          status: newStatus, // Reset to pending if was approved
+          availableSlots:
+            updateLocationDto.totalSlots || location.availableSlots,
+        },
+      });
+
+      // Update images if provided
+      if (imageUrls && imageUrls.length > 0) {
+        // Delete existing images
+        await tx.parkingLocationImage.deleteMany({
+          where: { parkingLocationId: locationId },
+        });
+
+        // Add new images
+        await tx.parkingLocationImage.createMany({
+          data: imageUrls.map((url, index) => ({
+            parkingLocationId: locationId,
+            imageUrl: url,
+            isPrimary: index === 0,
+          })),
+        });
+      }
+
+      return updatedLocation;
+    });
+  }
+
+  // Delete parking location
+  async deleteParkingLocation(userId: string, locationId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const location = await this.prisma.parkingLocation.findFirst({
+      where: {
+        id: locationId,
+        hostId: host.id,
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Parking location not found');
+    }
+
+    // Check for active reservations
+    const activeReservations = await this.prisma.reservation.count({
+      where: {
+        parkingSpace: {
+          parkingLocationId: locationId,
+        },
+        status: {
+          in: ['PENDING', 'CONFIRMED', 'ACTIVE'],
+        },
+      },
+    });
+
+    if (activeReservations > 0) {
+      throw new BadRequestException(
+        'Cannot delete location with active reservations',
+      );
+    }
+
+    await this.prisma.parkingLocation.delete({
+      where: { id: locationId },
+    });
+
+    return { message: 'Parking location deleted successfully' };
+  }
+
+  // Admin: Get all parking locations
+  async getAllParkingLocations(queryDto: QueryParkingLocationsDto) {
+    const { page = 1, limit = 10, search, status } = queryDto;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ParkingLocationWhereInput = {};
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+        {
+          host: { user: { email: { contains: search, mode: 'insensitive' } } },
+        },
+      ];
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    const [locations, total] = await Promise.all([
+      this.prisma.parkingLocation.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          host: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+          images: true,
+          _count: {
+            select: {
+              parkingSpaces: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.parkingLocation.count({ where }),
+    ]);
+
+    return {
+      data: locations,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // Admin: Update parking location status
+  async updateLocationStatus(
+    locationId: string,
+    updateStatusDto: UpdateLocationStatusDto,
+  ) {
+    const location = await this.prisma.parkingLocation.findUnique({
+      where: { id: locationId },
+      include: {
+        host: {
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Parking location not found');
+    }
+
+    const updatedLocation = await this.prisma.parkingLocation.update({
+      where: { id: locationId },
+      data: {
+        status: updateStatusDto.status,
+      },
+    });
+
+    // TODO: Send notification to host about status change
+    // Could create a notification record here
+
+    return {
+      message: `Parking location ${updateStatusDto.status.toLowerCase()}`,
+      location: updatedLocation,
+      host: location.host.user,
+    };
+  }
+
+  // Get host statistics
+  async getHostStatistics(userId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const [
+      totalLocations,
+      approvedLocations,
+      pendingLocations,
+      rejectedLocations,
+      totalReservations,
+      activeReservations,
+    ] = await Promise.all([
+      this.prisma.parkingLocation.count({
+        where: { hostId: host.id },
+      }),
+      this.prisma.parkingLocation.count({
+        where: { hostId: host.id, status: 'APPROVED' },
+      }),
+      this.prisma.parkingLocation.count({
+        where: { hostId: host.id, status: 'PENDING' },
+      }),
+      this.prisma.parkingLocation.count({
+        where: { hostId: host.id, status: 'REJECTED' },
+      }),
+      this.prisma.reservation.count({
+        where: {
+          parkingSpace: {
+            parkingLocation: {
+              hostId: host.id,
+            },
+          },
+        },
+      }),
+      this.prisma.reservation.count({
+        where: {
+          parkingSpace: {
+            parkingLocation: {
+              hostId: host.id,
+            },
+          },
+          status: 'ACTIVE',
+        },
+      }),
+    ]);
+
+    return {
+      locations: {
+        total: totalLocations,
+        approved: approvedLocations,
+        pending: pendingLocations,
+        rejected: rejectedLocations,
+      },
+      reservations: {
+        total: totalReservations,
+        active: activeReservations,
+      },
+    };
+  }
+}

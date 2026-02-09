@@ -240,6 +240,115 @@ async function main() {
     },
   });
 
+  // Create sample parking locations
+  console.log('🅿️ Creating sample parking locations...');
+
+  // Get host users to create parking locations for
+  const hostUser = await prisma.user.findUnique({
+    where: { email: 'host@test.com' },
+    include: { host: true },
+  });
+
+  const multiRoleUser = await prisma.user.findUnique({
+    where: { email: 'both@test.com' },
+    include: { host: true },
+  });
+
+  if (hostUser?.host) {
+    // Create approved parking locations for main host
+    await prisma.parkingLocation.create({
+      data: {
+        hostId: hostUser.host.id,
+        title: 'Downtown Shopping Mall Parking',
+        description:
+          'Secure covered parking near major shopping center. 24/7 security.',
+        address: '123 Mall Drive, Downtown District, Metro City',
+        latitude: 14.5995,
+        longitude: 120.9842,
+        basePricePerHour: 25.0,
+        status: 'APPROVED',
+        totalSlots: 10,
+        availableSlots: 10,
+        images: {
+          createMany: {
+            data: [
+              {
+                imageUrl: 'https://example.com/parking1-main.jpg',
+                isPrimary: true,
+              },
+              { imageUrl: 'https://example.com/parking1-entrance.jpg' },
+              { imageUrl: 'https://example.com/parking1-security.jpg' },
+            ],
+          },
+        },
+        parkingSpaces: {
+          createMany: {
+            data: Array.from({ length: 10 }, (_, i) => ({
+              slotNumber: i + 1,
+            })),
+          },
+        },
+      },
+    });
+
+    await prisma.parkingLocation.create({
+      data: {
+        hostId: hostUser.host.id,
+        title: 'Airport Terminal Parking',
+        description: 'Close to airport terminal, perfect for travelers.',
+        address: '456 Airport Road, Terminal Area, Metro City',
+        latitude: 14.5085,
+        longitude: 121.0194,
+        basePricePerHour: 35.0,
+        status: 'PENDING', // Waiting for approval
+        totalSlots: 5,
+        availableSlots: 5,
+        images: {
+          createMany: {
+            data: [
+              {
+                imageUrl: 'https://example.com/parking2-main.jpg',
+                isPrimary: true,
+              },
+            ],
+          },
+        },
+        parkingSpaces: {
+          createMany: {
+            data: Array.from({ length: 5 }, (_, i) => ({
+              slotNumber: i + 1,
+            })),
+          },
+        },
+      },
+    });
+  }
+
+  if (multiRoleUser?.host) {
+    // Create pending parking location for multi-role user
+    await prisma.parkingLocation.create({
+      data: {
+        hostId: multiRoleUser.host.id,
+        title: 'University Campus Parking',
+        description: 'Student-friendly parking near university campus.',
+        address: '789 University Ave, Academic District, Metro City',
+        latitude: 14.6507,
+        longitude: 121.1029,
+        basePricePerHour: 15.0,
+        status: 'PENDING',
+        totalSlots: 8,
+        availableSlots: 8,
+        parkingSpaces: {
+          createMany: {
+            data: Array.from({ length: 8 }, (_, i) => ({
+              slotNumber: i + 1,
+            })),
+          },
+        },
+      },
+    });
+  }
+
   console.log('✅ Database seeding completed!');
   console.log('\n📋 Test accounts created:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -249,8 +358,12 @@ async function main() {
   console.log('');
   console.log('✅ VERIFIED USERS:');
   console.log('  • driver@test.com (Driver123!) - Driver role');
-  console.log('  • host@test.com (Host123!) - Host role');
-  console.log('  • both@test.com (Both123!) - Driver✅ + Host⏳');
+  console.log(
+    '  • host@test.com (Host123!) - Host role (with parking locations)',
+  );
+  console.log(
+    '  • both@test.com (Both123!) - Driver✅ + Host⏳ (with parking location)',
+  );
   console.log('');
   console.log('⏳ PENDING APPROVAL:');
   console.log('  • pending-driver@test.com (Pending123!) - Driver pending');
@@ -267,6 +380,19 @@ async function main() {
   console.log(`  • ${await prisma.userRole.count()} user-role assignments`);
   console.log(`  • ${await prisma.driver.count()} driver profiles`);
   console.log(`  • ${await prisma.host.count()} host profiles`);
+  console.log(`  • ${await prisma.parkingLocation.count()} parking locations`);
+  console.log(`  • ${await prisma.parkingSpace.count()} parking spaces`);
+
+  console.log(`\n🅿️ Parking Status:`);
+  console.log(
+    `  • ${await prisma.parkingLocation.count({ where: { status: 'APPROVED' } })} approved locations`,
+  );
+  console.log(
+    `  • ${await prisma.parkingLocation.count({ where: { status: 'PENDING' } })} pending locations`,
+  );
+  console.log(
+    `  • ${await prisma.parkingLocation.count({ where: { status: 'REJECTED' } })} rejected locations`,
+  );
 }
 
 main()
