@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsNumber,
+  IsBoolean,
   Min,
   Max,
   IsArray,
@@ -68,6 +69,24 @@ export class CreateParkingLocationDto {
   @Min(1)
   @Type(() => Number)
   totalSlots?: number;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Whether the parking location has multiple levels',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isMultiLevel?: boolean;
+
+  @ApiPropertyOptional({
+    example: 3,
+    description: 'Number of levels in the parking structure (if multi-level)',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Type(() => Number)
+  numberOfLevels?: number;
 
   @ApiPropertyOptional({
     example: [

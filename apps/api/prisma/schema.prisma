@@ -138,6 +138,8 @@ model ParkingLocation {
   status           LocationStatus         @default(PENDING)
   totalSlots       Int?                   @map("total_slots")
   availableSlots   Int?                   @map("available_slots")
+  isMultiLevel     Boolean                @default(false) @map("is_multi_level")
+  numberOfLevels   Int?                   @map("number_of_levels")
   createdAt        DateTime               @default(now()) @map("created_at")
   images           ParkingLocationImage[]
   host             Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
