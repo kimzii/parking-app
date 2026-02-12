@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMultiLevelConsistent } from '../validators/multi-level.validator';
 
 export class CreateParkingLocationDto {
   @ApiProperty({
@@ -86,6 +87,9 @@ export class CreateParkingLocationDto {
   @IsNumber()
   @Min(1)
   @Type(() => Number)
+  @IsMultiLevelConsistent({
+    message: 'numberOfLevels can only be set when isMultiLevel is true',
+  })
   numberOfLevels?: number;
 
   @ApiPropertyOptional({
