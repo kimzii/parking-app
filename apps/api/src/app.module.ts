@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { HostsModule } from './hosts/hosts.module';
+import { DriversModule } from './drivers/drivers.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HostsModule } from './hosts/hosts.module';
     PrismaModule,
     UsersModule,
     HostsModule,
+    DriversModule,
   ],
   controllers: [AppController],
   providers: [
