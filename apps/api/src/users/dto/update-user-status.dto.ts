@@ -1,14 +1,14 @@
 import { IsEnum, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserStatus } from '@prisma/client';
+import { VerificationStatus } from '@prisma/client';
 
 export class UpdateUserStatusDto {
   @ApiProperty({
-    example: 'APPROVED',
-    description: 'User status',
-    enum: UserStatus,
+    example: 'VERIFIED',
+    description: 'User role verification status',
+    enum: VerificationStatus,
   })
   @IsNotEmpty()
-  @IsEnum(UserStatus)
-  status: UserStatus;
+  @IsEnum(VerificationStatus)
+  status: VerificationStatus;
 }

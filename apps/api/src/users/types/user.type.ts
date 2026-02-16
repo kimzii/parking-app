@@ -1,4 +1,10 @@
-import { User, UserRole, Role, UserStatus, RoleName } from '@prisma/client';
+import {
+  User,
+  UserRole,
+  Role,
+  VerificationStatus,
+  RoleName,
+} from '@prisma/client';
 
 // User with roles populated
 export type UserWithRoles = User & {
@@ -15,11 +21,14 @@ export interface UserProfileResponse {
   lastName: string | null;
   phoneNumber: string | null;
   profilePicture: string | null;
-  status: UserStatus;
   emailVerified: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
   roles: RoleName[];
+  roleStatuses: {
+    role: RoleName;
+    status: VerificationStatus;
+  }[];
 }
 
 // User list item
@@ -29,11 +38,14 @@ export interface UserListItem {
   firstName: string | null;
   lastName: string | null;
   phoneNumber: string | null;
-  status: UserStatus;
   emailVerified: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
   roles: RoleName[];
+  roleStatuses: {
+    role: RoleName;
+    status: VerificationStatus;
+  }[];
 }
 
 // Paginated response

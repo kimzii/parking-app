@@ -57,14 +57,15 @@ export class UsersController {
   }
 
   // Admin: Update user status
-  @Put(':id/status')
+  @Put(':id/roles/:roleId/status')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)
-  async updateUserStatus(
+  async updateUserRoleStatus(
     @Param('id') id: string,
+    @Param('roleId') roleId: string,
     @Body() updateStatusDto: UpdateUserStatusDto,
   ) {
-    return this.usersService.updateUserStatus(id, updateStatusDto);
+    return this.usersService.updateUserRoleStatus(id, roleId, updateStatusDto);
   }
 
   // Admin: Get statistics

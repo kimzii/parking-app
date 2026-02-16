@@ -19,7 +19,6 @@ model User {
   phoneNumber           String?
   profilePicture        String?
   
-  status                UserStatus  @default(PENDING)
   emailVerified         Boolean     @default(false)
   verificationCode      String?
   verificationExpiry    DateTime?
@@ -50,10 +49,12 @@ model Role {
 }
 
 model UserRole {
-  userId String @map("user_id") @db.Uuid
-  roleId String @map("role_id") @db.Uuid
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String            @map("user_id") @db.Uuid
+  roleId String            @map("role_id") @db.Uuid
+  status VerificationStatus @default(PENDING)
+  assignedAt DateTime      @default(now()) @map("assigned_at")
+  role   Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@map("user_roles")
@@ -93,7 +94,6 @@ model Driver {
   userId             String             @unique @map("user_id") @db.Uuid
   licenseNumber      String?            @map("license_number")
   licenseImageUrl    String?            @map("license_image_url")
-  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
   createdAt          DateTime           @default(now()) @map("created_at")
   vehicles           DriverVehicle[]
   user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -108,6 +108,7 @@ model DriverVehicle {
   plateNumber String?      @map("plate_number")
   vehicleType VehicleType? @map("vehicle_type")
   brand       String?
+  model       String?
   color       String?
   isActive    Boolean      @default(true) @map("is_active")
   createdAt   DateTime     @default(now()) @map("created_at")
@@ -119,7 +120,6 @@ model DriverVehicle {
 model Host {
   id                 String             @id @default(uuid()) @db.Uuid
   userId             String             @unique @map("user_id") @db.Uuid
-  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
   createdAt          DateTime           @default(now()) @map("created_at")
   user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   parkingLocations   ParkingLocation[]
@@ -139,6 +139,8 @@ model ParkingLocation {
   status           LocationStatus         @default(PENDING)
   totalSlots       Int?                   @map("total_slots")
   availableSlots   Int?                   @map("available_slots")
+  isMultiLevel     Boolean                @default(false) @map("is_multi_level")
+  numberOfLevels   Int?                   @map("number_of_levels")
   createdAt        DateTime               @default(now()) @map("created_at")
   images           ParkingLocationImage[]
   host             Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
@@ -240,12 +242,6 @@ model AdminLog {
   @@map("admin_logs")
 }
 
-enum UserStatus {
-  PENDING
-  APPROVED
-  BLOCKED
-}
-
 enum RoleName {
   DRIVER
   HOST
@@ -274,6 +270,7 @@ enum VerificationStatus {
   PENDING
   VERIFIED
   REJECTED
+  SUSPENDED
 }
 
 enum VehicleType {

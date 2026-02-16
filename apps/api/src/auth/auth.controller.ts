@@ -24,12 +24,14 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { RequestWithIp } from './types/request.type';
+import { Public } from './decorators/public.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
@@ -39,6 +41,7 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
+  @Public()
   @Post('verify-email')
   @ApiOperation({ summary: 'Verify email with code' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
@@ -47,6 +50,7 @@ export class AuthController {
     return this.authService.verifyEmail(verifyEmailDto);
   }
 
+  @Public()
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
@@ -59,6 +63,7 @@ export class AuthController {
     return this.authService.login(loginDto, ip);
   }
 
+  @Public()
   @Post('resend-verification')
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
@@ -71,6 +76,7 @@ export class AuthController {
     return this.authService.resendVerificationCode(resendVerificationDto.email);
   }
 
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request password reset code' })
@@ -79,6 +85,7 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset password with code' })

@@ -8,7 +8,6 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    
     "db:start": "docker-compose up -d",
     "db:stop": "docker-compose stop",
     "db:logs": "docker-compose logs -f postgres",
@@ -28,5 +27,14 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "resolutions": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "dependencies": {
+    "expo": "^54.0.33",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
 }

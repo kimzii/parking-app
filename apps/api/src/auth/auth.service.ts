@@ -13,7 +13,6 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcrypt';
-import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -93,12 +92,23 @@ export class AuthService {
         password: hashedPassword,
         verificationCode,
         verificationExpiry,
-        status: UserStatus.PENDING,
         userRoles: {
           create: {
             roleId: roleRecord.id,
+            status: role === 'HOST' ? 'VERIFIED' : 'PENDING', // Auto-approve HOST, DRIVER needs approval
           },
         },
+        // Create role-specific profiles
+        ...(role === 'HOST' && {
+          host: {
+            create: {},
+          },
+        }),
+        ...(role === 'DRIVER' && {
+          driver: {
+            create: {},
+          },
+        }),
       },
     });
 
@@ -152,10 +162,13 @@ export class AuthService {
   }
 
   // Login
-  async login(loginDto: LoginDto, ipAddress?: string) {
+  async login(loginDto: LoginDto, ip: string) {
+    console.log('🔵 Login attempt:', { email: loginDto.email, ipAddress: ip });
+
     const { email, password } = loginDto;
 
-    // Find user with roles
+    // Find user
+    console.log('🔍 Looking up user...');
     const user = await this.prisma.user.findUnique({
       where: { email },
       include: {
@@ -168,83 +181,90 @@ export class AuthService {
     });
 
     if (!user) {
+      console.log('❌ User not found:', email);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    console.log('✅ User found:', {
+      id: user.id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      roles: user.userRoles.map((ur) => ur.role.name),
+    });
 
     // Check if account is locked
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const remainingMinutes = Math.ceil(
         (user.lockedUntil.getTime() - Date.now()) / 1000 / 60,
       );
+      console.log('🔒 Account locked until:', user.lockedUntil);
       throw new UnauthorizedException(
         `Account locked. Try again in ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`,
       );
     }
 
-    // Check password
-    const isPasswordValid = await this.comparePassword(password, user.password);
+    // Validate password
+    console.log('🔒 Validating password...');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
-      // Increment failed attempts
-      const attempts = user.loginAttempts + 1;
-      const maxAttempts = 5;
-      const lockDuration = attempts >= maxAttempts ? 30 : 0; // Lock for 30 min after 5 attempts
-
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          loginAttempts: attempts,
-          lockedUntil:
-            lockDuration > 0
-              ? new Date(Date.now() + lockDuration * 60000)
-              : null,
-        },
-      });
-
-      const attemptsRemaining = Math.max(0, maxAttempts - attempts);
-      if (lockDuration > 0) {
-        throw new UnauthorizedException(
-          `Too many failed attempts. Account locked for ${lockDuration} minutes`,
-        );
-      }
-
-      throw new UnauthorizedException(
-        `Invalid credentials. ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining`,
-      );
+      console.log('❌ Invalid password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check if email verified
+    console.log('✅ Password valid');
+
+    // Check email verified
     if (!user.emailVerified) {
+      console.log('❌ Email not verified');
       throw new UnauthorizedException('Please verify your email first');
     }
 
-    // Check if user is blocked
-    if (user.status === UserStatus.BLOCKED) {
-      throw new UnauthorizedException('Your account has been blocked');
+    console.log('✅ Email verified');
+
+    // Check if user has any verified/admin roles
+    const hasAccessRole = user.userRoles.some(
+      (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
+    );
+
+    if (!hasAccessRole) {
+      console.log('❌ No verified roles found');
+      throw new UnauthorizedException(
+        'Your account is pending verification or blocked',
+      );
     }
 
-    // Reset login attempts and update last login
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        loginAttempts: 0,
-        lockedUntil: null,
-        lastLoginAt: new Date(),
-        lastLoginIp: ipAddress,
-      },
-    });
+    console.log(
+      '✅ User has verified roles:',
+      user.userRoles.map((ur) => `${ur.role.name}:${ur.status}`),
+    );
 
-    // Generate tokens
-    const roles = user.userRoles.map((ur) => ur.role.name);
-    const tokens = await this.generateTokens(user.id, user.email, roles);
+    // Generate JWT tokens
+    console.log('🎫 Generating tokens...');
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      roles: user.userRoles.map((ur) => ur.role.name),
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+
+    console.log('✅ Login successful');
 
     return {
-      ...tokens,
       user: {
         id: user.id,
         email: user.email,
-        status: user.status,
-        roles,
+        emailVerified: user.emailVerified,
+        roles: user.userRoles.map((ur) => ur.role.name),
+        roleStatuses: user.userRoles.map((ur) => ({
+          role: ur.role.name,
+          status: ur.status,
+        })),
       },
+      accessToken,
+      refreshToken,
     };
   }
 
@@ -280,8 +300,13 @@ export class AuthService {
         },
       });
 
-      if (!user || user.status === UserStatus.BLOCKED) {
-        console.log('User not found or blocked:', user);
+      // Check if user has any verified roles
+      const hasVerifiedRole = user?.userRoles.some(
+        (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
+      );
+
+      if (!user || !hasVerifiedRole) {
+        console.log('User not found or no verified roles:', user?.id);
         throw new UnauthorizedException('Invalid token');
       }
 

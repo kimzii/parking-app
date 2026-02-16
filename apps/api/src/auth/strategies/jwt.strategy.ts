@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 interface JwtPayload {
   sub: string;
@@ -9,14 +10,14 @@ interface JwtPayload {
 }
 
 interface ValidatedUser {
-  userId: string;
+  id: string;
   email: string;
   roles: string[];
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -24,11 +25,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload): ValidatedUser {
+  async validate(payload: JwtPayload): Promise<ValidatedUser> {
+    // Get user from database
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Check if user has any verified roles
+    const hasVerifiedRole = user.userRoles.some(
+      (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
+    );
+
+    if (!hasVerifiedRole) {
+      throw new UnauthorizedException('User account not verified');
+    }
+
     return {
-      userId: payload.sub,
-      email: payload.email,
-      roles: payload.roles,
+      id: user.id,
+      email: user.email,
+      roles: user.userRoles.map((ur) => ur.role.name),
     };
   }
 }
