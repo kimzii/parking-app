@@ -14,13 +14,18 @@ import { router } from "expo-router";
 import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
 
-export default function LoginScreen() {
+export default function SignupScreen() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async () => {
+  const handleSignup = async () => {
+    if (!name.trim()) {
+      Alert.alert("Error", "Please enter your name");
+      return;
+    }
     if (!email.trim()) {
       Alert.alert("Error", "Please enter your email");
       return;
@@ -32,19 +37,17 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await authService.login(email.trim(), password);
-      router.replace("/(tabs)");
+      // Replace with your actual signup API call
+      await authService.register(name.trim(), email.trim(), password);
+      Alert.alert("Success", "Account created! Please log in.");
+      router.replace("/(auth)/login");
     } catch (error: any) {
-      // Log error details for debugging
-      console.error("Login error:", error);
-      if (error.response) {
-        console.error("Error response:", error.response);
-      }
       const message =
         error.response?.data?.message ||
         error.message ||
-        "Login failed. Please try again.";
-      Alert.alert("Login Failed", message);
+        "Signup failed. Please try again.";
+      Alert.alert("Signup Failed", message);
+      console.error("Signup error:", error);
     } finally {
       setLoading(false);
     }
@@ -56,15 +59,20 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.content}>
-        {/* Logo */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>🅿️</Text>
-          <Text style={styles.title}>ParkLink</Text>
-          <Text style={styles.subtitle}>Find & Book Parking Easily</Text>
+          <Feather name="user-plus" size={60} color="#00665A" />
+          <Text style={styles.title}>Sign Up</Text>
         </View>
-
-        {/* Form */}
         <View style={styles.form}>
+          <Text style={styles.label}>Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your name"
+            placeholderTextColor="#999"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
           <Text style={styles.label}>Email</Text>
           <TextInput
             style={styles.input}
@@ -76,7 +84,6 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
-
           <Text style={styles.label}>Password</Text>
           <View style={styles.passwordContainer}>
             <TextInput
@@ -94,35 +101,26 @@ export default function LoginScreen() {
             >
               <Feather
                 name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color="#666"
+                size={24}
+                color="#888"
               />
             </TouchableOpacity>
           </View>
-
-          {/* Login Button */}
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
+            onPress={handleSignup}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={styles.buttonText}>Sign Up</Text>
             )}
           </TouchableOpacity>
-
-          {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotButton}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          {/* Sign Up Link */}
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace("/(auth)/signup")}>
-              <Text style={styles.signupLink}>Sign Up</Text>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
+              <Text style={styles.loginLink}>Log In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -145,19 +143,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  logo: {
-    fontSize: 60,
-  },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: "#00665A",
     marginTop: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#888",
-    marginTop: 5,
   },
   form: {
     backgroundColor: "#fff",
@@ -202,9 +192,6 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 12,
   },
-  eyeText: {
-    fontSize: 18,
-  },
   button: {
     backgroundColor: "#00665A",
     padding: 15,
@@ -220,25 +207,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  forgotButton: {
-    alignItems: "center",
-    marginTop: 15,
-  },
-  forgotText: {
-    color: "#00665A",
-    fontSize: 14,
-  },
-  signupContainer: {
+  loginContainer: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 20,
   },
-  signupText: {
+  loginText: {
     color: "#666",
     fontSize: 14,
   },
-  signupLink: {
-    color: "#00665A",
+  loginLink: {
+    color: "#00665A ",
     fontSize: 14,
     fontWeight: "bold",
   },

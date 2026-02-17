@@ -13,6 +13,16 @@ export const authService = {
     return response.data;
   },
 
+  async register(name: string, email: string, password: string) {
+    // Adjusted to match your backend endpoint
+    const response = await api.post("/auth/register", {
+      name,
+      email,
+      password,
+    });
+    return response.data;
+  },
+
   async logout() {
     await SecureStore.deleteItemAsync("accessToken");
     await SecureStore.deleteItemAsync("refreshToken");
