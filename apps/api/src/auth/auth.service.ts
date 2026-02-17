@@ -216,20 +216,16 @@ export class AuthService {
 
     console.log('✅ Email verified');
 
-    // Check if user has any verified/admin roles
-    const hasAccessRole = user.userRoles.some(
-      (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
-    );
-
-    if (!hasAccessRole) {
-      console.log('❌ No verified roles found');
-      throw new UnauthorizedException(
-        'Your account is pending verification or blocked',
-      );
+    // Allow login if email is verified, regardless of DRIVER role status
+    // Still allow ADMINs
+    const isAdmin = user.userRoles.some((ur) => ur.role.name === 'ADMIN');
+    if (!isAdmin && !user.emailVerified) {
+      console.log('❌ Email not verified');
+      throw new UnauthorizedException('Please verify your email first');
     }
-
+    // Optionally, you can log the role statuses for debugging
     console.log(
-      '✅ User has verified roles:',
+      'User role statuses:',
       user.userRoles.map((ur) => `${ur.role.name}:${ur.status}`),
     );
 

@@ -22,6 +22,14 @@ export const authService = {
     return response.data;
   },
 
+  async verifyEmail(email: string, code: string) {
+    const response = await api.post("/auth/verify-email", {
+      email,
+      code,
+    });
+    return response.data;
+  },
+
   async logout() {
     await SecureStore.deleteItemAsync("accessToken");
     await SecureStore.deleteItemAsync("refreshToken");

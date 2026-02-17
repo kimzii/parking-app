@@ -17,8 +17,10 @@ import Feather from "@expo/vector-icons/Feather";
 export default function SignupScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignup = async () => {
     if (!email.trim()) {
@@ -29,13 +31,24 @@ export default function SignupScreen() {
       Alert.alert("Error", "Please enter your password");
       return;
     }
+    if (!confirmPassword.trim()) {
+      Alert.alert("Error", "Please confirm your password");
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
 
     setLoading(true);
     try {
-      // Replace with your actual signup API call
+      // Call signup API
       await authService.register(email.trim(), password);
-      Alert.alert("Success", "Account created! Please log in.");
-      router.replace("/(auth)/login");
+      Alert.alert("Success", "Account created! Please verify your email.");
+      router.replace({
+        pathname: "/(auth)/verify",
+        params: { email: email.trim() },
+      });
     } catch (error: any) {
       const message =
         error.response?.data?.message ||
@@ -87,6 +100,29 @@ export default function SignupScreen() {
             >
               <Feather
                 name={showPassword ? "eye-off" : "eye"}
+                size={24}
+                color="#888"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.label}>Confirm Password</Text>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm your password"
+              placeholderTextColor="#999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={styles.eyeButton}
+            >
+              <Feather
+                name={showConfirmPassword ? "eye-off" : "eye"}
                 size={24}
                 color="#888"
               />
@@ -148,7 +184,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: "#00665A",
     marginBottom: 6,
     marginTop: 12,
   },
@@ -203,7 +239,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   loginLink: {
-    color: "#00665A ",
+    color: "#00665A",
     fontSize: 14,
     fontWeight: "bold",
   },
