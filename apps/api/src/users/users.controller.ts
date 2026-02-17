@@ -27,7 +27,7 @@ export class UsersController {
   // Get current user profile
   @Get('profile')
   async getProfile(@Request() req: AuthenticatedRequest) {
-    return this.usersService.getProfile(req.user.userId);
+    return this.usersService.getProfile(req.user.id);
   }
 
   // Update profile
@@ -36,7 +36,7 @@ export class UsersController {
     @Request() req: AuthenticatedRequest,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    return this.usersService.updateProfile(req.user.userId, updateProfileDto);
+    return this.usersService.updateProfile(req.user.id, updateProfileDto);
   }
 
   // Change password
@@ -45,7 +45,7 @@ export class UsersController {
     @Request() req: AuthenticatedRequest,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    return this.usersService.changePassword(req.user.userId, changePasswordDto);
+    return this.usersService.changePassword(req.user.id, changePasswordDto);
   }
 
   // Admin: Get all users

@@ -12,7 +12,7 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <Text style={styles.emoji}>👤</Text>
       <Text style={styles.title}>Profile</Text>
-      <Text style={styles.subtitle}>Manage your account</Text>
+      <Text style={styles.subtitle}>Edit Profile</Text>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
