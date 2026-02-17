@@ -42,13 +42,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Check if user has any verified roles
-    const hasVerifiedRole = user.userRoles.some(
-      (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
-    );
-
-    if (!hasVerifiedRole) {
-      throw new UnauthorizedException('User account not verified');
+    // Allow all users with at least one role (regardless of status)
+    const hasAnyRole = user.userRoles.length > 0;
+    if (!hasAnyRole) {
+      throw new UnauthorizedException('User has no roles');
     }
 
     return {
