@@ -13,10 +13,9 @@ export const authService = {
     return response.data;
   },
 
-  async register(name: string, email: string, password: string) {
+  async register( email: string, password: string) {
     // Adjusted to match your backend endpoint
     const response = await api.post("/auth/register", {
-      name,
       email,
       password,
     });

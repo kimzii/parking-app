@@ -15,17 +15,12 @@ import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
 
 export default function SignupScreen() {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSignup = async () => {
-    if (!name.trim()) {
-      Alert.alert("Error", "Please enter your name");
-      return;
-    }
     if (!email.trim()) {
       Alert.alert("Error", "Please enter your email");
       return;
@@ -38,7 +33,7 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       // Replace with your actual signup API call
-      await authService.register(name.trim(), email.trim(), password);
+      await authService.register(email.trim(), password);
       Alert.alert("Success", "Account created! Please log in.");
       router.replace("/(auth)/login");
     } catch (error: any) {
@@ -64,15 +59,6 @@ export default function SignupScreen() {
           <Text style={styles.title}>Sign Up</Text>
         </View>
         <View style={styles.form}>
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your name"
-            placeholderTextColor="#999"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
           <Text style={styles.label}>Email</Text>
           <TextInput
             style={styles.input}

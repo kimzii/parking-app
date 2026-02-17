@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { EmailService } from '../common/email.service';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -19,6 +20,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private emailService: EmailService,
   ) {}
 
   // Generate 6-digit verification code
@@ -55,7 +57,7 @@ export class AuthService {
   }
   // Register
   async register(registerDto: RegisterDto) {
-    const { email, password, role } = registerDto;
+    const { email, password } = registerDto;
 
     // Check if user exists
     const existingUser = await this.prisma.user.findUnique({
@@ -77,15 +79,15 @@ export class AuthService {
         parseInt(process.env.VERIFICATION_CODE_EXPIRY_MINUTES || '15'),
     );
 
-    // Create user with role
-    const roleRecord = await this.prisma.role.findUnique({
-      where: { name: role },
+    // Find DRIVER role
+    const driverRole = await this.prisma.role.findUnique({
+      where: { name: 'DRIVER' },
     });
-
-    if (!roleRecord) {
-      throw new BadRequestException('Invalid role');
+    if (!driverRole) {
+      throw new BadRequestException('Default role DRIVER not found');
     }
 
+    // Create user with DRIVER role
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -94,26 +96,18 @@ export class AuthService {
         verificationExpiry,
         userRoles: {
           create: {
-            roleId: roleRecord.id,
-            status: role === 'HOST' ? 'VERIFIED' : 'PENDING', // Auto-approve HOST, DRIVER needs approval
+            roleId: driverRole.id,
+            status: 'PENDING',
           },
         },
-        // Create role-specific profiles
-        ...(role === 'HOST' && {
-          host: {
-            create: {},
-          },
-        }),
-        ...(role === 'DRIVER' && {
-          driver: {
-            create: {},
-          },
-        }),
+        driver: {
+          create: {},
+        },
       },
     });
 
-    // TODO: Send verification email
-    console.log(`Verification code for ${email}: ${verificationCode}`);
+    // Send verification email
+    await this.emailService.sendVerificationEmail(email, verificationCode);
 
     return {
       message: 'Registration successful. Please verify your email.',
