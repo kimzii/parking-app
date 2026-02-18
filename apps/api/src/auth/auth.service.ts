@@ -337,8 +337,8 @@ export class AuthService {
       },
     });
 
-    // TODO: Send reset email
-    console.log(`Password reset code for ${email}: ${verificationCode}`);
+    // Send password reset email
+    await this.emailService.sendPasswordResetEmail(email, verificationCode);
 
     return {
       message: 'If the email exists, a reset code has been sent',

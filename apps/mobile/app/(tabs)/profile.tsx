@@ -73,15 +73,25 @@ export default function ProfileScreen() {
         </View>
       </View>
       <View style={styles.menu}>
-        <TouchableOpacity style={styles.menuItem} onPress={() => setSettingsOpen((open) => !open)}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => setSettingsOpen((open) => !open)}
+        >
           <View style={styles.menuItemRow}>
             <Text style={styles.menuItemText}>Settings</Text>
-            <MaterialIcons name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"} size={20} color="black" />
+            <MaterialIcons
+              name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"}
+              size={20}
+              color="black"
+            />
           </View>
         </TouchableOpacity>
         {settingsOpen && (
           <View style={styles.dropdownMenu}>
-            <TouchableOpacity style={styles.dropdownItem}>
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => router.push("/(modals)/forgot-password")}
+            >
               <Text style={styles.dropdownItemText}>Forgot Password</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.dropdownItem}>
@@ -92,19 +102,31 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemRow}>
             <Text style={styles.menuItemText}>My Vehicles</Text>
-            <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
+            <MaterialIcons
+              name="keyboard-arrow-right"
+              size={20}
+              color="black"
+            />
           </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemRow}>
             <Text style={styles.menuItemText}>Parking History</Text>
-            <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
+            <MaterialIcons
+              name="keyboard-arrow-right"
+              size={20}
+              color="black"
+            />
           </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuItemRow}>
             <Text style={styles.menuItemText}>Help & Support</Text>
-            <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
+            <MaterialIcons
+              name="keyboard-arrow-right"
+              size={20}
+              color="black"
+            />
           </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

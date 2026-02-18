@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Feather from "@expo/vector-icons/Feather";
 import {
   View,
   Text,
@@ -10,41 +11,38 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { authService } from "../../src/services/auth";
-import Feather from "@expo/vector-icons/Feather";
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+export default function ResetPasswordScreen() {
+  const { email: paramEmail } = useLocalSearchParams();
+  const [email, setEmail] = useState(paramEmail ? String(paramEmail) : "");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email");
+  const handleResetPassword = async () => {
+    if (!email.trim() || !code.trim() || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields.");
       return;
     }
-    if (!password.trim()) {
-      Alert.alert("Error", "Please enter your password");
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
       return;
     }
-
     setLoading(true);
     try {
-      await authService.login(email.trim(), password);
-      router.replace("/(tabs)");
-    } catch (error: any) {
-      // Log error details for debugging
-      console.error("Login error:", error);
-      if (error.response) {
-        console.error("Error response:", error.response);
-      }
-      const message =
-        error.response?.data?.message ||
-        error.message ||
-        "Login failed. Please try again.";
-      Alert.alert("Login Failed", message);
+      await authService.resetPassword(email, code, password);
+      Alert.alert("Success", "Your password has been reset. Please log in.");
+      router.replace("/(auth)/login");
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to reset password.",
+      );
     } finally {
       setLoading(false);
     }
@@ -56,14 +54,10 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.content}>
-        {/* Logo */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>🅿️</Text>
-          <Text style={styles.title}>ParkLink</Text>
-          <Text style={styles.subtitle}>Find & Book Parking Easily</Text>
+          <Feather name="lock" size={60} color="#11796F" />
+          <Text style={styles.title}>Reset Password</Text>
         </View>
-
-        {/* Form */}
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -75,59 +69,86 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            editable={!loading && !paramEmail}
           />
-
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>Reset Code</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter the code you received"
+            placeholderTextColor="#999"
+            value={code}
+            onChangeText={setCode}
+            keyboardType="number-pad"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+          <Text style={styles.label}>New Password</Text>
           <View style={styles.passwordContainer}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="Enter your password"
+              placeholder="Enter your new password"
               placeholderTextColor="#999"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
+              editable={!loading}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeButton}
+              disabled={loading}
             >
               <Feather
                 name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color="#666"
+                size={24}
+                color="#888"
               />
             </TouchableOpacity>
           </View>
-
-          {/* Login Button */}
+          <Text style={styles.label}>Confirm Password</Text>
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Confirm your new password"
+              placeholderTextColor="#999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+              editable={!loading}
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={styles.eyeButton}
+              disabled={loading}
+            >
+              <Feather
+                name={showConfirmPassword ? "eye-off" : "eye"}
+                size={24}
+                color="#888"
+              />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
+            onPress={handleResetPassword}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Log In</Text>
+              <Text style={styles.buttonText}>Reset Password</Text>
             )}
           </TouchableOpacity>
-
-          {/* Forgot Password */}
           <TouchableOpacity
-            style={styles.forgotButton}
-            onPress={() => router.replace("/(modals)/forgot-password")}
+            style={[styles.button, styles.cancelButton]}
+            onPress={() => router.back()}
+            disabled={loading}
           >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+            <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
-
-          {/* Sign Up Link */}
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don&apos;t have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace("/(auth)/signup")}>
-              <Text style={styles.signupLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -148,19 +169,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 40,
   },
-  logo: {
-    fontSize: 60,
-  },
   title: {
     fontSize: 32,
     fontWeight: "bold",
     color: "#11796F",
     marginTop: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#888",
-    marginTop: 5,
   },
   form: {
     backgroundColor: "#fff",
@@ -205,9 +218,6 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 12,
   },
-  eyeText: {
-    fontSize: 18,
-  },
   button: {
     backgroundColor: "#11796F",
     padding: 15,
@@ -223,26 +233,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  forgotButton: {
-    alignItems: "center",
-    marginTop: 15,
-  },
-  forgotText: {
-    color: "#11796F",
-    fontSize: 14,
-  },
-  signupContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 20,
-  },
-  signupText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  signupLink: {
-    color: "#11796F",
-    fontSize: 14,
-    fontWeight: "bold",
+  cancelButton: {
+    backgroundColor: "#aaa",
+    marginTop: 10,
   },
 });

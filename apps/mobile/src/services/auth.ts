@@ -13,7 +13,7 @@ export const authService = {
     return response.data;
   },
 
-  async register( email: string, password: string) {
+  async register(email: string, password: string) {
     // Adjusted to match your backend endpoint
     const response = await api.post("/auth/register", {
       email,
@@ -29,15 +29,29 @@ export const authService = {
     });
     return response.data;
   },
-  
+
   async resendVerification(email: string) {
     const response = await api.post("/auth/resend-verification", { email });
+    return response.data;
+  },
+
+  async forgotPassword(email: string) {
+    const response = await api.post("/auth/forgot-password", { email });
     return response.data;
   },
 
   async logout() {
     await SecureStore.deleteItemAsync("accessToken");
     await SecureStore.deleteItemAsync("refreshToken");
+  },
+
+  async resetPassword(email: string, code: string, newPassword: string) {
+    const response = await api.post("/auth/reset-password", {
+      email,
+      code,
+      newPassword,
+    });
+    return response.data;
   },
 
   async getToken() {

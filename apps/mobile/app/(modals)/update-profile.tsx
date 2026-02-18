@@ -1,20 +1,24 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import { userService } from "../../src/services/user";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { User } from "../../src/types/user";
+import { userService } from "../../src/services/user";
+
+// styles already defined at the top
+
+// styles already defined at the top
 
 export default function UpdateProfileScreen() {
-  const [user, setUser] = useState<User | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,10 +31,9 @@ export default function UpdateProfileScreen() {
       if (token) {
         try {
           const data = await userService.getProfile();
-          setUser(data);
           setFirstName(data.firstName || "");
           setLastName(data.lastName || "");
-        } catch (err) {
+        } catch {
           Alert.alert("Error", "Failed to load profile.");
         }
       }
@@ -45,7 +48,7 @@ export default function UpdateProfileScreen() {
       await userService.updateProfile(firstName, lastName);
       Alert.alert("Success", "Profile updated!");
       router.back();
-    } catch (e) {
+    } catch {
       Alert.alert("Error", "Failed to update profile.");
     } finally {
       setSaving(false);
@@ -54,108 +57,149 @@ export default function UpdateProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
+      <View style={styles.content}>
         <ActivityIndicator size="large" color="#11796F" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.contentArea}>
-        <View style={styles.headerRow}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
           <Text style={styles.title}>Edit Profile</Text>
         </View>
-        <TextInput
-          style={styles.input}
-          placeholder="First Name"
-          value={firstName}
-          onChangeText={setFirstName}
-          editable={!saving}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Last Name"
-          value={lastName}
-          onChangeText={setLastName}
-          editable={!saving}
-        />
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: "#11796F" }]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.buttonText}>{saving ? "Saving..." : "Save"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: "#aaa" }]}
-          onPress={() => router.back()}
-          disabled={saving}
-        >
-          <Text style={styles.buttonText}>Cancel</Text>
-        </TouchableOpacity>
+        <View style={styles.form}>
+          <Text style={styles.label}>First Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="First Name"
+            placeholderTextColor="#999"
+            value={firstName}
+            onChangeText={setFirstName}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!saving}
+          />
+          <Text style={styles.label}>Last Name</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            placeholderTextColor="#999"
+            value={lastName}
+            onChangeText={setLastName}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!saving}
+          />
+          <TouchableOpacity
+            style={[styles.button, saving && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Save</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.cancelButton]}
+            onPress={() => router.back()}
+            disabled={saving}
+          >
+            <Text style={styles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
+  // styles already defined above
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    padding: 16,
   },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-    paddingTop: 32,
-    height: 40,
-  },
-  contentArea: {
+  content: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
+    paddingHorizontal: 30,
   },
-  headerRow: {
-    flexDirection: "row",
+  logoContainer: {
     alignItems: "center",
-    width: "100%",
-    marginBottom: 24,
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 40,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "bold",
     color: "#11796F",
+    marginTop: 10,
+  },
+  form: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#11796F",
+    marginBottom: 6,
+    marginTop: 12,
   },
   input: {
-    width: "100%",
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
-    marginBottom: 16,
-    backgroundColor: "#fff",
     fontSize: 16,
+    backgroundColor: "#fafafa",
+    color: "#333",
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: "#333",
+  },
+  eyeButton: {
+    padding: 12,
   },
   button: {
-    width: "100%",
-    paddingVertical: 14,
+    backgroundColor: "#11796F",
+    padding: 15,
     borderRadius: 8,
     alignItems: "center",
-    marginBottom: 10,
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: "#90CAF9",
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  cancelButton: {
+    backgroundColor: "#aaa",
+    marginTop: 10,
   },
 });
