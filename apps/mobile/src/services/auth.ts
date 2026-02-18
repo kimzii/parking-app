@@ -29,6 +29,11 @@ export const authService = {
     });
     return response.data;
   },
+  
+  async resendVerification(email: string) {
+    const response = await api.post("/auth/resend-verification", { email });
+    return response.data;
+  },
 
   async logout() {
     await SecureStore.deleteItemAsync("accessToken");

@@ -74,10 +74,7 @@ export class AuthService {
     // Generate verification code
     const verificationCode = this.generateVerificationCode();
     const verificationExpiry = new Date();
-    verificationExpiry.setMinutes(
-      verificationExpiry.getMinutes() +
-        parseInt(process.env.VERIFICATION_CODE_EXPIRY_MINUTES || '15'),
-    );
+    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 1);
 
     // Find DRIVER role
     const driverRole = await this.prisma.role.findUnique({
@@ -330,10 +327,7 @@ export class AuthService {
     // Generate reset code
     const verificationCode = this.generateVerificationCode();
     const verificationExpiry = new Date();
-    verificationExpiry.setMinutes(
-      verificationExpiry.getMinutes() +
-        parseInt(process.env.VERIFICATION_CODE_EXPIRY_MINUTES || '15'),
-    );
+    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 1);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -410,10 +404,7 @@ export class AuthService {
     // Generate new code
     const verificationCode = this.generateVerificationCode();
     const verificationExpiry = new Date();
-    verificationExpiry.setMinutes(
-      verificationExpiry.getMinutes() +
-        parseInt(process.env.VERIFICATION_CODE_EXPIRY_MINUTES || '15'),
-    );
+    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 1);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -423,8 +414,12 @@ export class AuthService {
       },
     });
 
-    // TODO: Send email
-    console.log(`New verification code for ${email}: ${verificationCode}`);
+    // Log for debugging
+    console.log(
+      `[RESEND] Sending verification code to: ${email}, code: ${verificationCode}`,
+    );
+
+    await this.emailService.sendVerificationEmail(email, verificationCode);
 
     return {
       message: 'If the email exists, a verification code has been sent',

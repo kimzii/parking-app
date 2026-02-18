@@ -21,6 +21,8 @@ export default function VerifyScreen() {
   const [missingEmail, setMissingEmail] = useState(false);
   const alertShownRef = useRef(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const [expirySeconds, setExpirySeconds] = useState(60); // 1 min default
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!email && !alertShownRef.current) {
@@ -37,6 +39,11 @@ export default function VerifyScreen() {
         ],
       );
     }
+    // Start countdown timer
+    const interval = setInterval(() => {
+      setExpirySeconds((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
   }, [email]);
 
   const handleVerify = async () => {
@@ -61,9 +68,34 @@ export default function VerifyScreen() {
     }
   };
 
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      await authService.resendVerification(email as string);
+      setExpirySeconds(60); // Reset timer to 1 min
+      Alert.alert(
+        "Verification code sent",
+        "A new code has been sent to your email.",
+      );
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to resend verification code.";
+      Alert.alert("Resend Failed", message);
+      console.error("Resend error:", error);
+    } finally {
+      setResending(false);
+    }
+  };
+
   if (missingEmail) {
     return null;
   }
+
+  // Format timer as mm:ss
+  const minutes = Math.floor(expirySeconds / 60);
+  const seconds = expirySeconds % 60;
 
   return (
     <KeyboardAvoidingView
@@ -81,6 +113,9 @@ export default function VerifyScreen() {
           <Feather name="mail" size={60} color="#00665A" />
           <Text style={styles.title}>Verify Email</Text>
           <Text style={styles.subtitle}>Enter the code sent to your email</Text>
+          <Text style={{ color: "#333", fontSize: 16, marginTop: 8 }}>
+            Code expires in {minutes}:{seconds.toString().padStart(2, "0")}
+          </Text>
         </View>
         <View style={styles.form}>
           <Text style={styles.label}>Verification Code</Text>
@@ -107,6 +142,23 @@ export default function VerifyScreen() {
               <Text style={styles.buttonText}>Verify</Text>
             )}
           </TouchableOpacity>
+          {expirySeconds === 0 && (
+            <TouchableOpacity
+              style={[
+                styles.button,
+                resending && styles.buttonDisabled,
+                { backgroundColor: "#90CAF9", marginTop: 10 },
+              ]}
+              onPress={handleResend}
+              disabled={resending}
+            >
+              {resending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Resend Verification Code</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </KeyboardAvoidingView>
