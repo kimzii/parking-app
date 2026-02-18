@@ -21,7 +21,7 @@ export default function VerifyScreen() {
   const [missingEmail, setMissingEmail] = useState(false);
   const alertShownRef = useRef(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const [expirySeconds, setExpirySeconds] = useState(60); // 1 min default
+  const [expirySeconds, setExpirySeconds] = useState(300); // 5 min default
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function VerifyScreen() {
     setResending(true);
     try {
       await authService.resendVerification(email as string);
-      setExpirySeconds(60); // Reset timer to 1 min
+      setExpirySeconds(300); // Reset timer to 5 min
       Alert.alert(
         "Verification code sent",
         "A new code has been sent to your email.",

@@ -74,7 +74,7 @@ export class AuthService {
     // Generate verification code
     const verificationCode = this.generateVerificationCode();
     const verificationExpiry = new Date();
-    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 1);
+    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 5);
 
     // Find DRIVER role
     const driverRole = await this.prisma.role.findUnique({
