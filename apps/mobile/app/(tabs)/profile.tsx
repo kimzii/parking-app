@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { useEffect, useState } from "react";
-import { router } from "expo-router";
+import { useState, useCallback } from "react";
+import { router, useFocusEffect } from "expo-router";
 import { authService } from "../../src/services/auth";
 import { userService } from "../../src/services/user";
 import * as SecureStore from "expo-secure-store";
@@ -11,29 +11,32 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchUserIfToken = async () => {
-      setLoading(true);
-      const token = await SecureStore.getItemAsync("accessToken");
-      if (token) {
-        userService
-          .getProfile()
-          .then((data) => {
-            setUser(data);
-            console.log("Fetched user profile:", data);
-          })
-          .catch((err) => {
-            setUser(null);
-            console.error("Failed to fetch user profile:", err);
-          })
-          .finally(() => setLoading(false));
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    };
-    fetchUserIfToken();
+  const fetchUserIfToken = useCallback(async () => {
+    setLoading(true);
+    const token = await SecureStore.getItemAsync("accessToken");
+    if (token) {
+      userService
+        .getProfile()
+        .then((data) => {
+          setUser(data);
+          console.log("Fetched user profile:", data);
+        })
+        .catch((err) => {
+          setUser(null);
+          console.error("Failed to fetch user profile:", err);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setUser(null);
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserIfToken();
+    }, [fetchUserIfToken]),
+  );
 
   const handleLogout = async () => {
     await authService.logout();
