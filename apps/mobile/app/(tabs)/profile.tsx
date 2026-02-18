@@ -10,6 +10,7 @@ import { User } from "../../src/types/user";
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);
@@ -72,6 +73,40 @@ export default function ProfileScreen() {
         </View>
       </View>
       <View style={styles.menu}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => setSettingsOpen((open) => !open)}>
+          <View style={styles.menuItemRow}>
+            <Text style={styles.menuItemText}>Settings</Text>
+            <MaterialIcons name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"} size={20} color="black" />
+          </View>
+        </TouchableOpacity>
+        {settingsOpen && (
+          <View style={styles.dropdownMenu}>
+            <TouchableOpacity style={styles.dropdownItem}>
+              <Text style={styles.dropdownItemText}>Forgot Password</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.dropdownItem}>
+              <Text style={styles.dropdownItemText}>Change Password</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <TouchableOpacity style={styles.menuItem}>
+          <View style={styles.menuItemRow}>
+            <Text style={styles.menuItemText}>My Vehicles</Text>
+            <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem}>
+          <View style={styles.menuItemRow}>
+            <Text style={styles.menuItemText}>Parking History</Text>
+            <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.menuItem}>
+          <View style={styles.menuItemRow}>
+            <Text style={styles.menuItemText}>Help & Support</Text>
+            <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -131,6 +166,35 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     alignItems: "center",
     height: "100%",
+  },
+  menuItem: {
+    paddingVertical: 14,
+    width: "100%",
+    marginBottom: 12,
+  },
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  menuItemText: {
+    color: "#222222",
+    fontSize: 16,
+  },
+  dropdownMenu: {
+    width: "100%",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginBottom: 2,
+  },
+  dropdownItemText: {
+    color: "#222222",
+    fontSize: 15,
   },
   logoutButton: {
     backgroundColor: "#ff4444",
