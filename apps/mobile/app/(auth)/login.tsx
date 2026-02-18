@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#00665A",
+    color: "#11796F",
     marginTop: 10,
   },
   subtitle: {
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#333",
+    color: "#11796F",
     marginBottom: 6,
     marginTop: 12,
   },
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   button: {
-    backgroundColor: "#00665A",
+    backgroundColor: "#11796F",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   forgotText: {
-    color: "#00665A",
+    color: "#11796F",
     fontSize: 14,
   },
   signupContainer: {
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signupLink: {
-    color: "#00665A",
+    color: "#11796F",
     fontSize: 14,
     fontWeight: "bold",
   },

@@ -110,7 +110,7 @@ export default function VerifyScreen() {
     >
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Feather name="mail" size={60} color="#00665A" />
+          <Feather name="mail" size={60} color="#11796F" />
           <Text style={styles.title}>Verify Email</Text>
           <Text style={styles.subtitle}>Enter the code sent to your email</Text>
           <Text style={{ color: "#333", fontSize: 16, marginTop: 8 }}>
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#00665A",
+    color: "#11796F",
     marginTop: 10,
   },
   subtitle: {
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   button: {
-    backgroundColor: "#00665A",
+    backgroundColor: "#11796F",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",

@@ -60,6 +60,12 @@ export default function ProfileScreen() {
               ? "Driver verified"
               : "Driver not verified"}
           </Text>
+          <TouchableOpacity
+            style={styles.updateProfileButton}
+            onPress={() => router.push("/(modals)/update-profile")}
+          >
+            <Text style={styles.updateProfileText}>Update Profile</Text>
+          </TouchableOpacity>
         </View>
       </View>
       <View style={styles.menu}>
@@ -75,7 +81,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    backgroundColor: "#00665A",
+    backgroundColor: "#11796F",
   },
   profileDetails: {
     width: "100%",
@@ -88,24 +94,31 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#11796F",
+    backgroundColor: "#038A7A",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   roleStatus: {
-    fontSize: 14,
-    color: "#fff",
-    marginTop: 4,
-    backgroundColor: "#038878",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
+    fontSize: 12,
+    color: "#fefefe",
   },
   userName: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#fff",
+  },
+  updateProfileButton: {
+    marginTop: 8,
+    backgroundColor: "#038A7A",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  updateProfileText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   menu: {
     width: "100%",

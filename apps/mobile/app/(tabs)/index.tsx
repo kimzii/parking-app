@@ -4,7 +4,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>🚗</Text>
-      <Text style={styles.title}>Welcome to ParkUp</Text>
+      <Text style={styles.title}>Welcome to ParkLink</Text>
       <Text style={styles.subtitle}>You are logged in!</Text>
     </View>
   );

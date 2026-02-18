@@ -68,7 +68,7 @@ export default function SignupScreen() {
     >
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Feather name="user-plus" size={60} color="#00665A" />
+          <Feather name="user-plus" size={60} color="#11796F" />
           <Text style={styles.title}>Sign Up</Text>
         </View>
         <View style={styles.form}>
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#00665A",
+    color: "#11796F",
     marginTop: 10,
   },
   form: {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#00665A",
+    color: "#11796F",
     marginBottom: 6,
     marginTop: 12,
   },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   button: {
-    backgroundColor: "#00665A",
+    backgroundColor: "#11796F",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   loginLink: {
-    color: "#00665A",
+    color: "#11796F",
     fontSize: 14,
     fontWeight: "bold",
   },
