@@ -7,6 +7,7 @@ import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
+import BecomeAHostButton from "../../src/components/BecomeAHostButton";
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -80,6 +81,11 @@ export default function ProfileScreen() {
           onTopUp={() => {}}
           onWithdraw={() => {}}
         />
+
+        <BecomeAHostButton
+          onPress={() => router.push("/(modals)/become-a-ahost")}
+        />
+
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => setSettingsOpen((open) => !open)}
@@ -193,11 +199,11 @@ const styles = StyleSheet.create({
   menu: {
     width: "100%",
     backgroundColor: "#fff",
-    padding: 16,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     alignItems: "center",
     height: "100%",
+    padding: 16,
   },
   menuItem: {
     paddingVertical: 14,
