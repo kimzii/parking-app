@@ -10,6 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 
 import { authService } from "../../src/services/auth";
 import { userService } from "../../src/services/user";
@@ -63,9 +64,17 @@ export default function ProfileScreen() {
       <View style={styles.container}>
         {/* PROFILE HEADER */}
         <View style={styles.profileDetails}>
-          <View style={styles.profileCircle}>
-            <MaterialIcons name="person" size={64} color="#fff" />
-          </View>
+          {user?.profilePicture ? (
+            <Image
+              source={{ uri: user.profilePicture }}
+              style={styles.profileCircle}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.profileCircle}>
+              <MaterialIcons name="person" size={64} color="#fff" />
+            </View>
+          )}
 
           <View>
             <Text style={styles.userName}>
