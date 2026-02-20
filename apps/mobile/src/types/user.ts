@@ -10,4 +10,5 @@ export type User = {
   createdAt?: string;
   roles?: string[];
   roleStatuses?: { role: string; status: string }[];
+  walletBalance?: number; 
 };

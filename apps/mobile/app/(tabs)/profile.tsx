@@ -6,6 +6,7 @@ import { userService } from "../../src/services/user";
 import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { User } from "../../src/types/user";
+import { EWallet } from "../../src/components/EWallet";
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -68,11 +69,17 @@ export default function ProfileScreen() {
             style={styles.updateProfileButton}
             onPress={() => router.push("/(modals)/update-profile")}
           >
-            <Text style={styles.updateProfileText}>Update Profile</Text>
+            <Text style={styles.updateProfileText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
       </View>
+
       <View style={styles.menu}>
+        <EWallet
+          balance={user?.walletBalance ?? 0}
+          onTopUp={() => {}}
+          onWithdraw={() => {}}
+        />
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => setSettingsOpen((open) => !open)}
@@ -94,7 +101,10 @@ export default function ProfileScreen() {
             >
               <Text style={styles.dropdownItemText}>Forgot Password</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.dropdownItem} onPress={() => router.push("/(modals)/change-password")}>
+            <TouchableOpacity
+              style={styles.dropdownItem}
+              onPress={() => router.push("/(modals)/change-password")}
+            >
               <Text style={styles.dropdownItemText}>Change Password</Text>
             </TouchableOpacity>
           </View>
