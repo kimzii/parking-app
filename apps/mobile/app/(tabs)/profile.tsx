@@ -16,7 +16,9 @@ import { userService } from "../../src/services/user";
 import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
 import BecomeAHostButton from "../../src/components/BecomeAHostButton";
+import DriverVerificationButton from "../../src/components/DriverVerificationButton";
 import MenuItem from "../../src/components/MenuItem";
+
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -57,7 +59,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
       <View style={styles.container}>
         {/* PROFILE HEADER */}
         <View style={styles.profileDetails}>
@@ -106,7 +108,9 @@ export default function ProfileScreen() {
             <BecomeAHostButton
               onPress={() => router.push("/(modals)/become-a-ahost")}
             />
-
+            <DriverVerificationButton
+              onPress={() => router.push("/(modals)/driver-verification")}
+            />
             {/* SETTINGS */}
             <TouchableOpacity
               style={styles.menuItem}
@@ -172,7 +176,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 40,
   },
   profileCircle: {
     width: 100,
@@ -214,6 +219,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+    gap: 16,
   },
   menuItem: {
     paddingVertical: 14,
