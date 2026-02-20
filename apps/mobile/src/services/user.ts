@@ -9,4 +9,11 @@ export const userService = {
     const response = await api.put("/users/profile", { firstName, lastName });
     return response.data;
   },
+  async changePassword(currentPassword: string, newPassword: string) {
+    const response = await api.put("/users/change-password", {
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
+  },
 };

@@ -94,7 +94,7 @@ export default function ProfileScreen() {
             >
               <Text style={styles.dropdownItemText}>Forgot Password</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.dropdownItem}>
+            <TouchableOpacity style={styles.dropdownItem} onPress={() => router.push("/(modals)/change-password")}>
               <Text style={styles.dropdownItemText}>Change Password</Text>
             </TouchableOpacity>
           </View>
