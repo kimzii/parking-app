@@ -155,7 +155,10 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            <MenuItem label="My Vehicles" />
+            <MenuItem
+              label="My Vehicles"
+              onPress={() => router.push("/(modals)/my-vehicles")}
+            />
             <MenuItem label="Parking History" />
             <MenuItem label="Help & Support" />
 
