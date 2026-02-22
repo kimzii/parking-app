@@ -10,32 +10,60 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 interface MenuItemProps {
   label: string;
+  icon?: keyof typeof MaterialIcons.glyphMap;
+  iconBg?: string;
+  iconColor?: string;
   onPress?: (event: GestureResponderEvent) => void;
   style?: object;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ label, onPress, style }) => (
-  <TouchableOpacity style={[styles.menuItem, style]} onPress={onPress}>
-    <View style={styles.menuItemRow}>
+const MenuItem: React.FC<MenuItemProps> = ({
+  label,
+  icon = "keyboard-arrow-right",
+  iconBg = "#F2F2F7",
+  iconColor = "#8E8E93",
+  onPress,
+  style,
+}) => (
+  <TouchableOpacity
+    style={[styles.menuItem, style]}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
+    <View style={styles.leftSide}>
+      <View style={[styles.iconBg, { backgroundColor: iconBg }]}>
+        <MaterialIcons name={icon} size={18} color={iconColor} />
+      </View>
       <Text style={styles.menuItemText}>{label}</Text>
-      <MaterialIcons name="keyboard-arrow-right" size={20} color="black" />
     </View>
+    <MaterialIcons name="chevron-right" size={20} color="#C7C7CC" />
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
   menuItem: {
-    paddingVertical: 14,
-    marginBottom: 12,
-  },
-  menuItemRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  leftSide: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
   },
   menuItemText: {
-    color: "#222",
-    fontSize: 16,
+    color: "#1A1A2E",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
 

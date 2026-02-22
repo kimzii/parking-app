@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,12 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { driversService } from "../../src/services/drivers";
-
-const UNSPLASH_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
+import { VehicleSvg } from "../../src/components/VehicleSvg";
 
 type Vehicle = {
   id: string;
@@ -30,33 +28,17 @@ type Vehicle = {
 
 const VEHICLE_TYPES = ["CAR", "MOTORCYCLE", "SUV"] as const;
 
+const TYPE_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
+  CAR: "directions-car",
+  MOTORCYCLE: "two-wheeler",
+  SUV: "directions-car",
+};
+
 export default function MyVehiclesScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [imageCache, setImageCache] = useState<Record<string, string>>({});
-
-  // Fetch vehicle images from Unsplash when vehicles change
-  useEffect(() => {
-    if (!UNSPLASH_KEY) return;
-    vehicles.forEach(async (v) => {
-      if (imageCache[v.id] || (!v.brand && !v.model)) return;
-      try {
-        const query = [v.color, v.brand, v.model].filter(Boolean).join(" ");
-        const res = await fetch(
-          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&client_id=${UNSPLASH_KEY}`,
-        );
-        const data = await res.json();
-        const imageUrl: string | undefined = data.results?.[0]?.urls?.small;
-        if (imageUrl) {
-          setImageCache((prev) => ({ ...prev, [v.id]: imageUrl }));
-        }
-      } catch {
-        // silently fail
-      }
-    });
-  }, [vehicles]);
 
   // Form state
   const [plateNumber, setPlateNumber] = useState("");
@@ -137,43 +119,62 @@ export default function MyVehiclesScreen() {
     ]);
   };
 
-  const renderVehicleCard = ({ item }: { item: Vehicle }) => (
-    <View style={styles.card}>
-      {imageCache[item.id] ? (
-        <Image
-          source={{ uri: imageCache[item.id] }}
-          style={styles.cardImage}
-          contentFit="cover"
-        />
-      ) : (
-        <View style={styles.cardImagePlaceholder}>
-          <MaterialIcons
-            name={
-              item.vehicleType === "MOTORCYCLE"
-                ? "two-wheeler"
-                : "directions-car"
-            }
-            size={48}
-            color="#aaa"
+  const renderVehicleCard = ({ item }: { item: Vehicle }) => {
+    const details = [item.brand, item.model].filter(Boolean).join(" ");
+    return (
+      <View style={styles.card}>
+        <View
+          style={[
+            styles.cardSvgContainer,
+            { backgroundColor: (item.color || "#11796F") + "12" },
+          ]}
+        >
+          <VehicleSvg
+            type={item.vehicleType}
+            color={item.color || "#11796F"}
+            size={52}
           />
         </View>
-      )}
-      <View style={styles.cardDetails}>
-        <Text style={styles.cardPlate}>{item.plateNumber}</Text>
-        <Text style={styles.cardInfo}>
-          {[item.color, item.brand, item.model].filter(Boolean).join(" ") ||
-            "No details"}
-        </Text>
-        <Text style={styles.cardType}>{item.vehicleType || "N/A"}</Text>
+        <View style={styles.cardBody}>
+          <View style={styles.cardTopRow}>
+            <View style={styles.plateBadge}>
+              <Text style={styles.plateText}>{item.plateNumber}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => handleDelete(item.id, item.plateNumber)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="delete-outline" size={20} color="#E53935" />
+            </TouchableOpacity>
+          </View>
+          {details ? (
+            <Text style={styles.cardDetails}>{details}</Text>
+          ) : null}
+          <View style={styles.cardBottomRow}>
+            {item.color ? (
+              <View style={styles.colorTag}>
+                <View
+                  style={[styles.colorDot, { backgroundColor: item.color }]}
+                />
+                <Text style={styles.colorText}>{item.color}</Text>
+              </View>
+            ) : null}
+            <View style={styles.typeTag}>
+              <MaterialIcons
+                name={TYPE_ICONS[item.vehicleType] || "directions-car"}
+                size={14}
+                color="#11796F"
+              />
+              <Text style={styles.typeTagText}>
+                {item.vehicleType || "N/A"}
+              </Text>
+            </View>
+          </View>
+        </View>
       </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDelete(item.id, item.plateNumber)}
-      >
-        <MaterialIcons name="delete-outline" size={22} color="#ff4444" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -181,30 +182,39 @@ export default function MyVehiclesScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>My Vehicles</Text>
+        <View>
+          <Text style={styles.title}>My Vehicles</Text>
+          <Text style={styles.subtitle}>
+            {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""}{" "}
+            registered
+          </Text>
+        </View>
         <TouchableOpacity
-          style={styles.addToggle}
+          style={[styles.addToggle, showForm && styles.addToggleActive]}
           onPress={() => setShowForm(!showForm)}
+          activeOpacity={0.8}
         >
           <MaterialIcons
             name={showForm ? "close" : "add"}
-            size={24}
-            color="#fff"
+            size={22}
+            color={showForm ? "#11796F" : "#fff"}
           />
         </TouchableOpacity>
       </View>
 
       {showForm && (
         <View style={styles.form}>
+          <Text style={styles.formTitle}>Add New Vehicle</Text>
           <TextInput
             style={styles.input}
             placeholder="Plate Number *"
-            placeholderTextColor="#999"
+            placeholderTextColor="#aaa"
             value={plateNumber}
             onChangeText={setPlateNumber}
             autoCapitalize="characters"
             editable={!saving}
           />
+          <Text style={styles.fieldLabel}>Vehicle Type</Text>
           <View style={styles.typeRow}>
             {VEHICLE_TYPES.map((t) => (
               <TouchableOpacity
@@ -215,7 +225,14 @@ export default function MyVehiclesScreen() {
                 ]}
                 onPress={() => setVehicleType(t)}
                 disabled={saving}
+                activeOpacity={0.7}
               >
+                <MaterialIcons
+                  name={TYPE_ICONS[t] || "directions-car"}
+                  size={18}
+                  color={vehicleType === t ? "#fff" : "#888"}
+                  style={{ marginBottom: 2 }}
+                />
                 <Text
                   style={[
                     styles.typeChipText,
@@ -227,26 +244,28 @@ export default function MyVehiclesScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={[styles.input, styles.inputHalf]}
+              placeholder="Brand"
+              placeholderTextColor="#aaa"
+              value={brand}
+              onChangeText={setBrand}
+              editable={!saving}
+            />
+            <TextInput
+              style={[styles.input, styles.inputHalf]}
+              placeholder="Model"
+              placeholderTextColor="#aaa"
+              value={model}
+              onChangeText={setModel}
+              editable={!saving}
+            />
+          </View>
           <TextInput
             style={styles.input}
-            placeholder="Brand (e.g. Toyota)"
-            placeholderTextColor="#999"
-            value={brand}
-            onChangeText={setBrand}
-            editable={!saving}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Model (e.g. Camry)"
-            placeholderTextColor="#999"
-            value={model}
-            onChangeText={setModel}
-            editable={!saving}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Color (e.g. Red)"
-            placeholderTextColor="#999"
+            placeholder="Color (e.g. Red, Blue)"
+            placeholderTextColor="#aaa"
             value={color}
             onChangeText={setColor}
             editable={!saving}
@@ -255,11 +274,15 @@ export default function MyVehiclesScreen() {
             style={[styles.submitButton, saving && styles.submitButtonDisabled]}
             onPress={handleAdd}
             disabled={saving}
+            activeOpacity={0.8}
           >
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>Add Vehicle</Text>
+              <View style={styles.submitInner}>
+                <MaterialIcons name="add-circle-outline" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>Add Vehicle</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
@@ -271,8 +294,13 @@ export default function MyVehiclesScreen() {
         </View>
       ) : vehicles.length === 0 ? (
         <View style={styles.centered}>
-          <MaterialIcons name="directions-car" size={64} color="#ccc" />
-          <Text style={styles.emptyText}>No vehicles yet</Text>
+          <View style={styles.emptyIcon}>
+            <MaterialIcons name="directions-car" size={48} color="#11796F" />
+          </View>
+          <Text style={styles.emptyTitle}>No vehicles yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Tap the + button to add your first vehicle
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -290,150 +318,266 @@ export default function MyVehiclesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#F8FAFB",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#222",
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1A1A2E",
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: "#8E8E93",
+    marginTop: 2,
   },
   addToggle: {
     backgroundColor: "#11796F",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  addToggleActive: {
+    backgroundColor: "#E8F5F3",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   form: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  formTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1A1A2E",
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#8E8E93",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     fontSize: 15,
-    backgroundColor: "#fafafa",
-    color: "#333",
+    backgroundColor: "#F8FAFB",
+    color: "#1A1A2E",
     marginBottom: 12,
+  },
+  inputRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  inputHalf: {
+    flex: 1,
   },
   typeRow: {
     flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
   },
   typeChip: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
     alignItems: "center",
-    backgroundColor: "#fafafa",
+    backgroundColor: "#F8FAFB",
   },
   typeChipActive: {
     backgroundColor: "#11796F",
     borderColor: "#11796F",
   },
   typeChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#8E8E93",
+    letterSpacing: 0.3,
   },
   typeChipTextActive: {
     color: "#fff",
   },
   submitButton: {
     backgroundColor: "#11796F",
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: 15,
+    borderRadius: 12,
     alignItems: "center",
+    marginTop: 4,
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: "#90CAF9",
+    backgroundColor: "#A8D5D1",
+    shadowOpacity: 0,
+  },
+  submitInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   submitButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
+    paddingBottom: 60,
   },
-  emptyText: {
-    fontSize: 16,
-    color: "#999",
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "#E8F5F3",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1A1A2E",
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#8E8E93",
   },
   list: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
   card: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  cardImage: {
-    width: 100,
-    height: 100,
+  cardSvgContainer: {
+    width: 88,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  cardImagePlaceholder: {
-    width: 100,
-    height: 100,
-    backgroundColor: "#f0f0f0",
+  cardBody: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  plateBadge: {
+    backgroundColor: "#1A1A2E",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  plateText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 1,
+  },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#FEE8E7",
     justifyContent: "center",
     alignItems: "center",
   },
   cardDetails: {
-    flex: 1,
-    padding: 12,
-    justifyContent: "center",
-  },
-  cardPlate: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#222",
-  },
-  cardInfo: {
-    fontSize: 14,
-    color: "#555",
-    marginTop: 2,
-  },
-  cardType: {
-    fontSize: 12,
-    color: "#11796F",
+    fontSize: 15,
     fontWeight: "600",
-    marginTop: 4,
+    color: "#1A1A2E",
+    marginTop: 6,
   },
-  deleteButton: {
-    justifyContent: "center",
-    paddingHorizontal: 12,
+  cardBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  colorTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#F2F2F7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  colorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+  },
+  colorText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#555",
+    textTransform: "capitalize",
+  },
+  typeTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5F3",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  typeTagText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#11796F",
   },
 });

@@ -18,9 +18,13 @@ const DriverVerificationButton: React.FC<DriverVerificationButtonProps> = ({
       activeOpacity={0.85}
     >
       <View style={styles.iconContainer}>
-        <MaterialIcons name="verified-user" size={22} color="#fff" />
+        <MaterialIcons name="verified-user" size={20} color="#fff" />
       </View>
-      <Text style={styles.text}>Verify Driver Status</Text>
+      <View style={styles.textContainer}>
+        <Text style={styles.text}>Verify Driver Status</Text>
+        <Text style={styles.subtext}>Upload your license to drive</Text>
+      </View>
+      <MaterialIcons name="chevron-right" size={22} color="rgba(255,255,255,0.5)" />
     </TouchableOpacity>
   );
 };
@@ -29,28 +33,35 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#038A7A",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    backgroundColor: "#11796F",
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     width: "100%",
-    elevation: 2,
+    elevation: 4,
   },
   iconContainer: {
-    marginRight: 10,
-    backgroundColor: "#027063",
-    borderRadius: 8,
-    padding: 6,
+    marginRight: 14,
+    backgroundColor: "rgba(0,0,0,0.15)",
+    borderRadius: 12,
+    padding: 10,
+  },
+  textContainer: {
+    flex: 1,
   },
   text: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    fontWeight: "700",
+  },
+  subtext: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 12,
+    marginTop: 2,
   },
 });
 

@@ -9,9 +9,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { router } from "expo-router";
 import { authService } from "../../src/services/auth";
+import Feather from "@expo/vector-icons/Feather";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
@@ -40,10 +42,7 @@ export default function ForgotPasswordScreen() {
         ],
       );
     } catch (err: any) {
-      Alert.alert(
-        "Error",
-        err?.response?.data?.message || "Failed to send reset email.",
-      );
+      Alert.alert("Error", err?.response?.data?.message || "Failed to send reset email.");
     } finally {
       setLoading(false);
     }
@@ -54,103 +53,75 @@ export default function ForgotPasswordScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.logoContainer}>
+          <View style={styles.logoIcon}>
+            <Feather name="help-circle" size={32} color="#fff" />
+          </View>
           <Text style={styles.title}>Forgot Password</Text>
+          <Text style={styles.subtitle}>We'll send you a reset code</Text>
         </View>
+
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            placeholderTextColor="#999"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!loading}
-          />
+          <View style={styles.inputContainer}>
+            <Feather name="mail" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#aaa"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+          </View>
+
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleForgotPassword}
             disabled={loading}
+            activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Send Reset Link</Text>
-            )}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send Reset Link</Text>}
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
+  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  scrollContent: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 40 },
+  logoContainer: { alignItems: "center", marginBottom: 32 },
+  logoIcon: {
+    width: 72, height: 72, borderRadius: 22, backgroundColor: "#11796F",
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#11796F", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
   },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 30,
-  },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#11796F",
-    marginTop: 10,
-  },
+  title: { fontSize: 28, fontWeight: "800", color: "#1A1A2E", marginTop: 14, letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4 },
   form: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: "#fff", borderRadius: 20, padding: 24,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#11796F",
-    marginBottom: 6,
-    marginTop: 12,
+  label: { fontSize: 13, fontWeight: "600", color: "#1A1A2E", marginBottom: 8, marginTop: 14, textTransform: "uppercase", letterSpacing: 0.5 },
+  inputContainer: {
+    flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, backgroundColor: "#F8FAFB",
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: "#fafafa",
-    color: "#333",
-  },
+  inputIcon: { marginLeft: 14 },
+  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#1A1A2E" },
   button: {
-    backgroundColor: "#11796F",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 20,
+    backgroundColor: "#11796F", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 24,
+    shadowColor: "#11796F", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
   },
-  buttonDisabled: {
-    backgroundColor: "#90CAF9",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  cancelButton: {
-    backgroundColor: "#aaa",
-    marginTop: 10,
-  },
+  buttonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

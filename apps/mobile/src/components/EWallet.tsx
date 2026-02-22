@@ -34,11 +34,16 @@ export const EWallet: React.FC<EWalletProps> = ({
         borderBottomRightRadius: 16,
       }}
     >
-      <Text style={styles.title}>E-Wallet</Text>
-      <Text style={styles.balance}>₱ {balance.toFixed(2)}</Text>
+      <View style={styles.topSection}>
+        <View style={styles.labelRow}>
+          <MaterialIcons name="account-balance-wallet" size={18} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.title}>E-Wallet</Text>
+        </View>
+        <Text style={styles.balance}>₱ {balance.toFixed(2)}</Text>
+      </View>
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={onTopUp}>
-          <MaterialIcons name="add-circle-outline" size={24} color="white" />
+        <TouchableOpacity style={styles.button} onPress={onTopUp} activeOpacity={0.8}>
+          <MaterialIcons name="add-circle-outline" size={20} color="white" />
           <Text style={styles.buttonText}>Top Up</Text>
         </TouchableOpacity>
       </View>
@@ -49,51 +54,51 @@ export const EWallet: React.FC<EWalletProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#038A7A",
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
-    paddingTop: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: "#038A7A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  topSection: {
+    paddingTop: 22,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
   },
   title: {
-    fontSize: 16,
-    paddingHorizontal: 16,
-    color: "#fff",
-    marginBottom: 8,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
   },
   balance: {
-    fontSize: 32,
-    fontWeight: "bold",
-    paddingHorizontal: 16,
+    fontSize: 34,
+    fontWeight: "800",
     color: "#fff",
-    marginBottom: 16,
+    letterSpacing: -0.5,
   },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
   },
   button: {
     flex: 1,
-    backgroundColor: "#11796F",
+    backgroundColor: "rgba(0,0,0,0.15)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 12,
-    borderBottomEndRadius: 16,
-    borderBottomStartRadius: 16,
-    marginHorizontal: 4,
-  },
-  withdrawButton: {
-    backgroundColor: "#90CAF9",
+    paddingVertical: 14,
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

@@ -20,7 +20,6 @@ import BecomeAHostButton from "../../src/components/BecomeAHostButton";
 import DriverVerificationButton from "../../src/components/DriverVerificationButton";
 import MenuItem from "../../src/components/MenuItem";
 
-
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,14 +27,11 @@ export default function ProfileScreen() {
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);
-
     const token = await SecureStore.getItemAsync("accessToken");
-
     if (token) {
       try {
         const data = await userService.getProfile();
         setUser(data);
-        console.log("Fetched user profile:", data);
       } catch (err) {
         console.error("Failed to fetch user profile:", err);
         setUser(null);
@@ -59,45 +55,52 @@ export default function ProfileScreen() {
     router.replace("/(auth)/login");
   };
 
+  const isDriverVerified =
+    user?.roleStatuses?.find((r) => r.role === "DRIVER")?.status === "VERIFIED";
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
       <View style={styles.container}>
-        {/* PROFILE HEADER */}
-        <View style={styles.profileDetails}>
+        <View style={styles.profileHeader}>
           {user?.profilePicture ? (
             <Image
               source={{ uri: user.profilePicture }}
-              style={styles.profileCircle}
+              style={styles.avatar}
               contentFit="cover"
             />
           ) : (
-            <View style={styles.profileCircle}>
-              <MaterialIcons name="person" size={64} color="#fff" />
+            <View style={styles.avatar}>
+              <MaterialIcons name="person" size={48} color="#fff" />
             </View>
           )}
 
-          <View>
+          <View style={styles.profileInfo}>
             <Text style={styles.userName}>
               {loading
                 ? "Loading..."
                 : user
-                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
-                    "-"
+                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"
                   : "-"}
             </Text>
 
-            <Text style={styles.roleStatus}>
-              {user?.roleStatuses?.find((r) => r.role === "DRIVER")?.status ===
-              "VERIFIED"
-                ? "Driver verified"
-                : "Driver not verified"}
-            </Text>
+            <View style={[styles.verificationBadge, isDriverVerified && styles.verifiedBadge]}>
+              <MaterialIcons
+                name={isDriverVerified ? "verified" : "info-outline"}
+                size={14}
+                color={isDriverVerified ? "#fff" : "rgba(255,255,255,0.7)"}
+              />
+              <Text style={[styles.badgeText, isDriverVerified && styles.verifiedText]}>
+                {isDriverVerified ? "Verified Driver" : "Not Verified"}
+              </Text>
+            </View>
 
             <TouchableOpacity
-              style={styles.updateProfileButton}
+              style={styles.editProfileBtn}
               onPress={() => router.push("/(modals)/update-profile")}
+              activeOpacity={0.8}
             >
-              <Text style={styles.updateProfileText}>Edit Profile</Text>
+              <MaterialIcons name="edit" size={14} color="#fff" />
+              <Text style={styles.editProfileText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -114,58 +117,75 @@ export default function ProfileScreen() {
               onWithdraw={() => {}}
             />
 
-            <BecomeAHostButton
-              onPress={() => router.push("/(modals)/become-a-ahost")}
-            />
-            <DriverVerificationButton
-              onPress={() => router.push("/(modals)/driver-verification")}
-            />
-            {/* SETTINGS */}
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => setSettingsOpen((open) => !open)}
-            >
-              <View style={styles.menuItemRow}>
-                <Text style={styles.menuItemText}>Settings</Text>
-                <MaterialIcons
-                  name={
-                    settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"
-                  }
-                  size={20}
-                  color="black"
+            <View style={styles.actionButtons}>
+              <BecomeAHostButton
+                onPress={() => router.push("/(modals)/become-a-ahost")}
+              />
+              <DriverVerificationButton
+                onPress={() => router.push("/(modals)/driver-verification")}
+              />
+            </View>
+
+            <View style={styles.menuSection}>
+              <Text style={styles.menuSectionTitle}>Account</Text>
+              <View style={styles.menuCard}>
+                <TouchableOpacity
+                  style={styles.settingsItem}
+                  onPress={() => setSettingsOpen((open) => !open)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.menuItemLeft}>
+                    <View style={[styles.menuIconBg, { backgroundColor: "#F2F2F7" }]}>
+                      <MaterialIcons name="settings" size={18} color="#8E8E93" />
+                    </View>
+                    <Text style={styles.menuItemLabel}>Settings</Text>
+                  </View>
+                  <MaterialIcons
+                    name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                    size={22}
+                    color="#8E8E93"
+                  />
+                </TouchableOpacity>
+
+                {settingsOpen && (
+                  <View style={styles.settingsDropdown}>
+                    <TouchableOpacity
+                      style={styles.dropdownItem}
+                      onPress={() => router.push("/(modals)/forgot-password")}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="lock-reset" size={18} color="#8E8E93" />
+                      <Text style={styles.dropdownText}>Forgot Password</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.dropdownItem}
+                      onPress={() => router.push("/(modals)/change-password")}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="vpn-key" size={18} color="#8E8E93" />
+                      <Text style={styles.dropdownText}>Change Password</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <MenuItem
+                  label="My Vehicles"
+                  icon="directions-car"
+                  iconBg="#E8F5F3"
+                  iconColor="#11796F"
+                  onPress={() => router.push("/(modals)/my-vehicles")}
                 />
+                <MenuItem label="Parking History" icon="history" iconBg="#FFF3E0" iconColor="#F57C00" />
+                <MenuItem label="Help & Support" icon="help-outline" iconBg="#E3F2FD" iconColor="#1976D2" />
               </View>
-            </TouchableOpacity>
-
-            {settingsOpen && (
-              <View style={styles.dropdownMenu}>
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => router.push("/(modals)/forgot-password")}
-                >
-                  <Text style={styles.dropdownItemText}>Forgot Password</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.dropdownItem}
-                  onPress={() => router.push("/(modals)/change-password")}
-                >
-                  <Text style={styles.dropdownItemText}>Change Password</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <MenuItem
-              label="My Vehicles"
-              onPress={() => router.push("/(modals)/my-vehicles")}
-            />
-            <MenuItem label="Parking History" />
-            <MenuItem label="Help & Support" />
+            </View>
 
             <TouchableOpacity
               style={styles.logoutButton}
               onPress={handleLogout}
+              activeOpacity={0.8}
             >
+              <MaterialIcons name="logout" size={18} color="#E53935" />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -176,99 +196,127 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#11796F",
-  },
-  container: {
-    flex: 1,
-  },
-  profileDetails: {
-    width: "100%",
+  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  container: { flex: 1 },
+  profileHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 40,
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    paddingBottom: 32,
   },
-  profileCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
     backgroundColor: "#038A7A",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.2)",
   },
+  profileInfo: { flex: 1 },
   userName: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "800",
     color: "#fff",
+    letterSpacing: -0.3,
   },
-  roleStatus: {
-    fontSize: 12,
-    color: "#fefefe",
-    marginTop: 2,
-  },
-  updateProfileButton: {
-    marginTop: 8,
-    backgroundColor: "#038A7A",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  verificationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
     alignSelf: "flex-start",
+    marginTop: 6,
   },
-  updateProfileText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
+  verifiedBadge: { backgroundColor: "rgba(255,255,255,0.25)" },
+  badgeText: { fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
+  verifiedText: { color: "#fff" },
+  editProfileBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: "#038A7A",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignSelf: "flex-start",
   },
+  editProfileText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   menuWrapper: {
     flex: 1,
+    backgroundColor: "#F8FAFB",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+  scrollContent: { padding: 20, paddingBottom: 40, gap: 16 },
+  actionButtons: { gap: 10 },
+  menuSection: { gap: 10 },
+  menuSectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  menuCard: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-    gap: 16,
-  },
-  menuItem: {
-    paddingVertical: 14,
-    marginBottom: 12,
-  },
-  menuItemRow: {
+  settingsItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  menuItemText: {
-    color: "#222",
-    fontSize: 16,
+  menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  menuIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  dropdownMenu: {
-    paddingHorizontal: 8,
-    marginBottom: 12,
+  menuItemLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A2E" },
+  settingsDropdown: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 2,
   },
   dropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-  },
-  dropdownItemText: {
-    fontSize: 15,
-    color: "#222",
-  },
-  logoutButton: {
-    backgroundColor: "#ff4444",
-    paddingVertical: 14,
-    borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 44,
+  },
+  dropdownText: { fontSize: 14, color: "#555" },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FEE8E7",
+    paddingVertical: 16,
+    borderRadius: 14,
   },
   logoutText: {
-    color: "#fff",
+    color: "#E53935",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
 });
