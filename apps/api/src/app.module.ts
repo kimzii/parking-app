@@ -9,6 +9,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { HostsModule } from './hosts/hosts.module';
 import { DriversModule } from './drivers/drivers.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DriversModule } from './drivers/drivers.module';
     UsersModule,
     HostsModule,
     DriversModule,
+    WalletModule,
   ],
   controllers: [AppController],
   providers: [

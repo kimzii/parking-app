@@ -15,6 +15,8 @@ async function main() {
 
   // Clear existing data
   console.log('🧹 Clearing existing data...');
+  await prisma.walletTransaction.deleteMany();
+  await prisma.wallet.deleteMany();
   await prisma.userRole.deleteMany();
   await prisma.driver.deleteMany();
   await prisma.host.deleteMany();
@@ -52,6 +54,7 @@ async function main() {
           status: 'VERIFIED', // ← Changed from APPROVED
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -70,6 +73,7 @@ async function main() {
           status: 'VERIFIED', // ← Changed from APPROVED
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -94,6 +98,7 @@ async function main() {
           status: 'VERIFIED', // ← Changed from APPROVED
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -116,6 +121,7 @@ async function main() {
           status: 'VERIFIED', // ← Changed from APPROVED
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -145,6 +151,7 @@ async function main() {
           ],
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -169,6 +176,7 @@ async function main() {
           status: 'PENDING',
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -191,6 +199,7 @@ async function main() {
           status: 'PENDING',
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -215,6 +224,7 @@ async function main() {
           status: 'REJECTED',
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -237,6 +247,7 @@ async function main() {
           status: 'SUSPENDED',
         },
       },
+      wallet: { create: {} },
     },
   });
 
@@ -380,6 +391,7 @@ async function main() {
   console.log(`  • ${await prisma.userRole.count()} user-role assignments`);
   console.log(`  • ${await prisma.driver.count()} driver profiles`);
   console.log(`  • ${await prisma.host.count()} host profiles`);
+  console.log(`  • ${await prisma.wallet.count()} wallets`);
   console.log(`  • ${await prisma.parkingLocation.count()} parking locations`);
   console.log(`  • ${await prisma.parkingSpace.count()} parking spaces`);
 

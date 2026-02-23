@@ -39,7 +39,7 @@ export const EWallet: React.FC<EWalletProps> = ({
           <MaterialIcons name="account-balance-wallet" size={18} color="rgba(255,255,255,0.7)" />
           <Text style={styles.title}>E-Wallet</Text>
         </View>
-        <Text style={styles.balance}>₱ {balance.toFixed(2)}</Text>
+        <Text style={styles.balance}>₱ {Number(balance).toFixed(2)}</Text>
       </View>
       <View style={styles.buttonRow}>
         <TouchableOpacity style={styles.button} onPress={onTopUp} activeOpacity={0.8}>

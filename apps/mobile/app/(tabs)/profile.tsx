@@ -112,8 +112,8 @@ export default function ProfileScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <EWallet
-              balance={user?.walletBalance ?? 0}
-              onTopUp={() => {}}
+              balance={Number(user?.walletBalance ?? 0)}
+              onTopUp={() => router.push("/(modals)/top-up")}
               onWithdraw={() => {}}
             />
 

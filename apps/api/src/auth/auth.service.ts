@@ -100,6 +100,9 @@ export class AuthService {
         driver: {
           create: {},
         },
+        wallet: {
+          create: {},
+        },
       },
     });
 

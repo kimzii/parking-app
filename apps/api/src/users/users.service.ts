@@ -34,6 +34,13 @@ export class UsersService {
             role: true,
           },
         },
+        wallet: {
+          select: {
+            id: true,
+            balance: true,
+            status: true,
+          },
+        },
       },
     });
 
@@ -43,6 +50,7 @@ export class UsersService {
 
     return {
       ...user,
+      walletBalance: user.wallet?.balance ?? 0,
       roles: user.userRoles.map((ur) => ur.role.name),
       roleStatuses: user.userRoles.map((ur) => ({
         role: ur.role.name,
