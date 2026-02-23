@@ -39,6 +39,7 @@ export default function MyVehiclesScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
   // Form state
   const [plateNumber, setPlateNumber] = useState("");
@@ -71,6 +72,27 @@ export default function MyVehiclesScreen() {
     setBrand("");
     setModel("");
     setColor("");
+    setEditingVehicle(null);
+  };
+
+  const openAddForm = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const openEditForm = (vehicle: Vehicle) => {
+    setPlateNumber(vehicle.plateNumber || "");
+    setVehicleType(vehicle.vehicleType || "CAR");
+    setBrand(vehicle.brand || "");
+    setModel(vehicle.model || "");
+    setColor(vehicle.color || "");
+    setEditingVehicle(vehicle);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    resetForm();
   };
 
   const handleAdd = async () => {
@@ -95,6 +117,35 @@ export default function MyVehiclesScreen() {
       Alert.alert(
         "Error",
         err?.response?.data?.message || "Failed to add vehicle.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingVehicle) return;
+    if (!plateNumber.trim()) {
+      Alert.alert("Error", "Plate number is required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await driversService.updateVehicle(editingVehicle.id, {
+        plateNumber: plateNumber.trim(),
+        vehicleType,
+        brand: brand.trim() || undefined,
+        model: model.trim() || undefined,
+        color: color.trim() || undefined,
+      });
+      Alert.alert("Success", "Vehicle updated!");
+      resetForm();
+      setShowForm(false);
+      fetchVehicles();
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to update vehicle.",
       );
     } finally {
       setSaving(false);
@@ -140,13 +191,22 @@ export default function MyVehiclesScreen() {
             <View style={styles.plateBadge}>
               <Text style={styles.plateText}>{item.plateNumber}</Text>
             </View>
-            <TouchableOpacity
-              style={styles.deleteBtn}
-              onPress={() => handleDelete(item.id, item.plateNumber)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <MaterialIcons name="delete-outline" size={20} color="#E53935" />
-            </TouchableOpacity>
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => openEditForm(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="edit" size={18} color="#11796F" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => handleDelete(item.id, item.plateNumber)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="delete-outline" size={18} color="#E53935" />
+              </TouchableOpacity>
+            </View>
           </View>
           {details ? (
             <Text style={styles.cardDetails}>{details}</Text>
@@ -176,6 +236,8 @@ export default function MyVehiclesScreen() {
     );
   };
 
+  const isEditing = !!editingVehicle;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -191,7 +253,7 @@ export default function MyVehiclesScreen() {
         </View>
         <TouchableOpacity
           style={[styles.addToggle, showForm && styles.addToggleActive]}
-          onPress={() => setShowForm(!showForm)}
+          onPress={() => (showForm ? handleCloseForm() : openAddForm())}
           activeOpacity={0.8}
         >
           <MaterialIcons
@@ -204,7 +266,9 @@ export default function MyVehiclesScreen() {
 
       {showForm && (
         <View style={styles.form}>
-          <Text style={styles.formTitle}>Add New Vehicle</Text>
+          <Text style={styles.formTitle}>
+            {isEditing ? "Edit Vehicle" : "Add New Vehicle"}
+          </Text>
           <TextInput
             style={styles.input}
             placeholder="Plate Number *"
@@ -272,7 +336,7 @@ export default function MyVehiclesScreen() {
           />
           <TouchableOpacity
             style={[styles.submitButton, saving && styles.submitButtonDisabled]}
-            onPress={handleAdd}
+            onPress={isEditing ? handleUpdate : handleAdd}
             disabled={saving}
             activeOpacity={0.8}
           >
@@ -280,11 +344,26 @@ export default function MyVehiclesScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.submitInner}>
-                <MaterialIcons name="add-circle-outline" size={20} color="#fff" />
-                <Text style={styles.submitButtonText}>Add Vehicle</Text>
+                <MaterialIcons
+                  name={isEditing ? "check-circle-outline" : "add-circle-outline"}
+                  size={20}
+                  color="#fff"
+                />
+                <Text style={styles.submitButtonText}>
+                  {isEditing ? "Update Vehicle" : "Add Vehicle"}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
+          {isEditing && (
+            <TouchableOpacity
+              style={styles.cancelFormButton}
+              onPress={handleCloseForm}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelFormText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -316,268 +395,92 @@ export default function MyVehiclesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFB",
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFB" },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 12,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1A1A2E",
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#8E8E93",
-    marginTop: 2,
-  },
+  title: { fontSize: 26, fontWeight: "800", color: "#1A1A2E", letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, color: "#8E8E93", marginTop: 2 },
   addToggle: {
-    backgroundColor: "#11796F",
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#11796F",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: "#11796F", width: 44, height: 44, borderRadius: 14,
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#11796F", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
   },
-  addToggleActive: {
-    backgroundColor: "#E8F5F3",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
+  addToggleActive: { backgroundColor: "#E8F5F3", shadowOpacity: 0, elevation: 0 },
   form: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: "#fff", marginHorizontal: 20, borderRadius: 16, padding: 20, marginBottom: 16,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 4,
   },
-  formTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#1A1A2E",
-    marginBottom: 16,
-  },
+  formTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A2E", marginBottom: 16 },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#8E8E93",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontSize: 13, fontWeight: "600", color: "#8E8E93", marginBottom: 8,
+    textTransform: "uppercase", letterSpacing: 0.5,
   },
   input: {
-    borderWidth: 1.5,
-    borderColor: "#E8ECF0",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 15,
-    backgroundColor: "#F8FAFB",
-    color: "#1A1A2E",
-    marginBottom: 12,
+    borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 13, fontSize: 15,
+    backgroundColor: "#F8FAFB", color: "#1A1A2E", marginBottom: 12,
   },
-  inputRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  inputHalf: {
-    flex: 1,
-  },
-  typeRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
+  inputRow: { flexDirection: "row", gap: 10 },
+  inputHalf: { flex: 1 },
+  typeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
   typeChip: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#E8ECF0",
-    alignItems: "center",
-    backgroundColor: "#F8FAFB",
+    flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5,
+    borderColor: "#E8ECF0", alignItems: "center", backgroundColor: "#F8FAFB",
   },
-  typeChipActive: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
-  },
-  typeChipText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#8E8E93",
-    letterSpacing: 0.3,
-  },
-  typeChipTextActive: {
-    color: "#fff",
-  },
+  typeChipActive: { backgroundColor: "#11796F", borderColor: "#11796F" },
+  typeChipText: { fontSize: 11, fontWeight: "700", color: "#8E8E93", letterSpacing: 0.3 },
+  typeChipTextActive: { color: "#fff" },
   submitButton: {
-    backgroundColor: "#11796F",
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 4,
-    shadowColor: "#11796F",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: "#11796F", paddingVertical: 15, borderRadius: 12, alignItems: "center", marginTop: 4,
+    shadowColor: "#11796F", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
   },
-  submitButtonDisabled: {
-    backgroundColor: "#A8D5D1",
-    shadowOpacity: 0,
+  submitButtonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
+  submitInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  cancelFormButton: {
+    paddingVertical: 12, borderRadius: 12, alignItems: "center", marginTop: 8, backgroundColor: "#F2F2F7",
   },
-  submitInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  submitButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    paddingBottom: 60,
-  },
+  cancelFormText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8, paddingBottom: 60 },
   emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: "#E8F5F3",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
+    width: 80, height: 80, borderRadius: 24, backgroundColor: "#E8F5F3",
+    justifyContent: "center", alignItems: "center", marginBottom: 8,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A2E",
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: "#8E8E93",
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 24,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
+  emptySubtitle: { fontSize: 14, color: "#8E8E93" },
+  list: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
   card: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    flexDirection: "row", backgroundColor: "#fff", borderRadius: 16, marginBottom: 12, overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3,
   },
-  cardSvgContainer: {
-    width: 88,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardBody: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  plateBadge: {
-    backgroundColor: "#1A1A2E",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  plateText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: 1,
+  cardSvgContainer: { width: 88, justifyContent: "center", alignItems: "center" },
+  cardBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 14 },
+  cardTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  plateBadge: { backgroundColor: "#1A1A2E", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  plateText: { fontSize: 14, fontWeight: "800", color: "#fff", letterSpacing: 1 },
+  cardActions: { flexDirection: "row", gap: 6 },
+  editBtn: {
+    width: 32, height: 32, borderRadius: 10, backgroundColor: "#E8F5F3",
+    justifyContent: "center", alignItems: "center",
   },
   deleteBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#FEE8E7",
-    justifyContent: "center",
-    alignItems: "center",
+    width: 32, height: 32, borderRadius: 10, backgroundColor: "#FEE8E7",
+    justifyContent: "center", alignItems: "center",
   },
-  cardDetails: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A2E",
-    marginTop: 6,
-  },
-  cardBottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-  },
+  cardDetails: { fontSize: 15, fontWeight: "600", color: "#1A1A2E", marginTop: 6 },
+  cardBottomRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   colorTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F2F2F7",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "#F2F2F7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
-  colorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
-  },
-  colorText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
-    textTransform: "capitalize",
-  },
+  colorDot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
+  colorText: { fontSize: 12, fontWeight: "600", color: "#555", textTransform: "capitalize" },
   typeTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#E8F5F3",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "#E8F5F3", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
-  typeTagText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#11796F",
-  },
+  typeTagText: { fontSize: 12, fontWeight: "600", color: "#11796F" },
 });

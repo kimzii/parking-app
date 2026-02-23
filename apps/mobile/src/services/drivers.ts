@@ -26,7 +26,9 @@ export const driversService = {
     return res.data;
   },
   getVehicles: async () => {
-    const res = await api.get("/drivers/vehicles");
+    const res = await api.get("/drivers/vehicles", {
+      params: { isActive: true },
+    });
     return res.data;
   },
   addVehicle: async (data: {
@@ -37,6 +39,20 @@ export const driversService = {
     color?: string;
   }) => {
     const res = await api.post("/drivers/vehicles", data);
+    return res.data;
+  },
+  updateVehicle: async (
+    vehicleId: string,
+    data: {
+      plateNumber?: string;
+      vehicleType?: string;
+      brand?: string;
+      model?: string;
+      color?: string;
+      isActive?: boolean;
+    },
+  ) => {
+    const res = await api.put(`/drivers/vehicles/${vehicleId}`, data);
     return res.data;
   },
   deleteVehicle: async (vehicleId: string) => {

@@ -121,9 +121,11 @@ export default function ProfileScreen() {
               <BecomeAHostButton
                 onPress={() => router.push("/(modals)/become-a-ahost")}
               />
-              <DriverVerificationButton
-                onPress={() => router.push("/(modals)/driver-verification")}
-              />
+              {!isDriverVerified && (
+                <DriverVerificationButton
+                  onPress={() => router.push("/(modals)/driver-verification")}
+                />
+              )}
             </View>
 
             <View style={styles.menuSection}>
@@ -141,7 +143,7 @@ export default function ProfileScreen() {
                     <Text style={styles.menuItemLabel}>Settings</Text>
                   </View>
                   <MaterialIcons
-                    name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                    name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"}
                     size={22}
                     color="#8E8E93"
                   />
