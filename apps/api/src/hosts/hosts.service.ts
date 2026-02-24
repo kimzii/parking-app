@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -14,6 +13,45 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class HostsService {
   constructor(private prisma: PrismaService) {}
+
+  // Become a host - adds HOST role and creates Host profile
+  async becomeHost(userId: string) {
+    const existingHostRole = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        role: { name: 'HOST' },
+      },
+    });
+
+    if (existingHostRole) {
+      throw new BadRequestException('User already has HOST role');
+    }
+
+    const hostRole = await this.prisma.role.findUnique({
+      where: { name: 'HOST' },
+    });
+
+    if (!hostRole) {
+      throw new BadRequestException('HOST role not found in system');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.userRole.create({
+        data: {
+          userId,
+          roleId: hostRole.id,
+          status: 'PENDING',
+        },
+      });
+
+      const existingHost = await tx.host.findUnique({ where: { userId } });
+      if (!existingHost) {
+        await tx.host.create({ data: { userId } });
+      }
+    });
+
+    return { message: 'Successfully registered as host' };
+  }
 
   // Create host profile if not exists
   async createHostProfile(userId: string) {

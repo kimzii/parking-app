@@ -16,12 +16,10 @@ import { authService } from "../../src/services/auth";
 import { userService } from "../../src/services/user";
 import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
-import BecomeAHostButton from "../../src/components/BecomeAHostButton";
-import DriverVerificationButton from "../../src/components/DriverVerificationButton";
-import MenuItem from "../../src/components/MenuItem";
 import { useViewMode } from "../../src/contexts/ViewModeContext";
+import MenuItem from "../../src/components/MenuItem";
 
-export default function ProfileScreen() {
+export default function HostProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -58,14 +56,10 @@ export default function ProfileScreen() {
     router.replace("/(auth)/login");
   };
 
-  const switchToHost = async () => {
-    await setViewMode("host");
-    router.replace("/(host-tabs)" as any);
+  const switchToDriver = async () => {
+    await setViewMode("driver");
+    router.replace("/(tabs)");
   };
-
-  const isDriverVerified =
-    user?.roleStatuses?.find((r) => r.role === "DRIVER")?.status === "VERIFIED";
-  const isHost = user?.roles?.includes("HOST");
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
@@ -92,15 +86,9 @@ export default function ProfileScreen() {
                   : "-"}
             </Text>
 
-            <View style={[styles.verificationBadge, isDriverVerified && styles.verifiedBadge]}>
-              <MaterialIcons
-                name={isDriverVerified ? "verified" : "info-outline"}
-                size={14}
-                color={isDriverVerified ? "#fff" : "rgba(255,255,255,0.7)"}
-              />
-              <Text style={[styles.badgeText, isDriverVerified && styles.verifiedText]}>
-                {isDriverVerified ? "Verified Driver" : "Not Verified"}
-              </Text>
+            <View style={styles.hostBadge}>
+              <MaterialIcons name="home-work" size={14} color="#fff" />
+              <Text style={styles.badgeText}>Host</Text>
             </View>
 
             <TouchableOpacity
@@ -126,33 +114,23 @@ export default function ProfileScreen() {
               onWithdraw={() => {}}
             />
 
-            <View style={styles.actionButtons}>
-              {isHost ? (
-                <TouchableOpacity
-                  style={styles.switchHostButton}
-                  onPress={switchToHost}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.switchHostIconBg}>
-                    <MaterialIcons name="home-work" size={20} color="#11796F" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.switchHostTitle}>Switch to Host View</Text>
-                    <Text style={styles.switchHostSubtitle}>Manage your parking spaces</Text>
-                  </View>
-                  <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
-                </TouchableOpacity>
-              ) : (
-                <BecomeAHostButton
-                  onPress={() => router.push("/(modals)/become-a-ahost")}
-                />
-              )}
-              {!isDriverVerified && (
-                <DriverVerificationButton
-                  onPress={() => router.push("/(modals)/driver-verification")}
-                />
-              )}
-            </View>
+            {/* Switch to Driver View */}
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={switchToDriver}
+              activeOpacity={0.8}
+            >
+              <View style={styles.switchIconBg}>
+                <MaterialIcons name="directions-car" size={20} color="#11796F" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchTitle}>Switch to Driver View</Text>
+                <Text style={styles.switchSubtitle}>
+                  Go back to finding parking
+                </Text>
+              </View>
+              <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
+            </TouchableOpacity>
 
             <View style={styles.menuSection}>
               <Text style={styles.menuSectionTitle}>Account</Text>
@@ -196,14 +174,6 @@ export default function ProfileScreen() {
                   </View>
                 )}
 
-                <MenuItem
-                  label="My Vehicles"
-                  icon="directions-car"
-                  iconBg="#E8F5F3"
-                  iconColor="#11796F"
-                  onPress={() => router.push("/(modals)/my-vehicles")}
-                />
-                <MenuItem label="Parking History" icon="history" iconBg="#FFF3E0" iconColor="#F57C00" />
                 <MenuItem label="Help & Support" icon="help-outline" iconBg="#E3F2FD" iconColor="#1976D2" />
               </View>
             </View>
@@ -251,20 +221,18 @@ const styles = StyleSheet.create({
     color: "#fff",
     letterSpacing: -0.3,
   },
-  verificationBadge: {
+  hostBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.25)",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     alignSelf: "flex-start",
     marginTop: 6,
   },
-  verifiedBadge: { backgroundColor: "rgba(255,255,255,0.25)" },
-  badgeText: { fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
-  verifiedText: { color: "#fff" },
+  badgeText: { fontSize: 12, fontWeight: "600", color: "#fff" },
   editProfileBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -284,7 +252,34 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
   },
   scrollContent: { padding: 20, paddingBottom: 40, gap: 16 },
-  actionButtons: { gap: 10 },
+  switchButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#E8F5F3",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: "#11796F",
+  },
+  switchIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  switchTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#11796F",
+  },
+  switchSubtitle: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 2,
+  },
   menuSection: { gap: 10 },
   menuSectionTitle: {
     fontSize: 13,
@@ -346,33 +341,5 @@ const styles = StyleSheet.create({
     color: "#E53935",
     fontSize: 16,
     fontWeight: "700",
-  },
-  switchHostButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#E8F5F3",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: "#11796F",
-  },
-  switchHostIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  switchHostTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#11796F",
-  },
-  switchHostSubtitle: {
-    fontSize: 12,
-    color: "#8E8E93",
-    marginTop: 2,
   },
 });

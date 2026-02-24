@@ -26,6 +26,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleName } from '@prisma/client';
+import type { AuthenticatedRequest } from '../users/types/request.type';
 
 @ApiTags('Hosts')
 @ApiBearerAuth()
@@ -33,6 +34,15 @@ import { RoleName } from '@prisma/client';
 @UseGuards(JwtAuthGuard)
 export class HostsController {
   constructor(private readonly hostsService: HostsService) {}
+
+  // Become a host (no HOST role required - this is how users get the role)
+  @Post('become')
+  @ApiOperation({ summary: 'Register current user as a host' })
+  @ApiResponse({ status: 201, description: 'Successfully registered as host' })
+  @ApiResponse({ status: 400, description: 'User already has HOST role' })
+  async becomeHost(@Req() req: AuthenticatedRequest) {
+    return this.hostsService.becomeHost(req.user.id);
+  }
 
   // Get host profile
   @Get('profile')
@@ -43,7 +53,7 @@ export class HostsController {
     status: 200,
     description: 'Host profile retrieved successfully',
   })
-  async getProfile(@Req() req: any) {
+  async getProfile(@Req() req: AuthenticatedRequest) {
     return this.hostsService.getHostProfile(req.user.id);
   }
 
@@ -56,7 +66,7 @@ export class HostsController {
     status: 201,
     description: 'Host profile created successfully',
   })
-  async createProfile(@Req() req: any) {
+  async createProfile(@Req() req: AuthenticatedRequest) {
     return this.hostsService.createHostProfile(req.user.id);
   }
 
@@ -69,7 +79,7 @@ export class HostsController {
     status: 200,
     description: 'Host statistics retrieved successfully',
   })
-  async getStatistics(@Req() req: any) {
+  async getStatistics(@Req() req: AuthenticatedRequest) {
     return this.hostsService.getHostStatistics(req.user.id);
   }
 
@@ -83,7 +93,7 @@ export class HostsController {
     description: 'Parking location created successfully',
   })
   async createLocation(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() createLocationDto: CreateParkingLocationDto,
   ) {
     return this.hostsService.createParkingLocation(
@@ -102,7 +112,7 @@ export class HostsController {
     description: 'Parking locations retrieved successfully',
   })
   async getLocations(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Query() queryDto: QueryParkingLocationsDto,
   ) {
     return this.hostsService.getHostParkingLocations(req.user.id, queryDto);
@@ -118,7 +128,7 @@ export class HostsController {
     description: 'Parking location retrieved successfully',
   })
   async getLocation(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) locationId: string,
   ) {
     return this.hostsService.getParkingLocation(req.user.id, locationId);
@@ -134,7 +144,7 @@ export class HostsController {
     description: 'Parking location updated successfully',
   })
   async updateLocation(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) locationId: string,
     @Body() updateLocationDto: UpdateParkingLocationDto,
   ) {
@@ -155,7 +165,7 @@ export class HostsController {
     description: 'Parking location deleted successfully',
   })
   async deleteLocation(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) locationId: string,
   ) {
     return this.hostsService.deleteParkingLocation(req.user.id, locationId);
