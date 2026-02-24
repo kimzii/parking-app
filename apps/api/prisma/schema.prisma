@@ -12,13 +12,13 @@ model User {
   email                 String      @unique
   password              String
   googleId              String?     @unique
-  
+
   // Profile fields
   firstName             String?
   lastName              String?
   phoneNumber           String?
   profilePicture        String?
-  
+
   emailVerified         Boolean     @default(false)
   verificationCode      String?
   verificationExpiry    DateTime?
