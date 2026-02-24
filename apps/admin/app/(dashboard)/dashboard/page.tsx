@@ -1,145 +1,309 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import {
+  Users,
+  ArrowUpRight,
+  MapPin,
+  TrendingUp,
+  List,
+  Info,
+  DollarSign,
+  MoreVertical,
+  Loader2
+} from "lucide-react";
+import api from "../../../src/lib/api";
+
+// --- Components ---
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  footerLabel: string;
+  footerColor: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+}
+
+const StatCard = ({ title, value, footerLabel, footerColor, icon, iconBg, iconColor }: StatCardProps) => (
+  <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between h-[155px]">
+    <div className="flex items-start gap-4">
+      <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${iconBg} ${iconColor}`}>
+        {icon}
+      </div>
+      <div className="flex flex-col">
+        <span className="text-gray-500 text-sm font-medium leading-tight">{title}</span>
+        <span className="text-2xl font-bold text-gray-900 mt-1">{value}</span>
+      </div>
+    </div>
+
+    <div className="mt-2 pt-3 border-t border-gray-50 flex items-center gap-2 text-xs font-medium">
+      {footerLabel.includes("Positive") ? (
+        <TrendingUp className={`w-4 h-4 ${footerColor}`} />
+      ) : footerLabel.includes("Revenue") ? (
+        <Info className={`w-4 h-4 ${footerColor}`} />
+      ) : (
+        <List className={`w-4 h-4 ${footerColor}`} />
+      )}
+      <span className={footerColor}>
+        {footerLabel}
+      </span>
+    </div>
+  </div>
+);
+
+const ActivityItem = ({ user, action, time }: { user: string, action: string, time: string }) => (
+  <div className="flex gap-4 relative pb-8 last:pb-0 group">
+    <div className="absolute left-[19px] top-8 bottom-0 w-[1px] bg-gray-200 group-last:hidden"></div>
+    <div className="relative z-10 w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 text-gray-500">
+      <Users size={18} />
+    </div>
+    <div className="pt-1">
+      <p className="text-sm text-gray-800 leading-snug">
+        <span className="font-semibold">{user}</span> {action}
+      </p>
+      <span className="text-xs text-gray-400 mt-1 block">{time}</span>
+    </div>
+  </div>
+);
+
+interface DashboardStats {
+  totalActiveListings: number;
+  currentActiveReservations: number;
+  totalUsers: number;
+  totalRevenueThisMonth: number;
+}
+
+interface RecentListing {
+  id: string;
+  title: string;
+  address: string;
+  hostName: string;
+  status: string;
+  createdAt: string;
+}
+
+interface RecentActivity {
+  id: string;
+  user: string;
+  action: string;
+  time: string;
+}
+
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return `${seconds} seconds ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+};
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentListings, setRecentListings] = useState<RecentListing[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsRes, listingsRes, activityRes] = await Promise.all([
+          api.get('/dashboard/stats'),
+          api.get('/dashboard/recent-listings?limit=4'),
+          api.get('/dashboard/recent-activity?limit=5'),
+        ]);
+
+        setStats(statsRes.data);
+        setRecentListings(listingsRes.data);
+        setRecentActivity(activityRes.data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        let errorMessage = 'Failed to load dashboard data';
+        if (err && typeof err === 'object' && 'response' in err) {
+          const response = (err as { response?: { data?: { message?: string } } }).response;
+          errorMessage = response?.data?.message || errorMessage;
+        }
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-[#F9FAFB] min-h-full font-sans flex items-center justify-center">
+        <div className="flex items-center gap-2 text-gray-600">
+          <Loader2 className="animate-spin" size={24} />
+          <span>Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-[#F9FAFB] min-h-full font-sans p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+          <p className="font-semibold">Error loading dashboard</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">
-          Here's what's happening with your admin portal today.
-        </p>
-      </div>
+    <div className="bg-[#F9FAFB] min-h-full font-sans">
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Total Listings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">248</div>
-            <p className="text-xs text-gray-500 mt-1">
-              <span className="text-green-600">+12%</span> from last month
-            </p>
-          </CardContent>
-        </Card>
+        {/* Page Title */}
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Main Overview</h1>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Pending Approval
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-600">23</div>
-            <p className="text-xs text-gray-500 mt-1">Requires review</p>
-          </CardContent>
-        </Card>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            title="Total Active Listings"
+            value={stats?.totalActiveListings || 0}
+            footerLabel="Currently approved"
+            footerColor="text-green-600"
+            icon={<ArrowUpRight size={24} />}
+            iconBg="bg-green-100"
+            iconColor="text-green-600"
+          />
+          <StatCard
+            title="Current Active Reservations"
+            value={stats?.currentActiveReservations || 0}
+            footerLabel="Active or confirmed"
+            footerColor="text-green-600"
+            icon={<ArrowUpRight size={24} />}
+            iconBg="bg-green-100"
+            iconColor="text-green-600"
+          />
+          <StatCard
+            title="Total Users"
+            value={stats?.totalUsers.toLocaleString() || 0}
+            footerLabel="All registered users"
+            footerColor="text-gray-500"
+            icon={<Users size={24} />}
+            iconBg="bg-blue-100"
+            iconColor="text-blue-600"
+          />
+          <StatCard
+            title="Total Revenue this Month"
+            value={`₱${stats?.totalRevenueThisMonth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
+            footerLabel="Revenue this Month"
+            footerColor="text-gray-500"
+            icon={<DollarSign size={24} />}
+            iconBg="bg-gray-100"
+            iconColor="text-gray-600"
+          />
+        </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Active Users
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">1,832</div>
-            <p className="text-xs text-gray-500 mt-1">
-              <span className="text-green-600">+18%</span> from last month
-            </p>
-          </CardContent>
-        </Card>
+        {/* Content Split: Listings & Activity */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Revenue (Month)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">$12,458</div>
-            <p className="text-xs text-gray-500 mt-1">
-              <span className="text-green-600">+8%</span> from last month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Listings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b">
-                <div>
-                  <p className="font-medium">Juan's Driveway Space</p>
-                  <p className="text-sm text-gray-500">Davao City</p>
-                </div>
-                <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                  Pending
-                </span>
-              </div>
-              <div className="flex items-center justify-between pb-3 border-b">
-                <div>
-                  <p className="font-medium">Sarah's Garage Parking</p>
-                  <p className="text-sm text-gray-500">Manila</p>
-                </div>
-                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                  Active
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Mike's Street Parking</p>
-                  <p className="text-sm text-gray-500">Cebu City</p>
-                </div>
-                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                  Active
-                </span>
-              </div>
+          {/* Recent Listings Table */}
+          <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+              <h2 className="font-bold text-lg text-gray-900">Recent Listings</h2>
+              <button className="text-sm text-[#005f56] font-medium hover:underline">View All</button>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New user registered</p>
-                  <p className="text-xs text-gray-500">2 minutes ago</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Listing approved</p>
-                  <p className="text-xs text-gray-500">15 minutes ago</p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">
-                    New listing pending review
-                  </p>
-                  <p className="text-xs text-gray-500">1 hour ago</p>
-                </div>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50/50 text-gray-400 text-xs uppercase font-semibold">
+                  <tr>
+                    <th className="px-6 py-4">Property</th>
+                    <th className="px-6 py-4">Host</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-sm">
+                  {recentListings.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                        No recent listings found
+                      </td>
+                    </tr>
+                  ) : (
+                    recentListings.map((listing) => (
+                      <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-md flex-shrink-0 flex items-center justify-center text-gray-400">
+                              <MapPin size={16} />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900">{listing.title}</p>
+                              <p className="text-gray-500 text-xs">{listing.address}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{listing.hostName}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                            listing.status === 'APPROVED'
+                              ? 'bg-green-100 text-green-700'
+                              : listing.status === 'PENDING'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {listing.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-500">
+                          {new Date(listing.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button className="text-gray-400 hover:text-gray-600">
+                            <MoreVertical size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {/* Recent Activity Timeline */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-fit">
+            <h2 className="font-bold text-lg mb-6 text-gray-900">Recent Activity</h2>
+
+            <div className="flex flex-col">
+              {recentActivity.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-4">No recent activity</p>
+              ) : (
+                recentActivity.map((activity) => (
+                  <ActivityItem
+                    key={activity.id}
+                    user={activity.user}
+                    action={activity.action}
+                    time={formatTimeAgo(activity.time)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        </div>
     </div>
   );
 }

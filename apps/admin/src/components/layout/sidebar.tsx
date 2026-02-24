@@ -1,19 +1,16 @@
-// apps/admin/components/layout/sidebar.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   FileText,
   Users,
-  Calendar,
-  DollarSign,
+  CalendarDays,
+  BarChart3,
   Settings,
-  ParkingCircle,
+  Crown
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const navigationItems = [
   {
@@ -35,12 +32,12 @@ const navigationItems = [
   },
   {
     href: "/reservations",
-    icon: Calendar,
+    icon: CalendarDays,
     label: "Reservations",
   },
   {
     href: "/reports",
-    icon: DollarSign,
+    icon: BarChart3,
     label: "Financial Reports",
   },
   {
@@ -54,41 +51,55 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 h-screen bg-white shadow-sm border-r fixed">
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-8">
-          <ParkingCircle className="h-8 w-8 text-blue-600" />
-          <span className="text-xl font-bold text-gray-900">ParkUp</span>
+    <aside className="fixed left-0 top-0 z-40 h-screen w-[280px] flex-col flex-shrink-0 border-r border-gray-200 bg-white">
+
+      {/* Logo Section */}
+      <div className="p-6 flex justify-left mb-2">
+        <div className="h-14 w-14 bg-[#005f56] rounded-[4px] flex items-center justify-center relative shadow-sm">
+          <span className="text-white text-3xl font-serif font-bold pt-1">
+            P
+          </span>
+          <Crown
+            className="absolute -top-3 text-white h-10 w-5 fill-current"
+            strokeWidth={1.5}
+          />
         </div>
-
-        <nav className="space-y-2">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                  isActive
-                    ? "bg-blue-100 text-blue-700 font-medium"
-                    : "text-gray-700 hover:bg-gray-100",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-                {item.badge && (
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    {item.badge}
-                  </Badge>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
-    </div>
+
+      {/* Navigation */}
+      <nav className="flex flex-col gap-3 px-5">
+        {navigationItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-3.5 rounded-lg transition-colors group ${
+                isActive
+                  ? "bg-[#E6F4F1] text-[#005f56] font-semibold"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Icon
+                size={20}
+                className={isActive ? "text-[#005f56]" : "text-gray-500 group-hover:text-gray-700"}
+              />
+              <span className="text-[15px]">{item.label}</span>
+
+              {/* Optional Badge rendering if needed */}
+              {item.badge && (
+                <span className={`ml-auto text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                    isActive ? "bg-[#005f56]/10 text-[#005f56]" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }

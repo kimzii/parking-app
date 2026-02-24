@@ -174,4 +174,12 @@ export class UsersController {
   async getStatistics() {
     return this.usersService.getUserStatistics();
   }
+
+  // Admin: Get user by ID with full details
+  @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  async getUserById(@Param('id') id: string) {
+    return this.usersService.getUserById(id);
+  }
 }

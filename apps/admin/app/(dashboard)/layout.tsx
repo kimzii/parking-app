@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -21,7 +21,17 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  const clearAuthAndRedirect = useCallback((path: string) => {
+    localStorage.clear();
+    document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    router.replace(path);
+  }, [router]);
+
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = () => {
       const token = localStorage.getItem("accessToken");
       const userStr = localStorage.getItem("user");
@@ -35,46 +45,29 @@ export default function DashboardLayout({
         const userData = JSON.parse(userStr);
 
         if (!userData.roles || !userData.roles.includes("ADMIN")) {
-          localStorage.clear();
-          // Clear cookies too
-          document.cookie =
-            "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          document.cookie =
-            "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          document.cookie =
-            "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          router.replace("/login?error=admin_required");
+          clearAuthAndRedirect("/login?error=admin_required");
           return;
         }
 
-        setUser(userData);
-        setIsLoading(false);
-      } catch (_error) {
-        localStorage.clear();
-        // Clear cookies too
-        document.cookie =
-          "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie =
-          "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie =
-          "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        router.replace("/login");
+        if (isMounted) {
+          setUser(userData);
+          setIsLoading(false);
+        }
+      } catch {
+        clearAuthAndRedirect("/login");
       }
     };
 
     checkAuth();
-  }, [router]);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    // Clear cookies too
-    document.cookie =
-      "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie =
-      "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    router.replace("/login");
-  };
+    return () => {
+      isMounted = false;
+    };
+  }, [router, clearAuthAndRedirect]);
+
+  const handleLogout = useCallback(() => {
+    clearAuthAndRedirect("/login");
+  }, [clearAuthAndRedirect]);
 
   if (isLoading) {
     return (
@@ -89,13 +82,13 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       {/* SIDEBAR */}
       <Sidebar />
-      <div className="">
+      <div className="flex flex-col min-h-screen pl-[280px]">
         {/* HEADER */}
         <Header user={user} onLogout={handleLogout} />
-        <main className="ml-64 p-4">{children}</main>
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );

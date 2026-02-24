@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { HostsModule } from './hosts/hosts.module';
 import { DriversModule } from './drivers/drivers.module';
 import { WalletModule } from './wallet/wallet.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WalletModule } from './wallet/wallet.module';
     HostsModule,
     DriversModule,
     WalletModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
