@@ -315,7 +315,9 @@ export class DashboardService {
 
     const commissionChange =
       prevCommission > 0
-        ? Math.round(((totalCommission - prevCommission) / prevCommission) * 100)
+        ? Math.round(
+            ((totalCommission - prevCommission) / prevCommission) * 100,
+          )
         : totalCommission > 0
           ? 100
           : 0;
@@ -348,7 +350,9 @@ export class DashboardService {
     };
   }
 
-  async getRecentTransactions(limit: number = 10): Promise<RecentTransaction[]> {
+  async getRecentTransactions(
+    limit: number = 10,
+  ): Promise<RecentTransaction[]> {
     // Get recent payments with user info
     const payments = await this.prisma.payment.findMany({
       take: limit,
@@ -458,7 +462,11 @@ export class DashboardService {
     const [total, active, completed, cancelled] = await Promise.all([
       this.prisma.reservation.count(),
       this.prisma.reservation.count({
-        where: { status: { in: [ReservationStatus.ACTIVE, ReservationStatus.CONFIRMED] } },
+        where: {
+          status: {
+            in: [ReservationStatus.ACTIVE, ReservationStatus.CONFIRMED],
+          },
+        },
       }),
       this.prisma.reservation.count({
         where: { status: ReservationStatus.COMPLETED },
@@ -673,7 +681,9 @@ export class DashboardService {
         title: reservation.parkingSpace.parkingLocation.title,
         address: reservation.parkingSpace.parkingLocation.address,
         slotNumber: reservation.parkingSpace.slotNumber,
-        images: reservation.parkingSpace.parkingLocation.images.map((img) => img.imageUrl),
+        images: reservation.parkingSpace.parkingLocation.images.map(
+          (img) => img.imageUrl,
+        ),
       },
       payments: reservation.payments.map((p) => ({
         id: p.id,

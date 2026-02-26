@@ -35,6 +35,29 @@ import type { AuthenticatedRequest } from '../users/types/request.type';
 export class HostsController {
   constructor(private readonly hostsService: HostsService) {}
 
+  // Public: Browse approved parking locations (any logged-in user)
+  @Get('parking/nearby')
+  @ApiOperation({ summary: 'Get approved parking locations for browsing' })
+  @ApiResponse({
+    status: 200,
+    description: 'Approved parking locations retrieved',
+  })
+  async getNearbyLocations(
+    @Query('latitude') latitude?: number,
+    @Query('longitude') longitude?: number,
+    @Query('radius') radius?: number,
+    @Query('search') search?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.hostsService.getApprovedLocations({
+      latitude: latitude ? +latitude : undefined,
+      longitude: longitude ? +longitude : undefined,
+      radius: radius ? +radius : undefined,
+      search,
+      limit: limit ? +limit : undefined,
+    });
+  }
+
   // Become a host (no HOST role required - this is how users get the role)
   @Post('become')
   @ApiOperation({ summary: 'Register current user as a host' })

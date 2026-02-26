@@ -26,4 +26,25 @@ export const hostService = {
     const res = await api.get(`/hosts/locations/${id}`);
     return res.data;
   },
+  getNearbyLocations: async (params?: {
+    latitude?: number;
+    longitude?: number;
+    search?: string;
+    limit?: number;
+  }) => {
+    const res = await api.get("/hosts/parking/nearby", { params });
+    return res.data;
+  },
+  createLocation: async (data: {
+    title: string;
+    address: string;
+    latitude: number;
+    longitude: number;
+    basePricePerHour: number;
+    description?: string;
+    totalSlots?: number;
+  }) => {
+    const res = await api.post("/hosts/locations", data);
+    return res.data;
+  },
 };

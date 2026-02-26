@@ -1,4 +1,11 @@
-import { Controller, Get, UseGuards, Query, Param, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Query,
+  Param,
+  NotFoundException,
+} from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -75,7 +82,12 @@ export class DashboardController {
   ) {
     const parsedPage = page ? parseInt(page, 10) : 1;
     const parsedLimit = limit ? parseInt(limit, 10) : 10;
-    return this.dashboardService.getReservations(parsedPage, parsedLimit, status, search);
+    return this.dashboardService.getReservations(
+      parsedPage,
+      parsedLimit,
+      status,
+      search,
+    );
   }
 
   @Get('reservations/:id')

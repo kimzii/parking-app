@@ -499,6 +499,51 @@ export class HostsService {
     };
   }
 
+  // Public: Get approved parking locations for drivers/browsing
+  async getApprovedLocations(params?: {
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+    search?: string;
+    limit?: number;
+  }) {
+    const { search, limit = 50 } = params || {};
+
+    const where: Prisma.ParkingLocationWhereInput = {
+      status: 'APPROVED',
+    };
+
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const locations = await this.prisma.parkingLocation.findMany({
+      where,
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        basePricePerHour: true,
+        totalSlots: true,
+        availableSlots: true,
+        images: {
+          where: { isPrimary: true },
+          take: 1,
+          select: { imageUrl: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return locations;
+  }
+
   // Get host statistics
   async getHostStatistics(userId: string) {
     const host = await this.prisma.host.findUnique({

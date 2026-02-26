@@ -6,9 +6,10 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { hostService } from "../../src/services/hosts";
 
@@ -82,9 +83,7 @@ export default function SpacesScreen() {
         <View style={styles.locationDetails}>
           <View style={styles.detailItem}>
             <MaterialIcons name="event-seat" size={16} color="#8E8E93" />
-            <Text style={styles.detailText}>
-              {item.totalSlots ?? 0} slots
-            </Text>
+            <Text style={styles.detailText}>{item.totalSlots ?? 0} slots</Text>
           </View>
           <View style={styles.detailItem}>
             <MaterialIcons name="payments" size={16} color="#8E8E93" />
@@ -104,7 +103,7 @@ export default function SpacesScreen() {
       </View>
       <Text style={styles.emptyTitle}>No Parking Spaces Yet</Text>
       <Text style={styles.emptyText}>
-        You haven't added any parking locations. Add your first space to start
+        You haven&apos;t added any parking locations. Add your first space to start
         earning.
       </Text>
     </View>
@@ -144,6 +143,15 @@ export default function SpacesScreen() {
           />
         )}
       </View>
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push("/(modals)/add-location")}
+        activeOpacity={0.8}
+      >
+        <MaterialIcons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -261,5 +269,21 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     textAlign: "center",
     lineHeight: 20,
+  },
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#11796F",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });
