@@ -10,12 +10,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -30,13 +33,19 @@ const DEFAULT_REGION: Region = {
 export default function AddLocationScreen() {
   const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
-  const [marker, setMarker] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [marker, setMarker] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [address, setAddress] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
   const [totalSlots, setTotalSlots] = useState("");
+  const [isMultiLevel, setIsMultiLevel] = useState(false);
+  const [numberOfLevels, setNumberOfLevels] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
 
@@ -115,17 +124,70 @@ export default function AddLocationScreen() {
     }
   };
 
+  const pickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      selectionLimit: 5 - images.length,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets) {
+      const newUris = result.assets.map((a) => a.uri);
+      setImages((prev) => [...prev, ...newUris].slice(0, 5));
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your camera.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets) {
+      setImages((prev) => [...prev, result.assets[0].uri].slice(0, 5));
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert("Missing Info", "Please enter a title.");
       return;
     }
     if (!marker) {
-      Alert.alert("Missing Location", "Please tap the map to select a location.");
+      Alert.alert(
+        "Missing Location",
+        "Please tap the map to select a location.",
+      );
       return;
     }
     if (!pricePerHour || parseFloat(pricePerHour) <= 0) {
       Alert.alert("Missing Info", "Please enter a valid price per hour.");
+      return;
+    }
+    if (isMultiLevel && (!numberOfLevels || parseInt(numberOfLevels, 10) < 1)) {
+      Alert.alert("Missing Info", "Please enter the number of levels.");
       return;
     }
 
@@ -139,12 +201,19 @@ export default function AddLocationScreen() {
         basePricePerHour: parseFloat(pricePerHour),
         description: description.trim() || undefined,
         totalSlots: totalSlots ? parseInt(totalSlots, 10) : undefined,
+        isMultiLevel: isMultiLevel || undefined,
+        numberOfLevels:
+          isMultiLevel && numberOfLevels
+            ? parseInt(numberOfLevels, 10)
+            : undefined,
+        imageUrls: images.length > 0 ? images : undefined,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to create location.";
+      const msg =
+        err?.response?.data?.message || "Failed to create location.";
       Alert.alert("Error", msg);
     } finally {
       setLoading(false);
@@ -176,7 +245,11 @@ export default function AddLocationScreen() {
             />
             {searchQuery ? (
               <TouchableOpacity onPress={handleSearch}>
-                <MaterialIcons name="arrow-forward" size={20} color="#11796F" />
+                <MaterialIcons
+                  name="arrow-forward"
+                  size={20}
+                  color="#11796F"
+                />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -212,12 +285,18 @@ export default function AddLocationScreen() {
               {locating ? (
                 <ActivityIndicator size="small" color="#11796F" />
               ) : (
-                <MaterialIcons name="my-location" size={22} color="#11796F" />
+                <MaterialIcons
+                  name="my-location"
+                  size={22}
+                  color="#11796F"
+                />
               )}
             </TouchableOpacity>
             {!marker && (
               <View style={styles.mapHint}>
-                <Text style={styles.mapHintText}>Tap the map to place a pin</Text>
+                <Text style={styles.mapHintText}>
+                  Tap the map to place a pin
+                </Text>
               </View>
             )}
           </View>
@@ -285,12 +364,113 @@ export default function AddLocationScreen() {
               </View>
             </View>
           </View>
+
+          {/* Multi-Level Section */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Structure</Text>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchInfo}>
+                <MaterialIcons name="layers" size={20} color="#11796F" />
+                <View>
+                  <Text style={styles.switchLabel}>Multi-Level Parking</Text>
+                  <Text style={styles.switchHint}>
+                    Enable if this is a multi-story structure
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={isMultiLevel}
+                onValueChange={setIsMultiLevel}
+                trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
+                thumbColor={isMultiLevel ? "#11796F" : "#fff"}
+              />
+            </View>
+
+            {isMultiLevel && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Number of Levels *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 3"
+                  placeholderTextColor="#C7C7CC"
+                  value={numberOfLevels}
+                  onChangeText={setNumberOfLevels}
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
+          </View>
+
+          {/* Images Section */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Photos</Text>
+            <Text style={styles.photoHint}>
+              Add up to 5 photos of your parking space. The first image will be
+              the primary photo.
+            </Text>
+
+            <View style={styles.imagesRow}>
+              {images.map((uri, index) => (
+                <View key={uri} style={styles.imageWrapper}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.imagePreview}
+                    contentFit="cover"
+                  />
+                  {index === 0 && (
+                    <View style={styles.primaryBadge}>
+                      <Text style={styles.primaryBadgeText}>Primary</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.removeImageBtn}
+                    onPress={() => removeImage(index)}
+                  >
+                    <MaterialIcons name="close" size={14} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {images.length < 5 && (
+                <View style={styles.addImageButtons}>
+                  <TouchableOpacity
+                    style={styles.addImageBtn}
+                    onPress={pickImages}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="photo-library"
+                      size={24}
+                      color="#11796F"
+                    />
+                    <Text style={styles.addImageText}>Gallery</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addImageBtn}
+                    onPress={takePhoto}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="camera-alt"
+                      size={24}
+                      color="#11796F"
+                    />
+                    <Text style={styles.addImageText}>Camera</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
         </ScrollView>
 
         {/* Submit Button */}
         <View style={styles.bottomBar}>
           <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            style={[
+              styles.submitButton,
+              loading && styles.submitButtonDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={loading}
             activeOpacity={0.8}
@@ -299,7 +479,11 @@ export default function AddLocationScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <MaterialIcons name="add-location-alt" size={22} color="#fff" />
+                <MaterialIcons
+                  name="add-location-alt"
+                  size={22}
+                  color="#fff"
+                />
                 <Text style={styles.submitButtonText}>Add Parking Space</Text>
               </>
             )}
@@ -336,7 +520,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     borderRadius: 16,
     overflow: "hidden",
-    height: 260,
+    height: 220,
     backgroundColor: "#E8ECF0",
   },
   map: { flex: 1 },
@@ -418,6 +602,104 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
+
+  // Multi-level
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  switchInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  switchLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A2E",
+  },
+  switchHint: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 2,
+  },
+
+  // Images
+  photoHint: {
+    fontSize: 13,
+    color: "#8E8E93",
+    marginLeft: 4,
+    marginTop: -6,
+  },
+  imagesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  imageWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  primaryBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(17,121,111,0.85)",
+    paddingVertical: 3,
+    alignItems: "center",
+  },
+  primaryBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  removeImageBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addImageButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  addImageBtn: {
+    width: 96,
+    height: 96,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#11796F",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: "#F0FAF8",
+  },
+  addImageText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#11796F",
+  },
+
   bottomBar: {
     padding: 16,
     paddingTop: 10,

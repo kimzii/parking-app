@@ -43,6 +43,9 @@ export const hostService = {
     basePricePerHour: number;
     description?: string;
     totalSlots?: number;
+    isMultiLevel?: boolean;
+    numberOfLevels?: number;
+    imageUrls?: string[];
   }) => {
     const res = await api.post("/hosts/locations", data);
     return res.data;

@@ -60,7 +60,16 @@ export default function SpacesScreen() {
   const renderLocation = ({ item }: { item: ParkingLocation }) => {
     const status = STATUS_CONFIG[item.status];
     return (
-      <View style={styles.locationCard}>
+      <TouchableOpacity
+        style={styles.locationCard}
+        activeOpacity={0.7}
+        onPress={() =>
+          router.push({
+            pathname: "/(modals)/location-detail",
+            params: { id: item.id },
+          } as any)
+        }
+      >
         <View style={styles.locationHeader}>
           <View style={styles.locationIconBg}>
             <MaterialIcons name="local-parking" size={22} color="#11796F" />
@@ -91,8 +100,11 @@ export default function SpacesScreen() {
               ₱{Number(item.basePricePerHour).toFixed(2)}/hr
             </Text>
           </View>
+          <View style={styles.detailItem}>
+            <MaterialIcons name="chevron-right" size={18} color="#8E8E93" />
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
