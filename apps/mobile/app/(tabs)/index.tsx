@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSpots = useCallback(async (search?: string) => {
     try {
@@ -60,14 +61,18 @@ export default function HomeScreen() {
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
-    if (text.trim().length === 0) {
-      fetchSpots();
-    } else if (text.trim().length >= 2) {
-      fetchSpots(text.trim());
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (text.trim().length >= 2) {
+        fetchSpots(text.trim());
+      } else {
+        fetchSpots();
+      }
+    }, 400);
   };
 
   const clearSearch = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setSearchQuery("");
     fetchSpots();
   };
