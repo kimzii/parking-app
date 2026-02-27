@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -29,10 +30,14 @@ export default function HomeScreen() {
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const fetchSpots = useCallback(async () => {
+  const fetchSpots = useCallback(async (search?: string) => {
     try {
-      const data = await hostService.getNearbyLocations({ limit: 50 });
+      const data = await hostService.getNearbyLocations({
+        limit: 50,
+        search: search || undefined,
+      });
       setSpots(data || []);
     } catch (err) {
       console.error("Failed to fetch parking spots:", err);
@@ -50,6 +55,20 @@ export default function HomeScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
+    fetchSpots(searchQuery);
+  };
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    if (text.trim().length === 0) {
+      fetchSpots();
+    } else if (text.trim().length >= 2) {
+      fetchSpots(text.trim());
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
     fetchSpots();
   };
 
@@ -58,7 +77,16 @@ export default function HomeScreen() {
     const slotsColor = slots > 0 ? "#4CAF50" : "#E53935";
 
     return (
-      <TouchableOpacity style={styles.spotCard} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.spotCard}
+        activeOpacity={0.7}
+        onPress={() =>
+          router.push({
+            pathname: "/(modals)/spot-detail",
+            params: { id: item.id },
+          } as any)
+        }
+      >
         <View style={styles.spotHeader}>
           <View style={styles.spotIconBg}>
             <MaterialIcons name="local-parking" size={22} color="#11796F" />
@@ -117,6 +145,24 @@ export default function HomeScreen() {
         <View style={styles.logoIcon}>
           <MaterialIcons name="local-parking" size={24} color="#fff" />
         </View>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchBar}>
+        <MaterialIcons name="search" size={20} color="#8E8E93" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search parking spaces..."
+          placeholderTextColor="#C7C7CC"
+          value={searchQuery}
+          onChangeText={handleSearch}
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={clearSearch}>
+            <MaterialIcons name="close" size={20} color="#8E8E93" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Quick Stats */}
@@ -215,6 +261,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#1A1A2E",
+    padding: 0,
   },
   statsRow: {
     flexDirection: "row",

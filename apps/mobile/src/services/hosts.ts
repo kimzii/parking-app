@@ -26,6 +26,10 @@ export const hostService = {
     const res = await api.get(`/hosts/locations/${id}`);
     return res.data;
   },
+  getPublicLocation: async (id: string) => {
+    const res = await api.get(`/hosts/parking/${id}`);
+    return res.data;
+  },
   getNearbyLocations: async (params?: {
     latitude?: number;
     longitude?: number;

@@ -544,6 +544,46 @@ export class HostsService {
     return locations;
   }
 
+  // Public: Get single approved parking location details
+  async getApprovedLocationById(locationId: string) {
+    const location = await this.prisma.parkingLocation.findFirst({
+      where: {
+        id: locationId,
+        status: 'APPROVED',
+      },
+      include: {
+        images: {
+          orderBy: { isPrimary: 'desc' },
+        },
+        host: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+        parkingSpaces: {
+          select: {
+            id: true,
+            slotNumber: true,
+            status: true,
+          },
+          orderBy: { slotNumber: 'asc' },
+        },
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Parking location not found');
+    }
+
+    return location;
+  }
+
   // Get host statistics
   async getHostStatistics(userId: string) {
     const host = await this.prisma.host.findUnique({

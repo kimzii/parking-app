@@ -8,7 +8,7 @@ import {
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
@@ -236,6 +236,20 @@ export default function MapScreen() {
                 </Text>
               </View>
             </View>
+            <TouchableOpacity
+              style={styles.viewDetailsBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                setSelectedSpot(null);
+                router.push({
+                  pathname: "/(modals)/spot-detail",
+                  params: { id: selectedSpot.id },
+                } as any);
+              }}
+            >
+              <Text style={styles.viewDetailsBtnText}>View Details</Text>
+              <MaterialIcons name="arrow-forward" size={16} color="#fff" />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -393,6 +407,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   spotDetailText: { fontSize: 14, color: "#11796F", fontWeight: "700" },
+  viewDetailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#11796F",
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  viewDetailsBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   emptyOverlay: {
     position: "absolute",
     bottom: 24,

@@ -58,6 +58,14 @@ export class HostsController {
     });
   }
 
+  // Public: Get single approved parking location details
+  @Get('parking/:id')
+  @ApiOperation({ summary: 'Get single approved parking location details' })
+  @ApiResponse({ status: 200, description: 'Location details retrieved' })
+  async getPublicLocation(@Param('id', ParseUUIDPipe) locationId: string) {
+    return this.hostsService.getApprovedLocationById(locationId);
+  }
+
   // Become a host (no HOST role required - this is how users get the role)
   @Post('become')
   @ApiOperation({ summary: 'Register current user as a host' })
