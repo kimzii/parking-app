@@ -13,6 +13,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { hostService } from "../../src/services/hosts";
+import { userService } from "../../src/services/user";
 
 interface ParkingSpot {
   id: string;
@@ -41,6 +42,7 @@ export default function MapScreen() {
   const [locating, setLocating] = useState(false);
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDriverVerified, setIsDriverVerified] = useState(true);
 
   const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -80,8 +82,16 @@ export default function MapScreen() {
 
   const fetchNearbySpots = async () => {
     try {
-      const data = await hostService.getNearbyLocations({ limit: 50 });
+      const [data, profile] = await Promise.all([
+        hostService.getNearbyLocations({ limit: 50 }),
+        userService.getProfile(),
+      ]);
       setSpots(data || []);
+      const verified = profile.roleStatuses?.some(
+        (rs: { role: string; status: string }) =>
+          rs.role === "DRIVER" && rs.status === "VERIFIED",
+      ) ?? false;
+      setIsDriverVerified(verified);
     } catch (err) {
       console.error("Failed to fetch parking spots:", err);
     } finally {
@@ -237,9 +247,13 @@ export default function MapScreen() {
               </View>
             </View>
             <TouchableOpacity
-              style={styles.viewDetailsBtn}
+              style={[styles.viewDetailsBtn, !isDriverVerified && styles.viewDetailsBtnLocked]}
               activeOpacity={0.8}
               onPress={() => {
+                if (!isDriverVerified) {
+                  router.push("/(modals)/driver-verification");
+                  return;
+                }
                 setSelectedSpot(null);
                 router.push({
                   pathname: "/(modals)/spot-detail",
@@ -247,10 +261,32 @@ export default function MapScreen() {
                 } as any);
               }}
             >
-              <Text style={styles.viewDetailsBtnText}>View Details</Text>
-              <MaterialIcons name="arrow-forward" size={16} color="#fff" />
+              {!isDriverVerified && (
+                <MaterialIcons name="lock" size={16} color="#fff" />
+              )}
+              <Text style={styles.viewDetailsBtnText}>
+                {isDriverVerified ? "View Details" : "Verify to View Details"}
+              </Text>
+              {isDriverVerified && (
+                <MaterialIcons name="arrow-forward" size={16} color="#fff" />
+              )}
             </TouchableOpacity>
           </View>
+        )}
+
+        {/* Verification banner */}
+        {!isDriverVerified && !selectedSpot && (
+          <TouchableOpacity
+            style={styles.verifyOverlay}
+            onPress={() => router.push("/(modals)/driver-verification")}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="lock" size={18} color="#F57C00" />
+            <Text style={styles.verifyOverlayText}>
+              Verify your account to book parking spots
+            </Text>
+            <MaterialIcons name="chevron-right" size={20} color="#F57C00" />
+          </TouchableOpacity>
         )}
 
         {/* Empty state */}
@@ -442,4 +478,32 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
   emptySubtitle: { fontSize: 13, color: "#8E8E93", textAlign: "center" },
+  viewDetailsBtnLocked: {
+    backgroundColor: "#B0BEC5",
+  },
+  verifyOverlay: {
+    position: "absolute",
+    bottom: 24,
+    left: 24,
+    right: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: "#F57C00",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  verifyOverlayText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#F57C00",
+  },
 });
