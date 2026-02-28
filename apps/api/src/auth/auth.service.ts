@@ -76,30 +76,13 @@ export class AuthService {
     const verificationExpiry = new Date();
     verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 5);
 
-    // Find DRIVER role
-    const driverRole = await this.prisma.role.findUnique({
-      where: { name: 'DRIVER' },
-    });
-    if (!driverRole) {
-      throw new BadRequestException('Default role DRIVER not found');
-    }
-
-    // Create user with DRIVER role
+    // Create user without role assignment — role is selected after email verification
     const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         verificationCode,
         verificationExpiry,
-        userRoles: {
-          create: {
-            roleId: driverRole.id,
-            status: 'PENDING',
-          },
-        },
-        driver: {
-          create: {},
-        },
         wallet: {
           create: {},
         },
@@ -141,18 +124,99 @@ export class AuthService {
     }
 
     // Update user
-    await this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         emailVerified: true,
         verificationCode: null,
         verificationExpiry: null,
       },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
     });
+
+    // Auto-login: generate tokens so the user can proceed to role selection
+    const roles = updatedUser.userRoles.map((ur) => ur.role.name);
+    const payload = {
+      sub: updatedUser.id,
+      email: updatedUser.email,
+      roles,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return {
       message: 'Email verified successfully',
+      accessToken,
+      refreshToken,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        roles,
+        firstName: updatedUser.firstName,
+      },
     };
+  }
+
+  // Select Role after email verification
+  async selectRole(userId: string, role: 'DRIVER' | 'HOST') {
+    // Check if user already has this specific role
+    const existingRole = await this.prisma.userRole.findFirst({
+      where: { userId, role: { name: role } },
+    });
+
+    if (existingRole) {
+      throw new BadRequestException(`User already has the ${role} role`);
+    }
+
+    // Find the selected role
+    const roleRecord = await this.prisma.role.findUnique({
+      where: { name: role },
+    });
+
+    if (!roleRecord) {
+      throw new BadRequestException(`Role ${role} not found in system`);
+    }
+
+    // Create role and related records based on selection
+    if (role === 'DRIVER') {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.userRole.create({
+          data: {
+            userId,
+            roleId: roleRecord.id,
+            status: 'PENDING',
+          },
+        });
+        const existingDriver = await tx.driver.findUnique({ where: { userId } });
+        if (!existingDriver) {
+          await tx.driver.create({ data: { userId } });
+        }
+      });
+
+      return { message: 'Driver role assigned', role: 'DRIVER', status: 'PENDING' };
+    } else {
+      // HOST: auto-verify
+      await this.prisma.$transaction(async (tx) => {
+        await tx.userRole.create({
+          data: {
+            userId,
+            roleId: roleRecord.id,
+            status: 'VERIFIED',
+          },
+        });
+        const existingHost = await tx.host.findUnique({ where: { userId } });
+        if (!existingHost) {
+          await tx.host.create({ data: { userId } });
+        }
+      });
+
+      return { message: 'Host role assigned and verified', role: 'HOST', status: 'VERIFIED' };
+    }
   }
 
   // Login
@@ -216,14 +280,6 @@ export class AuthService {
 
     console.log('✅ Email verified');
 
-    // Allow login if email is verified, regardless of DRIVER role status
-    // Still allow ADMINs
-    const isAdmin = user.userRoles.some((ur) => ur.role.name === 'ADMIN');
-    if (!isAdmin && !user.emailVerified) {
-      console.log('❌ Email not verified');
-      throw new UnauthorizedException('Please verify your email first');
-    }
-    // Optionally, you can log the role statuses for debugging
     console.log(
       'User role statuses:',
       user.userRoles.map((ur) => `${ur.role.name}:${ur.status}`),
@@ -246,6 +302,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        firstName: user.firstName,
         emailVerified: user.emailVerified,
         roles: user.userRoles.map((ur) => ur.role.name),
         roleStatuses: user.userRoles.map((ur) => ({

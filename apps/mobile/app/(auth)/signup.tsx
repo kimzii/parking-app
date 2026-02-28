@@ -44,7 +44,7 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       await authService.register(email.trim(), password);
-      Alert.alert("Success", "Account created! Please verify your email.");
+      Alert.alert("Verify your email First", "We sent a verification code to your email.");
       router.replace({
         pathname: "/(auth)/verify",
         params: { email: email.trim() },

@@ -122,8 +122,13 @@ export default function ProfileScreen() {
           >
             <EWallet
               balance={Number(user?.walletBalance ?? 0)}
-              onTopUp={() => router.push("/(modals)/top-up")}
+              onTopUp={() =>
+                isDriverVerified
+                  ? router.push("/(modals)/top-up")
+                  : router.push("/(modals)/driver-verification")
+              }
               onWithdraw={() => {}}
+              locked={!isDriverVerified}
             />
 
             <View style={styles.actionButtons}>

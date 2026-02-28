@@ -22,9 +22,12 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SelectRoleDto } from './dto/select-role.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { RequestWithIp } from './types/request.type';
 import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
+import type { AuthUser } from './types/user.type';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -93,6 +96,20 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired code' })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
+  }
+
+  @Post('select-role')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Select user role (DRIVER or HOST) after email verification' })
+  @ApiResponse({ status: 200, description: 'Role assigned successfully' })
+  @ApiResponse({ status: 400, description: 'Role already assigned or invalid role' })
+  async selectRole(
+    @CurrentUser() user: AuthUser,
+    @Body() selectRoleDto: SelectRoleDto,
+  ) {
+    return this.authService.selectRole(user.id, selectRoleDto.role);
   }
 
   @Get('test')

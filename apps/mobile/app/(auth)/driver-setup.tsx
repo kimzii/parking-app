@@ -1,0 +1,269 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
+import { driversService } from "../../src/services/drivers";
+
+export default function DriverSetupScreen() {
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [licenseImage, setLicenseImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const pickLicenseImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Please allow access to your photo library.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setLicenseImage(result.assets[0].uri);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!licenseNumber.trim()) {
+      Alert.alert("Error", "Please enter your license number.");
+      return;
+    }
+    if (!licenseImage) {
+      Alert.alert("Error", "Please upload a photo of your license.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const uploadResult = await driversService.uploadLicenseImage(licenseImage);
+      await driversService.applyAsDriver({
+        licenseNumber: licenseNumber.trim(),
+        licenseImageUrl: uploadResult.url,
+      });
+      Alert.alert("Submitted!", "Your driver verification is under review.");
+      router.replace("/(tabs)" as any);
+    } catch (err: any) {
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to submit. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkip = () => {
+    router.replace("/(tabs)" as any);
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.logoContainer}>
+          <View style={styles.logoIcon}>
+            <Feather name="shield" size={32} color="#fff" />
+          </View>
+          <Text style={styles.title}>Verify Your License</Text>
+          <Text style={styles.subtitle}>
+            Get verified to unlock all driver features
+          </Text>
+        </View>
+
+        <View style={styles.form}>
+          <Text style={styles.label}>License Number</Text>
+          <View style={styles.inputContainer}>
+            <Feather name="credit-card" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter license number"
+              placeholderTextColor="#aaa"
+              value={licenseNumber}
+              onChangeText={setLicenseNumber}
+              autoCapitalize="characters"
+              editable={!loading}
+            />
+          </View>
+
+          <Text style={styles.label}>License Photo</Text>
+          <TouchableOpacity
+            style={styles.imagePickerButton}
+            onPress={pickLicenseImage}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {licenseImage ? (
+              <Image source={{ uri: licenseImage }} style={styles.licensePreview} contentFit="cover" />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <View style={styles.cameraCircle}>
+                  <Ionicons name="camera-outline" size={28} color="#11796F" />
+                </View>
+                <Text style={styles.imagePlaceholderTitle}>Tap to upload</Text>
+                <Text style={styles.imagePlaceholderText}>
+                  Take or choose a photo of your license
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Submit Verification</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkip}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.skipText}>Skip for now</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+  logoContainer: { alignItems: "center", marginBottom: 32 },
+  logoIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: "#11796F",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#1A1A2E",
+    marginTop: 14,
+    letterSpacing: -0.5,
+  },
+  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4, textAlign: "center" },
+  form: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A2E",
+    marginBottom: 8,
+    marginTop: 14,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    borderRadius: 12,
+    backgroundColor: "#F8FAFB",
+  },
+  inputIcon: { marginLeft: 14 },
+  input: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: "#1A1A2E",
+  },
+  imagePickerButton: { borderRadius: 16, overflow: "hidden", marginBottom: 8 },
+  licensePreview: { width: "100%", height: 200, borderRadius: 16 },
+  imagePlaceholder: {
+    width: "100%",
+    height: 200,
+    borderWidth: 2,
+    borderColor: "#E8ECF0",
+    borderStyle: "dashed",
+    borderRadius: 16,
+    backgroundColor: "#F8FAFB",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+  },
+  cameraCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "#E8F5F3",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  imagePlaceholderTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  imagePlaceholderText: { fontSize: 13, color: "#8E8E93" },
+  button: {
+    backgroundColor: "#11796F",
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 16,
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buttonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  skipButton: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 10,
+    backgroundColor: "#F2F2F7",
+  },
+  skipText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
+});

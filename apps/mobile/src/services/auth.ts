@@ -30,6 +30,11 @@ export const authService = {
     return response.data;
   },
 
+  async selectRole(role: string) {
+    const response = await api.post("/auth/select-role", { role });
+    return response.data;
+  },
+
   async resendVerification(email: string) {
     const response = await api.post("/auth/resend-verification", { email });
     return response.data;

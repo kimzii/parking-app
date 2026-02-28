@@ -12,18 +12,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { walletService } from "../../src/services/wallet";
+import { userService } from "../../src/services/user";
 
 export default function PaymentScreen() {
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDriverVerified, setIsDriverVerified] = useState(true);
 
-  const fetchBalance = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const data = await walletService.getBalance();
-      setBalance(Number(data.balance ?? 0));
+      const [balanceData, profile] = await Promise.all([
+        walletService.getBalance(),
+        userService.getProfile(),
+      ]);
+      setBalance(Number(balanceData.balance ?? 0));
+      const verified = profile.roleStatuses?.some(
+        (rs: { role: string; status: string }) =>
+          rs.role === "DRIVER" && rs.status === "VERIFIED",
+      ) ?? false;
+      setIsDriverVerified(verified);
     } catch (err) {
-      console.error("Failed to fetch balance:", err);
+      console.error("Failed to fetch payment data:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -32,13 +42,13 @@ export default function PaymentScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchBalance();
-    }, [fetchBalance]),
+      fetchData();
+    }, [fetchData]),
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchBalance();
+    fetchData();
   };
 
   const quickActions = [
@@ -91,6 +101,27 @@ export default function PaymentScreen() {
           }
           ListHeaderComponent={
             <>
+              {/* Verification Warning */}
+              {!isDriverVerified && (
+                <TouchableOpacity
+                  style={styles.verifyBanner}
+                  onPress={() => router.push("/(modals)/driver-verification")}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="lock" size={20} color="#F57C00" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.verifyBannerTitle}>
+                      Verify to unlock payments
+                    </Text>
+                    <Text style={styles.verifyBannerText}>
+                      Top-up, withdraw, and transactions require driver
+                      verification.
+                    </Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={22} color="#F57C00" />
+                </TouchableOpacity>
+              )}
+
               {/* Balance Card */}
               <View style={styles.balanceCard}>
                 <Text style={styles.balanceLabel}>Available Balance</Text>
@@ -106,8 +137,12 @@ export default function PaymentScreen() {
                   </Text>
                 )}
                 <TouchableOpacity
-                  style={styles.topUpButton}
-                  onPress={() => router.push("/(modals)/top-up")}
+                  style={[styles.topUpButton, !isDriverVerified && { backgroundColor: "#B0BEC5" }]}
+                  onPress={() =>
+                    isDriverVerified
+                      ? router.push("/(modals)/top-up")
+                      : router.push("/(modals)/driver-verification")
+                  }
                   activeOpacity={0.8}
                 >
                   <MaterialIcons name="add" size={18} color="#fff" />
@@ -265,5 +300,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#8E8E93",
     textAlign: "center",
+  },
+  verifyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#F57C00",
+  },
+  verifyBannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#F57C00",
+  },
+  verifyBannerText: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 2,
   },
 });

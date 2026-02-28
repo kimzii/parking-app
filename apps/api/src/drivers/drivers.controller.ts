@@ -70,8 +70,7 @@ export class DriversController {
   // ========== DRIVER PROFILE ENDPOINTS ==========
 
   @Post('upload-license')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('DRIVER')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Upload driver license image' })
   @ApiResponse({ status: 201, description: 'License image uploaded' })
@@ -121,8 +120,7 @@ export class DriversController {
   }
 
   @Post('apply')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('DRIVER')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Apply as driver or update driver profile' })
   @ApiResponse({
     status: 201,

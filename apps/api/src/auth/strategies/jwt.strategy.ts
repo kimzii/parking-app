@@ -42,12 +42,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Allow all users with at least one role (regardless of status)
-    const hasAnyRole = user.userRoles.length > 0;
-    if (!hasAnyRole) {
-      throw new UnauthorizedException('User has no roles');
-    }
-
+    // Allow all authenticated users (including those who haven't selected a role yet)
     return {
       id: user.id,
       email: user.email,

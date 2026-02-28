@@ -48,9 +48,15 @@ export default function VerifyScreen() {
     }
     setLoading(true);
     try {
-      await authService.verifyEmail(email as string, code.trim());
-      Alert.alert("Success", "Email verified! You can now log in.");
-      router.replace("/(auth)/login");
+      const result = await authService.verifyEmail(email as string, code.trim());
+      // Auto-login: save tokens returned from verification
+      if (result.accessToken && result.refreshToken) {
+        const SecureStore = await import("expo-secure-store");
+        await SecureStore.setItemAsync("accessToken", result.accessToken);
+        await SecureStore.setItemAsync("refreshToken", result.refreshToken);
+      }
+      Alert.alert("Success", "Email verified!");
+      router.replace("/(auth)/select-role");
     } catch (error: any) {
       const message =
         error.response?.data?.message ||

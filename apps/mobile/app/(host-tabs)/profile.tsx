@@ -56,6 +56,10 @@ export default function HostProfileScreen() {
     router.replace("/(auth)/login");
   };
 
+  const hasDriverRole = user?.roleStatuses?.some(
+    (rs) => rs.role === "DRIVER",
+  ) ?? false;
+
   const switchToDriver = async () => {
     await setViewMode("driver");
     router.replace("/(tabs)");
@@ -114,23 +118,42 @@ export default function HostProfileScreen() {
               onWithdraw={() => {}}
             />
 
-            {/* Switch to Driver View */}
-            <TouchableOpacity
-              style={styles.switchButton}
-              onPress={switchToDriver}
-              activeOpacity={0.8}
-            >
-              <View style={styles.switchIconBg}>
-                <MaterialIcons name="directions-car" size={20} color="#11796F" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.switchTitle}>Switch to Driver View</Text>
-                <Text style={styles.switchSubtitle}>
-                  Go back to finding parking
-                </Text>
-              </View>
-              <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
-            </TouchableOpacity>
+            {/* Switch to Driver / Become a Driver */}
+            {hasDriverRole ? (
+              <TouchableOpacity
+                style={styles.switchButton}
+                onPress={switchToDriver}
+                activeOpacity={0.8}
+              >
+                <View style={styles.switchIconBg}>
+                  <MaterialIcons name="directions-car" size={20} color="#11796F" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.switchTitle}>Switch to Driver View</Text>
+                  <Text style={styles.switchSubtitle}>
+                    Go back to finding parking
+                  </Text>
+                </View>
+                <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.switchButton}
+                onPress={() => router.push("/(modals)/become-a-driver")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.switchIconBg}>
+                  <MaterialIcons name="directions-car" size={20} color="#11796F" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.switchTitle}>Become a Driver</Text>
+                  <Text style={styles.switchSubtitle}>
+                    Find and book parking spots
+                  </Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color="#11796F" />
+              </TouchableOpacity>
+            )}
 
             <View style={styles.menuSection}>
               <Text style={styles.menuSectionTitle}>Account</Text>

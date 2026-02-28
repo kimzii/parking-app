@@ -11,9 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { driversService } from "../../src/services/drivers";
+import { userService } from "../../src/services/user";
 import { VehicleSvg } from "../../src/components/VehicleSvg";
 
 type Vehicle = {
@@ -40,6 +41,7 @@ export default function MyVehiclesScreen() {
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [isDriverVerified, setIsDriverVerified] = useState(true);
 
   // Form state
   const [plateNumber, setPlateNumber] = useState("");
@@ -51,8 +53,16 @@ export default function MyVehiclesScreen() {
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await driversService.getVehicles();
+      const [data, profile] = await Promise.all([
+        driversService.getVehicles(),
+        userService.getProfile(),
+      ]);
       setVehicles(data);
+      const verified = profile.roleStatuses?.some(
+        (rs: { role: string; status: string }) =>
+          rs.role === "DRIVER" && rs.status === "VERIFIED",
+      ) ?? false;
+      setIsDriverVerified(verified);
     } catch {
       setVehicles([]);
     } finally {
@@ -252,17 +262,46 @@ export default function MyVehiclesScreen() {
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.addToggle, showForm && styles.addToggleActive]}
-          onPress={() => (showForm ? handleCloseForm() : openAddForm())}
+          style={[
+            styles.addToggle,
+            showForm && styles.addToggleActive,
+            !isDriverVerified && styles.addToggleDisabled,
+          ]}
+          onPress={() =>
+            !isDriverVerified
+              ? router.push("/(modals)/driver-verification")
+              : showForm
+                ? handleCloseForm()
+                : openAddForm()
+          }
           activeOpacity={0.8}
         >
           <MaterialIcons
-            name={showForm ? "close" : "add"}
+            name={!isDriverVerified ? "lock" : showForm ? "close" : "add"}
             size={22}
-            color={showForm ? "#11796F" : "#fff"}
+            color={!isDriverVerified ? "#fff" : showForm ? "#11796F" : "#fff"}
           />
         </TouchableOpacity>
       </View>
+
+      {!isDriverVerified && (
+        <TouchableOpacity
+          style={styles.verifyBanner}
+          onPress={() => router.push("/(modals)/driver-verification")}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="verified-user" size={20} color="#F57C00" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.verifyBannerTitle}>
+              Verification required
+            </Text>
+            <Text style={styles.verifyBannerText}>
+              Verify your driver account to add and manage vehicles.
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={22} color="#F57C00" />
+        </TouchableOpacity>
+      )}
 
       {showForm && (
         <View style={styles.form}>
@@ -409,6 +448,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
   },
   addToggleActive: { backgroundColor: "#E8F5F3", shadowOpacity: 0, elevation: 0 },
+  addToggleDisabled: { backgroundColor: "#B0BEC5", shadowOpacity: 0, elevation: 0 },
   form: {
     backgroundColor: "#fff", marginHorizontal: 20, borderRadius: 16, padding: 20, marginBottom: 16,
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 4,
@@ -483,4 +523,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F5F3", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
   typeTagText: { fontSize: 12, fontWeight: "600", color: "#11796F" },
+  verifyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: "#F57C00",
+  },
+  verifyBannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#F57C00",
+  },
+  verifyBannerText: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 2,
+  },
 });
