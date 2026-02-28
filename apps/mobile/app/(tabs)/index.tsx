@@ -36,7 +36,7 @@ export default function HomeScreen() {
   const fetchSpots = useCallback(async (search?: string) => {
     try {
       const data = await hostService.getNearbyLocations({
-        limit: 50,
+        limit: 20,
         search: search || undefined,
       });
       setSpots(data || []);

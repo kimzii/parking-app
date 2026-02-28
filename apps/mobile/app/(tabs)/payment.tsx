@@ -115,33 +115,6 @@ export default function PaymentScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Quick Actions */}
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              <View style={styles.actionsRow}>
-                {quickActions.map((action) => (
-                  <TouchableOpacity
-                    key={action.id}
-                    style={styles.actionCard}
-                    onPress={action.onPress}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.actionIcon,
-                        { backgroundColor: action.bg },
-                      ]}
-                    >
-                      <MaterialIcons
-                        name={action.icon}
-                        size={24}
-                        color={action.color}
-                      />
-                    </View>
-                    <Text style={styles.actionLabel}>{action.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
               {/* Recent Transactions Placeholder */}
               <Text style={styles.sectionTitle}>Recent Transactions</Text>
               <View style={styles.emptyState}>
@@ -192,8 +165,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
-    gap: 16,
+    paddingBottom: 32,
   },
   balanceCard: {
     backgroundColor: "#fff",

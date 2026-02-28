@@ -20,7 +20,7 @@ import { hostService } from "../../src/services/hosts";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_HEIGHT = 220;
-const MAP_HEIGHT = 200;
+const MAP_HEIGHT = 140;
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 interface SpotImage {
@@ -342,6 +342,50 @@ export default function SpotDetailScreen() {
                 <Text style={styles.statLabel}>levels</Text>
               </View>
             )}
+          </View>
+
+          {/* Parking Info */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Parking Info</Text>
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="local-parking" size={20} color="#11796F" />
+                <Text style={styles.infoLabel}>Type</Text>
+                <Text style={styles.infoValue}>
+                  {spot.isMultiLevel ? "Multi-Level Parking" : "Single-Level Parking"}
+                </Text>
+              </View>
+              {spot.isMultiLevel && (
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="layers" size={20} color="#1976D2" />
+                  <Text style={styles.infoLabel}>Floors</Text>
+                  <Text style={[styles.infoValue, { color: "#1976D2" }]}>
+                    {spot.numberOfLevels ?? "-"} {spot.numberOfLevels === 1 ? "Floor" : "Floors"}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.infoRow}>
+                <MaterialIcons name="event-seat" size={20} color="#11796F" />
+                <Text style={styles.infoLabel}>Total Slots</Text>
+                <Text style={styles.infoValue}>{total}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <MaterialIcons
+                  name="check-circle"
+                  size={20}
+                  color={available > 0 ? "#4CAF50" : "#E53935"}
+                />
+                <Text style={styles.infoLabel}>Available</Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    { color: available > 0 ? "#4CAF50" : "#E53935" },
+                  ]}
+                >
+                  {available > 0 ? `${available} Slots` : "Full"}
+                </Text>
+              </View>
+            </View>
           </View>
 
           {/* Directions Card with Map */}
@@ -758,6 +802,35 @@ const styles = StyleSheet.create({
   },
   hostLabel: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
   hostName: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+
+  // Parking Info
+  infoCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  infoLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#8E8E93",
+    fontWeight: "600",
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1A1A2E",
+  },
 
   // Slots
   slotsHeader: {
