@@ -204,12 +204,12 @@ export default function ProfileScreen() {
                 <MenuItem
                   label="My Vehicles"
                   icon="directions-car"
-                  iconBg="#E8F5F3"
-                  iconColor="#11796F"
+                  iconBg="#F2F2F7"
+                  iconColor="#8E8E93"
                   onPress={() => router.push("/(modals)/my-vehicles")}
                 />
-                <MenuItem label="Parking History" icon="history" iconBg="#FFF3E0" iconColor="#F57C00" />
-                <MenuItem label="Help & Support" icon="help-outline" iconBg="#E3F2FD" iconColor="#1976D2" />
+                <MenuItem label="Parking History" icon="history" iconBg="#F2F2F7" iconColor="#8E8E93" />
+                <MenuItem label="Help & Support" icon="help-outline" iconBg="#F2F2F7" iconColor="#8E8E93" />
               </View>
             </View>
 
