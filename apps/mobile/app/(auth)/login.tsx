@@ -12,7 +12,9 @@ import {
   ScrollView,
 } from "react-native";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { authService } from "../../src/services/auth";
+import { userService } from "../../src/services/user";
 import Feather from "@expo/vector-icons/Feather";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -35,7 +37,30 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await authService.login(email.trim(), password);
-      router.replace("/(tabs)");
+
+      // Check user profile to determine correct destination
+      const profile = await userService.getProfile();
+      const roles: string[] = profile.roles || [];
+
+      if (roles.length === 0) {
+        router.replace("/(auth)/select-role");
+      } else if (!profile.firstName) {
+        const selectedRole = roles.includes("HOST") ? "HOST" : "DRIVER";
+        router.replace(`/(auth)/complete-profile?role=${selectedRole}` as any);
+      } else if (roles.includes("HOST") && !roles.includes("DRIVER")) {
+        // HOST-only user — always go to host tabs
+        await SecureStore.setItemAsync("viewMode", "host");
+        router.replace("/(host-tabs)" as any);
+      } else {
+        // Has DRIVER role — check saved viewMode preference
+        const viewMode = await SecureStore.getItemAsync("viewMode");
+        if (viewMode === "host" && roles.includes("HOST")) {
+          router.replace("/(host-tabs)" as any);
+        } else {
+          await SecureStore.setItemAsync("viewMode", "driver");
+          router.replace("/(tabs)");
+        }
+      }
     } catch (error: any) {
       console.error("Login error:", error);
       if (error.response) {

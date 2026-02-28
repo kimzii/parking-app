@@ -43,12 +43,19 @@ export default function Index() {
         return;
       }
 
-      // Fully onboarded — check view mode
-      const viewMode = await SecureStore.getItemAsync("viewMode");
-      if (viewMode === "host" && roles.includes("HOST")) {
+      // Fully onboarded — determine destination
+      if (roles.includes("HOST") && !roles.includes("DRIVER")) {
+        // HOST-only user — always go to host tabs
+        await SecureStore.setItemAsync("viewMode", "host");
         setRoute("/(host-tabs)");
       } else {
-        setRoute("/(tabs)");
+        const viewMode = await SecureStore.getItemAsync("viewMode");
+        if (viewMode === "host" && roles.includes("HOST")) {
+          setRoute("/(host-tabs)");
+        } else {
+          await SecureStore.setItemAsync("viewMode", "driver");
+          setRoute("/(tabs)");
+        }
       }
     } catch {
       // Token might be invalid, go to login
