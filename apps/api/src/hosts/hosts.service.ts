@@ -10,6 +10,18 @@ import { QueryParkingLocationsDto } from './dto/query-parking-locations.dto';
 import { UpdateLocationStatusDto } from './dto/update-location-status.dto';
 import { Prisma } from '@prisma/client';
 
+// Convert level number to letter prefix: 1→"A", 2→"B", ..., 26→"Z", 27→"AA"
+function levelToPrefix(level: number): string {
+  let result = '';
+  let n = level;
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
+}
+
 @Injectable()
 export class HostsService {
   constructor(private prisma: PrismaService) {}
@@ -135,16 +147,26 @@ export class HostsService {
       );
     }
 
-    const { imageUrls, ...locationData } = createLocationDto;
+    const { imageUrls, levelSlots, spaceNames, ...locationData } =
+      createLocationDto;
+
+    // Compute total slots
+    const isMulti =
+      !!createLocationDto.isMultiLevel && !!levelSlots && levelSlots.length > 0;
+    const computedTotalSlots = isMulti
+      ? levelSlots.reduce((sum, n) => sum + n, 0)
+      : createLocationDto.totalSlots;
 
     return this.prisma.$transaction(async (tx) => {
       // Create parking location
       const location = await tx.parkingLocation.create({
         data: {
           ...locationData,
+          totalSlots: computedTotalSlots,
+          numberOfLevels: isMulti ? levelSlots.length : undefined,
           hostId: host.id,
-          availableSlots: createLocationDto.totalSlots || 1,
-          status: 'PENDING', // Requires admin approval
+          availableSlots: computedTotalSlots || 1,
+          status: 'PENDING',
         },
       });
 
@@ -154,24 +176,50 @@ export class HostsService {
           data: imageUrls.map((url, index) => ({
             parkingLocationId: location.id,
             imageUrl: url,
-            isPrimary: index === 0, // First image is primary
+            isPrimary: index === 0,
           })),
         });
       }
 
-      // Create parking spaces if totalSlots specified
-      if (createLocationDto.totalSlots && createLocationDto.totalSlots > 0) {
-        const spaces = Array.from(
-          { length: createLocationDto.totalSlots },
-          (_, i) => ({
-            parkingLocationId: location.id,
-            slotNumber: i + 1,
-          }),
-        );
+      // Create parking spaces with names and level numbers
+      if (isMulti) {
+        const spaces: {
+          parkingLocationId: string;
+          slotNumber: number;
+          name: string;
+          levelNumber: number;
+        }[] = [];
+        let slotCounter = 0;
 
-        await tx.parkingSpace.createMany({
-          data: spaces,
-        });
+        for (let level = 1; level <= levelSlots.length; level++) {
+          const slotsForLevel = levelSlots[level - 1];
+          const prefix = levelToPrefix(level);
+          for (let slot = 1; slot <= slotsForLevel; slot++) {
+            const name =
+              spaceNames && spaceNames[slotCounter]
+                ? spaceNames[slotCounter]
+                : `${prefix}${slot}`;
+            spaces.push({
+              parkingLocationId: location.id,
+              slotNumber: slotCounter + 1,
+              name,
+              levelNumber: level,
+            });
+            slotCounter++;
+          }
+        }
+
+        await tx.parkingSpace.createMany({ data: spaces });
+      } else if (computedTotalSlots && computedTotalSlots > 0) {
+        // Single-level: auto-name A1, A2... or use custom names
+        const spaces = Array.from({ length: computedTotalSlots }, (_, i) => ({
+          parkingLocationId: location.id,
+          slotNumber: i + 1,
+          name: spaceNames && spaceNames[i] ? spaceNames[i] : `A${i + 1}`,
+          levelNumber: null as number | null,
+        }));
+
+        await tx.parkingSpace.createMany({ data: spaces });
       }
 
       return location;
@@ -266,6 +314,7 @@ export class HostsService {
               },
             },
           },
+          orderBy: [{ levelNumber: 'asc' }, { slotNumber: 'asc' }],
         },
         _count: {
           select: {
@@ -570,9 +619,11 @@ export class HostsService {
           select: {
             id: true,
             slotNumber: true,
+            name: true,
+            levelNumber: true,
             status: true,
           },
-          orderBy: { slotNumber: 'asc' },
+          orderBy: [{ levelNumber: 'asc' }, { slotNumber: 'asc' }],
         },
       },
     });

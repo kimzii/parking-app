@@ -164,6 +164,8 @@ model ParkingSpace {
   id                String          @id @default(uuid()) @db.Uuid
   parkingLocationId String          @map("parking_location_id") @db.Uuid
   slotNumber        Int             @map("slot_number")
+  name              String?
+  levelNumber       Int?            @map("level_number")
   status            SlotStatus      @default(AVAILABLE)
   isActive          Boolean         @default(true) @map("is_active")
   createdAt         DateTime        @default(now()) @map("created_at")

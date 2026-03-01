@@ -49,6 +49,8 @@ export const hostService = {
     totalSlots?: number;
     isMultiLevel?: boolean;
     numberOfLevels?: number;
+    levelSlots?: number[];
+    spaceNames?: string[];
     imageUrls?: string[];
   }) => {
     const res = await api.post("/hosts/locations", data);

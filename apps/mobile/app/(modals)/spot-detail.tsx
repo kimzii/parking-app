@@ -32,6 +32,8 @@ interface SpotImage {
 interface ParkingSpace {
   id: string;
   slotNumber: number;
+  name: string | null;
+  levelNumber: number | null;
   status: "AVAILABLE" | "OCCUPIED" | "DISABLED";
 }
 
@@ -551,40 +553,97 @@ export default function SpotDetailScreen() {
                   </View>
                 </View>
               </View>
-              <View style={styles.slotsGrid}>
-                {spot.parkingSpaces.map((space) => {
-                  const colors = SLOT_COLORS[space.status];
+              {(() => {
+                const hasLevels = spot.parkingSpaces.some((s) => s.levelNumber != null);
+                if (hasLevels) {
+                  const levelMap = new Map<number, ParkingSpace[]>();
+                  spot.parkingSpaces.forEach((s) => {
+                    const lvl = s.levelNumber ?? 0;
+                    if (!levelMap.has(lvl)) levelMap.set(lvl, []);
+                    levelMap.get(lvl)!.push(s);
+                  });
+                  const sortedLevels = [...levelMap.keys()].sort((a, b) => a - b);
                   return (
-                    <View
-                      key={space.id}
-                      style={[
-                        styles.slotCell,
-                        {
-                          backgroundColor: colors.bg,
-                          borderColor: colors.color,
-                        },
-                      ]}
-                    >
-                      <MaterialIcons
-                        name={
-                          space.status === "AVAILABLE"
-                            ? "event-seat"
-                            : space.status === "OCCUPIED"
-                              ? "directions-car"
-                              : "block"
-                        }
-                        size={18}
-                        color={colors.color}
-                      />
-                      <Text
-                        style={[styles.slotNumber, { color: colors.color }]}
-                      >
-                        {space.slotNumber}
-                      </Text>
+                    <View style={{ gap: 14 }}>
+                      {sortedLevels.map((level) => {
+                        const levelSpaces = levelMap.get(level)!;
+                        const levelAvail = levelSpaces.filter((s) => s.status === "AVAILABLE").length;
+                        return (
+                          <View key={level} style={{ gap: 8 }}>
+                            <View style={styles.floorHeader}>
+                              <MaterialIcons name="layers" size={16} color="#11796F" />
+                              <Text style={styles.floorTitle}>Floor {level}</Text>
+                              <Text style={styles.floorCount}>
+                                {levelAvail}/{levelSpaces.length} available
+                              </Text>
+                            </View>
+                            <View style={styles.slotsGrid}>
+                              {levelSpaces.map((space) => {
+                                const colors = SLOT_COLORS[space.status];
+                                return (
+                                  <View
+                                    key={space.id}
+                                    style={[
+                                      styles.slotCell,
+                                      { backgroundColor: colors.bg, borderColor: colors.color },
+                                    ]}
+                                  >
+                                    <MaterialIcons
+                                      name={
+                                        space.status === "AVAILABLE"
+                                          ? "event-seat"
+                                          : space.status === "OCCUPIED"
+                                            ? "directions-car"
+                                            : "block"
+                                      }
+                                      size={18}
+                                      color={colors.color}
+                                    />
+                                    <Text style={[styles.slotNumber, { color: colors.color }]}>
+                                      {space.name || space.slotNumber}
+                                    </Text>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        );
+                      })}
                     </View>
                   );
-                })}
-              </View>
+                }
+                return (
+                  <View style={styles.slotsGrid}>
+                    {spot.parkingSpaces.map((space) => {
+                      const colors = SLOT_COLORS[space.status];
+                      return (
+                        <View
+                          key={space.id}
+                          style={[
+                            styles.slotCell,
+                            { backgroundColor: colors.bg, borderColor: colors.color },
+                          ]}
+                        >
+                          <MaterialIcons
+                            name={
+                              space.status === "AVAILABLE"
+                                ? "event-seat"
+                                : space.status === "OCCUPIED"
+                                  ? "directions-car"
+                                  : "block"
+                            }
+                            size={18}
+                            color={colors.color}
+                          />
+                          <Text style={[styles.slotNumber, { color: colors.color }]}>
+                            {space.name || space.slotNumber}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })()}
             </View>
           )}
         </View>
@@ -842,6 +901,22 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
+  floorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  floorTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#11796F",
+  },
+  floorCount: {
+    fontSize: 12,
+    color: "#8E8E93",
+    fontWeight: "600",
+    marginLeft: "auto",
+  },
   slotsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

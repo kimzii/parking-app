@@ -93,6 +93,26 @@ export class CreateParkingLocationDto {
   numberOfLevels?: number;
 
   @ApiPropertyOptional({
+    example: [5, 3, 8],
+    description:
+      'Slots per level as an array (e.g. [5,3,8] means level 1 has 5, level 2 has 3, level 3 has 8)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  levelSlots?: number[];
+
+  @ApiPropertyOptional({
+    example: ['A1', 'A2', 'B1', 'B2'],
+    description:
+      'Custom space names in order. If omitted, auto-generated (A1, A2, B1, B2...)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  spaceNames?: string[];
+
+  @ApiPropertyOptional({
     example: [
       'https://example.com/image1.jpg',
       'https://example.com/image2.jpg',

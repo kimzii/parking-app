@@ -45,9 +45,73 @@ export default function AddLocationScreen() {
   const [totalSlots, setTotalSlots] = useState("");
   const [isMultiLevel, setIsMultiLevel] = useState(false);
   const [numberOfLevels, setNumberOfLevels] = useState("");
+  const [levelSlots, setLevelSlots] = useState<string[]>([]);
+  const [useCustomNames, setUseCustomNames] = useState(false);
+  const [customNames, setCustomNames] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+
+  // Convert level number to letter prefix: 1→A, 2→B, ..., 26→Z
+  const levelToPrefix = (level: number): string => {
+    let result = "";
+    let n = level;
+    while (n > 0) {
+      n--;
+      result = String.fromCharCode(65 + (n % 26)) + result;
+      n = Math.floor(n / 26);
+    }
+    return result;
+  };
+
+  // Generate auto-names from levelSlots config
+  const getAutoNames = (): string[] => {
+    const names: string[] = [];
+    if (isMultiLevel) {
+      levelSlots.forEach((slotsStr, idx) => {
+        const count = parseInt(slotsStr, 10) || 0;
+        const prefix = levelToPrefix(idx + 1);
+        for (let i = 1; i <= count; i++) {
+          names.push(`${prefix}${i}`);
+        }
+      });
+    } else {
+      const count = parseInt(totalSlots, 10) || 0;
+      for (let i = 1; i <= count; i++) {
+        names.push(`A${i}`);
+      }
+    }
+    return names;
+  };
+
+  // When number of levels changes, resize levelSlots array
+  const handleLevelsChange = (val: string) => {
+    setNumberOfLevels(val);
+    const count = parseInt(val, 10) || 0;
+    setLevelSlots((prev) => {
+      const next = [...prev];
+      while (next.length < count) next.push("");
+      return next.slice(0, count);
+    });
+    setCustomNames([]);
+    setUseCustomNames(false);
+  };
+
+  // Update slot count for a specific level
+  const handleLevelSlotChange = (levelIdx: number, val: string) => {
+    setLevelSlots((prev) => {
+      const next = [...prev];
+      next[levelIdx] = val;
+      return next;
+    });
+    setCustomNames([]);
+  };
+
+  // Compute total from levelSlots
+  const multiTotalSlots = levelSlots.reduce(
+    (sum, s) => sum + (parseInt(s, 10) || 0),
+    0,
+  );
 
   useEffect(() => {
     getCurrentLocation();
@@ -190,9 +254,19 @@ export default function AddLocationScreen() {
       Alert.alert("Missing Info", "Please enter the number of levels.");
       return;
     }
+    if (isMultiLevel && levelSlots.some((s) => !s || parseInt(s, 10) < 1)) {
+      Alert.alert("Missing Info", "Please enter slots for each level.");
+      return;
+    }
 
     setLoading(true);
     try {
+      const parsedLevelSlots = isMultiLevel
+        ? levelSlots.map((s) => parseInt(s, 10))
+        : undefined;
+      const autoNames = getAutoNames();
+      const finalNames = useCustomNames ? customNames : autoNames;
+
       await hostService.createLocation({
         title: title.trim(),
         address: address || "No address",
@@ -200,20 +274,25 @@ export default function AddLocationScreen() {
         longitude: marker.longitude,
         basePricePerHour: parseFloat(pricePerHour),
         description: description.trim() || undefined,
-        totalSlots: totalSlots ? parseInt(totalSlots, 10) : undefined,
+        totalSlots: isMultiLevel
+          ? multiTotalSlots
+          : totalSlots ? parseInt(totalSlots, 10) : undefined,
         isMultiLevel: isMultiLevel || undefined,
-        numberOfLevels:
-          isMultiLevel && numberOfLevels
-            ? parseInt(numberOfLevels, 10)
-            : undefined,
+        numberOfLevels: isMultiLevel
+          ? parseInt(numberOfLevels, 10)
+          : undefined,
+        levelSlots: parsedLevelSlots,
+        spaceNames: finalNames.length > 0 ? finalNames : undefined,
         imageUrls: images.length > 0 ? images : undefined,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || "Failed to create location.";
+      const rawMsg = err?.response?.data?.message;
+      const msg = Array.isArray(rawMsg)
+        ? rawMsg.join(", ")
+        : rawMsg || "Failed to create location.";
       Alert.alert("Error", msg);
     } finally {
       setLoading(false);
@@ -351,6 +430,7 @@ export default function AddLocationScreen() {
                   keyboardType="numeric"
                 />
               </View>
+              {!isMultiLevel && (
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={styles.label}>Total Slots</Text>
                 <TextInput
@@ -362,6 +442,7 @@ export default function AddLocationScreen() {
                   keyboardType="numeric"
                 />
               </View>
+              )}
             </View>
           </View>
 
@@ -388,17 +469,157 @@ export default function AddLocationScreen() {
             </View>
 
             {isMultiLevel && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Number of Levels *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 3"
-                  placeholderTextColor="#C7C7CC"
-                  value={numberOfLevels}
-                  onChangeText={setNumberOfLevels}
-                  keyboardType="numeric"
-                />
-              </View>
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Number of Levels *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 3"
+                    placeholderTextColor="#C7C7CC"
+                    value={numberOfLevels}
+                    onChangeText={handleLevelsChange}
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                {levelSlots.length > 0 && (
+                  <View style={styles.levelSlotsSection}>
+                    <Text style={styles.label}>Slots Per Level *</Text>
+                    {levelSlots.map((val, idx) => (
+                      <View key={idx} style={styles.levelSlotRow}>
+                        <View style={styles.levelBadge}>
+                          <MaterialIcons name="layers" size={14} color="#fff" />
+                          <Text style={styles.levelBadgeText}>
+                            {levelToPrefix(idx + 1)}
+                          </Text>
+                        </View>
+                        <Text style={styles.levelLabel}>Floor {idx + 1}</Text>
+                        <TextInput
+                          style={styles.levelSlotInput}
+                          placeholder="Slots"
+                          placeholderTextColor="#C7C7CC"
+                          value={val}
+                          onChangeText={(v) => handleLevelSlotChange(idx, v)}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {multiTotalSlots > 0 && (
+                  <View style={styles.computedTotal}>
+                    <MaterialIcons name="info-outline" size={16} color="#11796F" />
+                    <Text style={styles.computedTotalText}>
+                      Total: {multiTotalSlots} slots across {levelSlots.length} levels
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Naming section — shown when there are slots */}
+            {(isMultiLevel ? multiTotalSlots > 0 : parseInt(totalSlots, 10) > 0) && (
+              <>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <MaterialIcons name="edit" size={20} color="#11796F" />
+                    <View>
+                      <Text style={styles.switchLabel}>Custom Names</Text>
+                      <Text style={styles.switchHint}>
+                        Name each space yourself instead of auto (A1, B1...)
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={useCustomNames}
+                    onValueChange={(val) => {
+                      setUseCustomNames(val);
+                      if (val) {
+                        setCustomNames(getAutoNames());
+                      }
+                    }}
+                    trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
+                    thumbColor={useCustomNames ? "#11796F" : "#fff"}
+                  />
+                </View>
+
+                {useCustomNames && (
+                  <View style={styles.namesList}>
+                    {(() => {
+                      const autoNames = getAutoNames();
+                      let globalIdx = 0;
+                      if (isMultiLevel) {
+                        return levelSlots.map((slotsStr, lvlIdx) => {
+                          const count = parseInt(slotsStr, 10) || 0;
+                          const startIdx = globalIdx;
+                          globalIdx += count;
+                          return (
+                            <View key={lvlIdx} style={{ gap: 6 }}>
+                              <Text style={styles.namesFloorLabel}>
+                                Floor {lvlIdx + 1}
+                              </Text>
+                              <View style={styles.namesGrid}>
+                                {Array.from({ length: count }, (_, i) => {
+                                  const idx = startIdx + i;
+                                  return (
+                                    <TextInput
+                                      key={idx}
+                                      style={styles.nameInput}
+                                      placeholder={autoNames[idx]}
+                                      placeholderTextColor="#C7C7CC"
+                                      value={customNames[idx] || ""}
+                                      onChangeText={(v) => {
+                                        setCustomNames((prev) => {
+                                          const next = [...prev];
+                                          while (next.length <= idx) next.push("");
+                                          next[idx] = v;
+                                          return next;
+                                        });
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          );
+                        });
+                      }
+                      const count = parseInt(totalSlots, 10) || 0;
+                      return (
+                        <View style={styles.namesGrid}>
+                          {Array.from({ length: count }, (_, i) => (
+                            <TextInput
+                              key={i}
+                              style={styles.nameInput}
+                              placeholder={autoNames[i]}
+                              placeholderTextColor="#C7C7CC"
+                              value={customNames[i] || ""}
+                              onChangeText={(v) => {
+                                setCustomNames((prev) => {
+                                  const next = [...prev];
+                                  while (next.length <= i) next.push("");
+                                  next[i] = v;
+                                  return next;
+                                });
+                              }}
+                            />
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                )}
+
+                {!useCustomNames && (
+                  <View style={styles.namePreview}>
+                    <Text style={styles.namePreviewLabel}>Auto-generated names:</Text>
+                    <Text style={styles.namePreviewText} numberOfLines={3}>
+                      {getAutoNames().join(", ")}
+                    </Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
 
@@ -629,6 +850,108 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8E8E93",
     marginTop: 2,
+  },
+  computedTotal: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#E8F5F3",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  computedTotalText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#11796F",
+  },
+
+  // Level slots
+  levelSlotsSection: { gap: 8 },
+  levelSlotRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  levelBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#11796F",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  levelBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  levelLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1A1A2E",
+  },
+  levelSlotInput: {
+    width: 70,
+    backgroundColor: "#F8FAFB",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 15,
+    color: "#1A1A2E",
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+
+  // Naming
+  namesList: { gap: 10 },
+  namesFloorLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#11796F",
+    marginLeft: 4,
+  },
+  namesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  nameInput: {
+    width: 64,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: "#1A1A2E",
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  namePreview: {
+    backgroundColor: "#F8FAFB",
+    borderRadius: 10,
+    padding: 12,
+    gap: 4,
+  },
+  namePreviewLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  namePreviewText: {
+    fontSize: 13,
+    color: "#1A1A2E",
+    fontWeight: "500",
   },
 
   // Images

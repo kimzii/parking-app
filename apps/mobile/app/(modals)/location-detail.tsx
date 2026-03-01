@@ -16,6 +16,8 @@ import { hostService } from "../../src/services/hosts";
 interface ParkingSpace {
   id: string;
   slotNumber: number;
+  name: string | null;
+  levelNumber: number | null;
   status: "AVAILABLE" | "OCCUPIED" | "DISABLED";
   isActive: boolean;
   reservations: { id: string; status: string }[];
@@ -204,33 +206,89 @@ export default function LocationDetailScreen() {
         </View>
 
         {spaces.length > 0 ? (
-          <View style={styles.spacesGrid}>
-            {spaces
-              .sort((a, b) => a.slotNumber - b.slotNumber)
-              .map((space) => {
-                const slotConfig = SLOT_STATUS_CONFIG[space.status];
-                const hasActiveReservation = space.reservations?.length > 0;
-                return (
-                  <View
-                    key={space.id}
-                    style={[
-                      styles.spaceSlot,
-                      { backgroundColor: slotConfig.bg, borderColor: slotConfig.color },
-                    ]}
-                  >
-                    <MaterialIcons name={slotConfig.icon} size={20} color={slotConfig.color} />
-                    <Text style={[styles.slotNumber, { color: slotConfig.color }]}>
-                      {space.slotNumber}
-                    </Text>
-                    {hasActiveReservation && (
-                      <View style={styles.activeIndicator}>
-                        <MaterialIcons name="directions-car" size={10} color="#fff" />
+          (() => {
+            const hasLevels = spaces.some((s) => s.levelNumber != null);
+            if (hasLevels) {
+              const levelMap = new Map<number, ParkingSpace[]>();
+              spaces.forEach((s) => {
+                const lvl = s.levelNumber ?? 0;
+                if (!levelMap.has(lvl)) levelMap.set(lvl, []);
+                levelMap.get(lvl)!.push(s);
+              });
+              const sortedLevels = [...levelMap.keys()].sort((a, b) => a - b);
+              return (
+                <View style={{ gap: 16 }}>
+                  {sortedLevels.map((level) => {
+                    const levelSpaces = levelMap.get(level)!;
+                    const levelAvail = levelSpaces.filter((s) => s.status === "AVAILABLE").length;
+                    return (
+                      <View key={level} style={{ gap: 8 }}>
+                        <View style={styles.floorHeader}>
+                          <MaterialIcons name="layers" size={16} color="#11796F" />
+                          <Text style={styles.floorTitle}>Floor {level}</Text>
+                          <Text style={styles.floorCount}>
+                            {levelAvail}/{levelSpaces.length} available
+                          </Text>
+                        </View>
+                        <View style={styles.spacesGrid}>
+                          {levelSpaces.map((space) => {
+                            const slotConfig = SLOT_STATUS_CONFIG[space.status];
+                            const hasActiveReservation = space.reservations?.length > 0;
+                            return (
+                              <View
+                                key={space.id}
+                                style={[
+                                  styles.spaceSlot,
+                                  { backgroundColor: slotConfig.bg, borderColor: slotConfig.color },
+                                ]}
+                              >
+                                <MaterialIcons name={slotConfig.icon} size={20} color={slotConfig.color} />
+                                <Text style={[styles.slotNumber, { color: slotConfig.color }]}>
+                                  {space.name || space.slotNumber}
+                                </Text>
+                                {hasActiveReservation && (
+                                  <View style={styles.activeIndicator}>
+                                    <MaterialIcons name="directions-car" size={10} color="#fff" />
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
                       </View>
-                    )}
-                  </View>
-                );
-              })}
-          </View>
+                    );
+                  })}
+                </View>
+              );
+            }
+            return (
+              <View style={styles.spacesGrid}>
+                {spaces.map((space) => {
+                  const slotConfig = SLOT_STATUS_CONFIG[space.status];
+                  const hasActiveReservation = space.reservations?.length > 0;
+                  return (
+                    <View
+                      key={space.id}
+                      style={[
+                        styles.spaceSlot,
+                        { backgroundColor: slotConfig.bg, borderColor: slotConfig.color },
+                      ]}
+                    >
+                      <MaterialIcons name={slotConfig.icon} size={20} color={slotConfig.color} />
+                      <Text style={[styles.slotNumber, { color: slotConfig.color }]}>
+                        {space.name || space.slotNumber}
+                      </Text>
+                      {hasActiveReservation && (
+                        <View style={styles.activeIndicator}>
+                          <MaterialIcons name="directions-car" size={10} color="#fff" />
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()
         ) : (
           <View style={styles.noSpaces}>
             <MaterialIcons name="grid-off" size={40} color="#8E8E93" />
@@ -396,6 +454,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#F57C00",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  // Floor headers
+  floorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  floorTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#11796F",
+  },
+  floorCount: {
+    fontSize: 12,
+    color: "#8E8E93",
+    fontWeight: "600",
+    marginLeft: "auto",
   },
 
   // No Spaces
