@@ -1,6 +1,28 @@
 import api from "./api";
+import * as SecureStore from "expo-secure-store";
 
 export const hostService = {
+  uploadImages: async (imageUris: string[]): Promise<string[]> => {
+    const formData = new FormData();
+    for (const uri of imageUris) {
+      const filename = uri.split("/").pop() || "photo.jpg";
+      const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
+      const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+      formData.append("files", {
+        uri,
+        name: filename,
+        type: mimeType,
+      } as any);
+    }
+    const token = await SecureStore.getItemAsync("accessToken");
+    const res = await api.post("/hosts/upload-images", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data.urls;
+  },
   becomeHost: async () => {
     const res = await api.post("/hosts/become");
     return res.data;

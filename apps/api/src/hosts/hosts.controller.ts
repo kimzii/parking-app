@@ -10,6 +10,9 @@ import {
   UseGuards,
   Req,
   ParseUUIDPipe,
+  UploadedFiles,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -27,13 +30,78 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleName } from '@prisma/client';
 import type { AuthenticatedRequest } from '../users/types/request.type';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('Hosts')
 @ApiBearerAuth()
 @Controller('hosts')
 @UseGuards(JwtAuthGuard)
 export class HostsController {
-  constructor(private readonly hostsService: HostsService) {}
+  private readonly s3: S3Client;
+  private readonly bucket: string;
+  private readonly region: string;
+
+  constructor(
+    private readonly hostsService: HostsService,
+    private readonly configService: ConfigService,
+  ) {
+    const region = this.configService.get<string>('AWS_REGION');
+    const bucket = this.configService.get<string>('AWS_S3_BUCKET');
+    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.configService.get<string>(
+      'AWS_SECRET_ACCESS_KEY',
+    );
+
+    if (!region || !bucket || !accessKeyId || !secretAccessKey) {
+      throw new Error('AWS environment variables are not configured properly');
+    }
+
+    this.region = region;
+    this.bucket = bucket;
+    this.s3 = new S3Client({
+      region,
+      credentials: { accessKeyId, secretAccessKey },
+    });
+  }
+
+  // Upload parking location images to S3
+  @Post('upload-images')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.HOST)
+  @UseInterceptors(FilesInterceptor('files', 5))
+  @ApiOperation({ summary: 'Upload parking location images to S3' })
+  @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
+  async uploadImages(
+    @UploadedFiles()
+    files: Array<{ originalname: string; buffer: Buffer; mimetype: string }>,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+
+    const urls: string[] = [];
+    for (const file of files) {
+      const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
+      const key = `parking-images/${uuidv4()}.${fileExt}`;
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ACL: 'public-read',
+        }),
+      );
+      urls.push(
+        `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`,
+      );
+    }
+
+    return { urls };
+  }
 
   // Public: Browse approved parking locations (any logged-in user)
   @Get('parking/nearby')

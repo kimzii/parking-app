@@ -214,10 +214,7 @@ export default function AddLocationScreen() {
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your camera.",
-      );
+      Alert.alert("Permission Required", "Please allow access to your camera.");
       return;
     }
 
@@ -261,6 +258,12 @@ export default function AddLocationScreen() {
 
     setLoading(true);
     try {
+      // Upload images to S3 first
+      let uploadedImageUrls: string[] | undefined;
+      if (images.length > 0) {
+        uploadedImageUrls = await hostService.uploadImages(images);
+      }
+
       const parsedLevelSlots = isMultiLevel
         ? levelSlots.map((s) => parseInt(s, 10))
         : undefined;
@@ -276,14 +279,14 @@ export default function AddLocationScreen() {
         description: description.trim() || undefined,
         totalSlots: isMultiLevel
           ? multiTotalSlots
-          : totalSlots ? parseInt(totalSlots, 10) : undefined,
+          : totalSlots
+            ? parseInt(totalSlots, 10)
+            : undefined,
         isMultiLevel: isMultiLevel || undefined,
-        numberOfLevels: isMultiLevel
-          ? parseInt(numberOfLevels, 10)
-          : undefined,
+        numberOfLevels: isMultiLevel ? parseInt(numberOfLevels, 10) : undefined,
         levelSlots: parsedLevelSlots,
         spaceNames: finalNames.length > 0 ? finalNames : undefined,
-        imageUrls: images.length > 0 ? images : undefined,
+        imageUrls: uploadedImageUrls,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
@@ -324,11 +327,7 @@ export default function AddLocationScreen() {
             />
             {searchQuery ? (
               <TouchableOpacity onPress={handleSearch}>
-                <MaterialIcons
-                  name="arrow-forward"
-                  size={20}
-                  color="#11796F"
-                />
+                <MaterialIcons name="arrow-forward" size={20} color="#11796F" />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -364,11 +363,7 @@ export default function AddLocationScreen() {
               {locating ? (
                 <ActivityIndicator size="small" color="#11796F" />
               ) : (
-                <MaterialIcons
-                  name="my-location"
-                  size={22}
-                  color="#11796F"
-                />
+                <MaterialIcons name="my-location" size={22} color="#11796F" />
               )}
             </TouchableOpacity>
             {!marker && (
@@ -431,17 +426,17 @@ export default function AddLocationScreen() {
                 />
               </View>
               {!isMultiLevel && (
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Total Slots</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="10"
-                  placeholderTextColor="#C7C7CC"
-                  value={totalSlots}
-                  onChangeText={setTotalSlots}
-                  keyboardType="numeric"
-                />
-              </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Total Slots</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="10"
+                    placeholderTextColor="#C7C7CC"
+                    value={totalSlots}
+                    onChangeText={setTotalSlots}
+                    keyboardType="numeric"
+                  />
+                </View>
               )}
             </View>
           </View>
@@ -509,9 +504,14 @@ export default function AddLocationScreen() {
 
                 {multiTotalSlots > 0 && (
                   <View style={styles.computedTotal}>
-                    <MaterialIcons name="info-outline" size={16} color="#11796F" />
+                    <MaterialIcons
+                      name="info-outline"
+                      size={16}
+                      color="#11796F"
+                    />
                     <Text style={styles.computedTotalText}>
-                      Total: {multiTotalSlots} slots across {levelSlots.length} levels
+                      Total: {multiTotalSlots} slots across {levelSlots.length}{" "}
+                      levels
                     </Text>
                   </View>
                 )}
@@ -519,7 +519,9 @@ export default function AddLocationScreen() {
             )}
 
             {/* Naming section — shown when there are slots */}
-            {(isMultiLevel ? multiTotalSlots > 0 : parseInt(totalSlots, 10) > 0) && (
+            {(isMultiLevel
+              ? multiTotalSlots > 0
+              : parseInt(totalSlots, 10) > 0) && (
               <>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
@@ -572,7 +574,8 @@ export default function AddLocationScreen() {
                                       onChangeText={(v) => {
                                         setCustomNames((prev) => {
                                           const next = [...prev];
-                                          while (next.length <= idx) next.push("");
+                                          while (next.length <= idx)
+                                            next.push("");
                                           next[idx] = v;
                                           return next;
                                         });
@@ -613,7 +616,9 @@ export default function AddLocationScreen() {
 
                 {!useCustomNames && (
                   <View style={styles.namePreview}>
-                    <Text style={styles.namePreviewLabel}>Auto-generated names:</Text>
+                    <Text style={styles.namePreviewLabel}>
+                      Auto-generated names:
+                    </Text>
                     <Text style={styles.namePreviewText} numberOfLines={3}>
                       {getAutoNames().join(", ")}
                     </Text>
@@ -700,11 +705,7 @@ export default function AddLocationScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <MaterialIcons
-                  name="add-location-alt"
-                  size={22}
-                  color="#fff"
-                />
+                <MaterialIcons name="add-location-alt" size={22} color="#fff" />
                 <Text style={styles.submitButtonText}>Add Parking Space</Text>
               </>
             )}
