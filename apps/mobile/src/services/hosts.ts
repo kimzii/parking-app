@@ -94,6 +94,9 @@ export const hostService = {
     spaceNames?: string[];
     imageUrls?: string[];
     proofOfResidenceUrl?: string;
+    openTime?: string;
+    closeTime?: string;
+    is24Hours?: boolean;
   }) => {
     const res = await api.post("/hosts/locations", data);
     return res.data;

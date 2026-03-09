@@ -133,4 +133,28 @@ export class CreateParkingLocationDto {
   @IsOptional()
   @IsString()
   proofOfResidenceUrl?: string;
+
+  @ApiPropertyOptional({
+    example: '08:00',
+    description: 'Opening time in HH:mm format (24-hour)',
+  })
+  @IsOptional()
+  @IsString()
+  openTime?: string;
+
+  @ApiPropertyOptional({
+    example: '22:00',
+    description: 'Closing time in HH:mm format (24-hour)',
+  })
+  @IsOptional()
+  @IsString()
+  closeTime?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Whether the parking location is open 24 hours',
+  })
+  @IsOptional()
+  @IsBoolean()
+  is24Hours?: boolean;
 }

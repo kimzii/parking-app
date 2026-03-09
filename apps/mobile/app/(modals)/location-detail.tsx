@@ -6,11 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
 
 interface ParkingSpace {
@@ -36,6 +36,10 @@ interface LocationDetail {
   availableSlots: number | null;
   isMultiLevel: boolean;
   numberOfLevels: number | null;
+  openTime: string | null;
+  closeTime: string | null;
+  is24Hours: boolean;
+  proofOfResidenceUrl: string | null;
   createdAt: string;
   images: { id: string; imageUrl: string; isPrimary: boolean }[];
   parkingSpaces: ParkingSpace[];
@@ -43,9 +47,24 @@ interface LocationDetail {
 }
 
 const STATUS_CONFIG = {
-  APPROVED: { label: "Approved", color: "#4CAF50", bg: "#E8F5E9", icon: "check-circle" as const },
-  PENDING: { label: "Pending", color: "#F57C00", bg: "#FFF3E0", icon: "schedule" as const },
-  REJECTED: { label: "Rejected", color: "#E53935", bg: "#FFEBEE", icon: "cancel" as const },
+  APPROVED: {
+    label: "Approved",
+    color: "#4CAF50",
+    bg: "#E8F5E9",
+    icon: "check-circle" as const,
+  },
+  PENDING: {
+    label: "Pending",
+    color: "#F57C00",
+    bg: "#FFF3E0",
+    icon: "schedule" as const,
+  },
+  REJECTED: {
+    label: "Rejected",
+    color: "#E53935",
+    bg: "#FFEBEE",
+    icon: "cancel" as const,
+  },
 };
 
 const SLOT_STATUS_CONFIG = {
@@ -87,7 +106,11 @@ export default function LocationDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
-        <ActivityIndicator size="large" color="#11796F" style={{ marginTop: 60 }} />
+        <ActivityIndicator
+          size="large"
+          color="#11796F"
+          style={{ marginTop: 60 }}
+        />
       </SafeAreaView>
     );
   }
@@ -115,9 +138,41 @@ export default function LocationDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#11796F" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#11796F"
+          />
         }
       >
+        {/* Image Gallery */}
+        {location.images && location.images.length > 0 && (
+          <View style={styles.imageGallery}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.imageScrollContent}
+            >
+              {location.images
+                .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+                .map((img, index) => (
+                  <View key={img.id} style={styles.galleryImageWrapper}>
+                    <Image
+                      source={{ uri: img.imageUrl }}
+                      style={styles.galleryImage}
+                      contentFit="cover"
+                    />
+                    {img.isPrimary && (
+                      <View style={styles.primaryImageBadge}>
+                        <Text style={styles.primaryImageText}>Primary</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Location Info Card */}
         <View style={styles.infoCard}>
           <View style={styles.titleRow}>
@@ -130,8 +185,14 @@ export default function LocationDetailScreen() {
                 </Text>
               </View>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: locStatus.bg }]}>
-              <MaterialIcons name={locStatus.icon} size={14} color={locStatus.color} />
+            <View
+              style={[styles.statusBadge, { backgroundColor: locStatus.bg }]}
+            >
+              <MaterialIcons
+                name={locStatus.icon}
+                size={14}
+                color={locStatus.color}
+              />
               <Text style={[styles.statusText, { color: locStatus.color }]}>
                 {locStatus.label}
               </Text>
@@ -154,7 +215,9 @@ export default function LocationDetailScreen() {
             <View style={styles.infoItem}>
               <MaterialIcons name="event-seat" size={18} color="#11796F" />
               <Text style={styles.infoLabel}>Total Slots</Text>
-              <Text style={styles.infoValue}>{location.totalSlots ?? spaces.length}</Text>
+              <Text style={styles.infoValue}>
+                {location.totalSlots ?? spaces.length}
+              </Text>
             </View>
             {location.isMultiLevel && (
               <>
@@ -162,26 +225,66 @@ export default function LocationDetailScreen() {
                 <View style={styles.infoItem}>
                   <MaterialIcons name="layers" size={18} color="#11796F" />
                   <Text style={styles.infoLabel}>Levels</Text>
-                  <Text style={styles.infoValue}>{location.numberOfLevels ?? "-"}</Text>
+                  <Text style={styles.infoValue}>
+                    {location.numberOfLevels ?? "-"}
+                  </Text>
                 </View>
               </>
             )}
           </View>
         </View>
 
+        {/* Operating Hours */}
+        <View style={styles.operatingHoursCard}>
+          <View style={styles.operatingHoursHeader}>
+            <MaterialIcons name="schedule" size={18} color="#11796F" />
+            <Text style={styles.operatingHoursTitle}>Operating Hours</Text>
+          </View>
+          {location.is24Hours ? (
+            <View style={styles.hours24Badge}>
+              <MaterialIcons name="all-inclusive" size={16} color="#11796F" />
+              <Text style={styles.hours24Text}>Open 24 Hours</Text>
+            </View>
+          ) : location.openTime && location.closeTime ? (
+            <View style={styles.hoursDisplay}>
+              <View style={styles.timeBlock}>
+                <MaterialIcons name="wb-sunny" size={16} color="#F57C00" />
+                <Text style={styles.timeValue}>{location.openTime}</Text>
+                <Text style={styles.timeLabel}>Opens</Text>
+              </View>
+              <View style={styles.timeSeparator}>
+                <MaterialIcons name="arrow-forward" size={16} color="#8E8E93" />
+              </View>
+              <View style={styles.timeBlock}>
+                <MaterialIcons name="nights-stay" size={16} color="#5C6BC0" />
+                <Text style={styles.timeValue}>{location.closeTime}</Text>
+                <Text style={styles.timeLabel}>Closes</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.noHoursText}>Hours not specified</Text>
+          )}
+        </View>
+
         {/* Spaces Summary */}
         <Text style={styles.sectionTitle}>Parking Spaces Overview</Text>
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { borderLeftColor: "#4CAF50" }]}>
-            <Text style={[styles.summaryCount, { color: "#4CAF50" }]}>{availableCount}</Text>
+            <Text style={[styles.summaryCount, { color: "#4CAF50" }]}>
+              {availableCount}
+            </Text>
             <Text style={styles.summaryLabel}>Available</Text>
           </View>
           <View style={[styles.summaryCard, { borderLeftColor: "#F57C00" }]}>
-            <Text style={[styles.summaryCount, { color: "#F57C00" }]}>{occupiedCount}</Text>
+            <Text style={[styles.summaryCount, { color: "#F57C00" }]}>
+              {occupiedCount}
+            </Text>
             <Text style={styles.summaryLabel}>Occupied</Text>
           </View>
           <View style={[styles.summaryCard, { borderLeftColor: "#9E9E9E" }]}>
-            <Text style={[styles.summaryCount, { color: "#9E9E9E" }]}>{disabledCount}</Text>
+            <Text style={[styles.summaryCount, { color: "#9E9E9E" }]}>
+              {disabledCount}
+            </Text>
             <Text style={styles.summaryLabel}>Disabled</Text>
           </View>
         </View>
@@ -191,15 +294,21 @@ export default function LocationDetailScreen() {
           <Text style={styles.sectionTitle}>Slot Map</Text>
           <View style={styles.legendItems}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: "#4CAF50" }]} />
+              <View
+                style={[styles.legendDot, { backgroundColor: "#4CAF50" }]}
+              />
               <Text style={styles.legendText}>Free</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: "#F57C00" }]} />
+              <View
+                style={[styles.legendDot, { backgroundColor: "#F57C00" }]}
+              />
               <Text style={styles.legendText}>Busy</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: "#9E9E9E" }]} />
+              <View
+                style={[styles.legendDot, { backgroundColor: "#9E9E9E" }]}
+              />
               <Text style={styles.legendText}>Off</Text>
             </View>
           </View>
@@ -220,11 +329,17 @@ export default function LocationDetailScreen() {
                 <View style={{ gap: 16 }}>
                   {sortedLevels.map((level) => {
                     const levelSpaces = levelMap.get(level)!;
-                    const levelAvail = levelSpaces.filter((s) => s.status === "AVAILABLE").length;
+                    const levelAvail = levelSpaces.filter(
+                      (s) => s.status === "AVAILABLE",
+                    ).length;
                     return (
                       <View key={level} style={{ gap: 8 }}>
                         <View style={styles.floorHeader}>
-                          <MaterialIcons name="layers" size={16} color="#11796F" />
+                          <MaterialIcons
+                            name="layers"
+                            size={16}
+                            color="#11796F"
+                          />
                           <Text style={styles.floorTitle}>Floor {level}</Text>
                           <Text style={styles.floorCount}>
                             {levelAvail}/{levelSpaces.length} available
@@ -233,22 +348,39 @@ export default function LocationDetailScreen() {
                         <View style={styles.spacesGrid}>
                           {levelSpaces.map((space) => {
                             const slotConfig = SLOT_STATUS_CONFIG[space.status];
-                            const hasActiveReservation = space.reservations?.length > 0;
+                            const hasActiveReservation =
+                              space.reservations?.length > 0;
                             return (
                               <View
                                 key={space.id}
                                 style={[
                                   styles.spaceSlot,
-                                  { backgroundColor: slotConfig.bg, borderColor: slotConfig.color },
+                                  {
+                                    backgroundColor: slotConfig.bg,
+                                    borderColor: slotConfig.color,
+                                  },
                                 ]}
                               >
-                                <MaterialIcons name={slotConfig.icon} size={20} color={slotConfig.color} />
-                                <Text style={[styles.slotNumber, { color: slotConfig.color }]}>
+                                <MaterialIcons
+                                  name={slotConfig.icon}
+                                  size={20}
+                                  color={slotConfig.color}
+                                />
+                                <Text
+                                  style={[
+                                    styles.slotNumber,
+                                    { color: slotConfig.color },
+                                  ]}
+                                >
                                   {space.name || space.slotNumber}
                                 </Text>
                                 {hasActiveReservation && (
                                   <View style={styles.activeIndicator}>
-                                    <MaterialIcons name="directions-car" size={10} color="#fff" />
+                                    <MaterialIcons
+                                      name="directions-car"
+                                      size={10}
+                                      color="#fff"
+                                    />
                                   </View>
                                 )}
                               </View>
@@ -271,16 +403,29 @@ export default function LocationDetailScreen() {
                       key={space.id}
                       style={[
                         styles.spaceSlot,
-                        { backgroundColor: slotConfig.bg, borderColor: slotConfig.color },
+                        {
+                          backgroundColor: slotConfig.bg,
+                          borderColor: slotConfig.color,
+                        },
                       ]}
                     >
-                      <MaterialIcons name={slotConfig.icon} size={20} color={slotConfig.color} />
-                      <Text style={[styles.slotNumber, { color: slotConfig.color }]}>
+                      <MaterialIcons
+                        name={slotConfig.icon}
+                        size={20}
+                        color={slotConfig.color}
+                      />
+                      <Text
+                        style={[styles.slotNumber, { color: slotConfig.color }]}
+                      >
                         {space.name || space.slotNumber}
                       </Text>
                       {hasActiveReservation && (
                         <View style={styles.activeIndicator}>
-                          <MaterialIcons name="directions-car" size={10} color="#fff" />
+                          <MaterialIcons
+                            name="directions-car"
+                            size={10}
+                            color="#fff"
+                          />
                         </View>
                       )}
                     </View>
@@ -303,7 +448,8 @@ export default function LocationDetailScreen() {
         <View style={styles.metaCard}>
           <MaterialIcons name="schedule" size={16} color="#8E8E93" />
           <Text style={styles.metaText}>
-            Created {new Date(location.createdAt).toLocaleDateString("en-US", {
+            Created{" "}
+            {new Date(location.createdAt).toLocaleDateString("en-US", {
               year: "numeric",
               month: "long",
               day: "numeric",
@@ -494,4 +640,104 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   metaText: { fontSize: 12, color: "#8E8E93" },
+
+  // Image Gallery
+  imageGallery: {
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 0,
+  },
+  imageScrollContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  galleryImageWrapper: {
+    width: 280,
+    height: 180,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+  },
+  primaryImageBadge: {
+    position: "absolute",
+    bottom: 8,
+    left: 8,
+    backgroundColor: "rgba(17,121,111,0.9)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  primaryImageText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  // Operating Hours
+  operatingHoursCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  operatingHoursHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  operatingHoursTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1A1A2E",
+  },
+  hours24Badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#E8F5F3",
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  hours24Text: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#11796F",
+  },
+  hoursDisplay: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  timeBlock: {
+    alignItems: "center",
+    gap: 4,
+  },
+  timeValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1A1A2E",
+  },
+  timeLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#8E8E93",
+  },
+  timeSeparator: {
+    paddingHorizontal: 8,
+  },
+  noHoursText: {
+    fontSize: 13,
+    color: "#8E8E93",
+    textAlign: "center",
+  },
 });

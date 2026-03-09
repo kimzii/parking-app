@@ -52,6 +52,9 @@ export default function AddLocationScreen() {
   const [proofOfResidence, setProofOfResidence] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [is24Hours, setIs24Hours] = useState(false);
+  const [openTime, setOpenTime] = useState("08:00");
+  const [closeTime, setCloseTime] = useState("22:00");
 
   // Convert level number to letter prefix: 1→A, 2→B, ..., 26→Z
   const levelToPrefix = (level: number): string => {
@@ -347,6 +350,9 @@ export default function AddLocationScreen() {
         spaceNames: finalNames.length > 0 ? finalNames : undefined,
         imageUrls: uploadedImageUrls,
         proofOfResidenceUrl,
+        is24Hours: is24Hours || undefined,
+        openTime: is24Hours ? undefined : openTime,
+        closeTime: is24Hours ? undefined : closeTime,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
@@ -685,6 +691,82 @@ export default function AddLocationScreen() {
                   </View>
                 )}
               </>
+            )}
+          </View>
+
+          {/* Time Availability Section */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Operating Hours</Text>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchInfo}>
+                <MaterialIcons name="schedule" size={20} color="#11796F" />
+                <View>
+                  <Text style={styles.switchLabel}>Open 24 Hours</Text>
+                  <Text style={styles.switchHint}>
+                    Enable if parking is available all day
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={is24Hours}
+                onValueChange={setIs24Hours}
+                trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
+                thumbColor={is24Hours ? "#11796F" : "#fff"}
+              />
+            </View>
+
+            {!is24Hours && (
+              <View style={styles.timeRow}>
+                <View style={styles.timeInputGroup}>
+                  <Text style={styles.timeLabel}>Opens at</Text>
+                  <View style={styles.timeInputWrapper}>
+                    <MaterialIcons name="wb-sunny" size={18} color="#11796F" />
+                    <TextInput
+                      style={styles.timeInput}
+                      placeholder="08:00"
+                      placeholderTextColor="#C7C7CC"
+                      value={openTime}
+                      onChangeText={setOpenTime}
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={5}
+                    />
+                  </View>
+                </View>
+                <View style={styles.timeDivider}>
+                  <MaterialIcons
+                    name="arrow-forward"
+                    size={20}
+                    color="#8E8E93"
+                  />
+                </View>
+                <View style={styles.timeInputGroup}>
+                  <Text style={styles.timeLabel}>Closes at</Text>
+                  <View style={styles.timeInputWrapper}>
+                    <MaterialIcons
+                      name="nights-stay"
+                      size={18}
+                      color="#11796F"
+                    />
+                    <TextInput
+                      style={styles.timeInput}
+                      placeholder="22:00"
+                      placeholderTextColor="#C7C7CC"
+                      value={closeTime}
+                      onChangeText={setCloseTime}
+                      keyboardType="numbers-and-punctuation"
+                      maxLength={5}
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {is24Hours && (
+              <View style={styles.allDayBadge}>
+                <MaterialIcons name="all-inclusive" size={18} color="#11796F" />
+                <Text style={styles.allDayText}>Available 24/7</Text>
+              </View>
             )}
           </View>
 
@@ -1193,6 +1275,58 @@ const styles = StyleSheet.create({
   requiredImageText: {
     fontSize: 12,
     fontWeight: "600",
+    color: "#11796F",
+  },
+
+  // Time availability
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  timeInputGroup: {
+    flex: 1,
+    gap: 6,
+  },
+  timeLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#8E8E93",
+    marginLeft: 4,
+  },
+  timeInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  timeInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A2E",
+    textAlign: "center",
+  },
+  timeDivider: {
+    paddingTop: 20,
+  },
+  allDayBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#E8F5F3",
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  allDayText: {
+    fontSize: 15,
+    fontWeight: "700",
     color: "#11796F",
   },
 

@@ -142,6 +142,9 @@ model ParkingLocation {
   isMultiLevel          Boolean                @default(false) @map("is_multi_level")
   numberOfLevels        Int?                   @map("number_of_levels")
   proofOfResidenceUrl   String?                @map("proof_of_residence_url")
+  openTime              String?                @map("open_time")
+  closeTime             String?                @map("close_time")
+  is24Hours             Boolean                @default(false) @map("is_24_hours")
   createdAt             DateTime               @default(now()) @map("created_at")
   images                ParkingLocationImage[]
   host                  Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
