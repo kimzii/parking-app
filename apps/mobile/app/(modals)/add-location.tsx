@@ -49,6 +49,7 @@ export default function AddLocationScreen() {
   const [useCustomNames, setUseCustomNames] = useState(false);
   const [customNames, setCustomNames] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
+  const [proofOfResidence, setProofOfResidence] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
 
@@ -231,6 +232,43 @@ export default function AddLocationScreen() {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const pickProofOfResidence = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: false,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets?.[0]) {
+      setProofOfResidence(result.assets[0].uri);
+    }
+  };
+
+  const takeProofOfResidencePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please allow access to your camera.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets?.[0]) {
+      setProofOfResidence(result.assets[0].uri);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       Alert.alert("Missing Info", "Please enter a title.");
@@ -245,6 +283,20 @@ export default function AddLocationScreen() {
     }
     if (!pricePerHour || parseFloat(pricePerHour) <= 0) {
       Alert.alert("Missing Info", "Please enter a valid price per hour.");
+      return;
+    }
+    if (images.length < 3) {
+      Alert.alert(
+        "Required Images",
+        "Please upload at least 3 images: Entrance, Parking Spot, and Street View.",
+      );
+      return;
+    }
+    if (!proofOfResidence) {
+      Alert.alert(
+        "Missing Proof of Residence",
+        "Please upload a proof of residence document.",
+      );
       return;
     }
     if (isMultiLevel && (!numberOfLevels || parseInt(numberOfLevels, 10) < 1)) {
@@ -262,6 +314,13 @@ export default function AddLocationScreen() {
       let uploadedImageUrls: string[] | undefined;
       if (images.length > 0) {
         uploadedImageUrls = await hostService.uploadImages(images);
+      }
+
+      // Upload proof of residence to S3
+      let proofOfResidenceUrl: string | undefined;
+      if (proofOfResidence) {
+        proofOfResidenceUrl =
+          await hostService.uploadProofOfResidence(proofOfResidence);
       }
 
       const parsedLevelSlots = isMultiLevel
@@ -287,6 +346,7 @@ export default function AddLocationScreen() {
         levelSlots: parsedLevelSlots,
         spaceNames: finalNames.length > 0 ? finalNames : undefined,
         imageUrls: uploadedImageUrls,
+        proofOfResidenceUrl,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
@@ -630,11 +690,26 @@ export default function AddLocationScreen() {
 
           {/* Images Section */}
           <View style={styles.formSection}>
-            <Text style={styles.sectionTitle}>Photos</Text>
+            <Text style={styles.sectionTitle}>Photos *</Text>
             <Text style={styles.photoHint}>
-              Add up to 5 photos of your parking space. The first image will be
-              the primary photo.
+              Upload clear photos for verification. Required images:
             </Text>
+            <View style={styles.requiredImagesList}>
+              <View style={styles.requiredImageItem}>
+                <MaterialIcons name="door-front" size={16} color="#11796F" />
+                <Text style={styles.requiredImageText}>Entrance view</Text>
+              </View>
+              <View style={styles.requiredImageItem}>
+                <MaterialIcons name="local-parking" size={16} color="#11796F" />
+                <Text style={styles.requiredImageText}>
+                  Actual parking spot
+                </Text>
+              </View>
+              <View style={styles.requiredImageItem}>
+                <MaterialIcons name="streetview" size={16} color="#11796F" />
+                <Text style={styles.requiredImageText}>Street view</Text>
+              </View>
+            </View>
 
             <View style={styles.imagesRow}>
               {images.map((uri, index) => (
@@ -657,7 +732,6 @@ export default function AddLocationScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-
               {images.length < 5 && (
                 <View style={styles.addImageButtons}>
                   <TouchableOpacity
@@ -687,6 +761,82 @@ export default function AddLocationScreen() {
                 </View>
               )}
             </View>
+          </View>
+
+          {/* Proof of Residence Section */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Proof of Residence *</Text>
+            <Text style={styles.photoHint}>
+              Upload a document proving you own or have authority over this
+              property.
+            </Text>
+            <View style={styles.proofExamplesList}>
+              <Text style={styles.proofExamplesTitle}>Accepted documents:</Text>
+              <Text style={styles.proofExampleItem}>
+                • Utility bill (electricity, water, internet)
+              </Text>
+              <Text style={styles.proofExampleItem}>
+                • Property tax receipt
+              </Text>
+              <Text style={styles.proofExampleItem}>• Land title or deed</Text>
+              <Text style={styles.proofExampleItem}>
+                • Lease agreement (if renting)
+              </Text>
+              <Text style={styles.proofExampleItem}>
+                • Barangay clearance or certificate
+              </Text>
+            </View>
+
+            {proofOfResidence ? (
+              <View style={styles.proofImageContainer}>
+                <View style={styles.imageWrapper}>
+                  <Image
+                    source={{ uri: proofOfResidence }}
+                    style={styles.imagePreview}
+                    contentFit="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.removeImageBtn}
+                    onPress={() => setProofOfResidence(null)}
+                  >
+                    <MaterialIcons name="close" size={14} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.proofUploadedBadge}>
+                  <MaterialIcons
+                    name="check-circle"
+                    size={16}
+                    color="#11796F"
+                  />
+                  <Text style={styles.proofUploadedText}>
+                    Document uploaded
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.addImageButtons}>
+                <TouchableOpacity
+                  style={styles.addImageBtn}
+                  onPress={pickProofOfResidence}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name="photo-library"
+                    size={24}
+                    color="#11796F"
+                  />
+                  <Text style={styles.addImageText}>Gallery</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.addImageBtn}
+                  onPress={takeProofOfResidencePhoto}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons name="camera-alt" size={24} color="#11796F" />
+                  <Text style={styles.addImageText}>Camera</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -1020,6 +1170,68 @@ const styles = StyleSheet.create({
   },
   addImageText: {
     fontSize: 11,
+    fontWeight: "600",
+    color: "#11796F",
+  },
+
+  // Required images list
+  requiredImagesList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
+  requiredImageItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5F3",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  requiredImageText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#11796F",
+  },
+
+  // Proof of residence
+  proofExamplesList: {
+    backgroundColor: "#FFF9E6",
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "#F5E6B8",
+  },
+  proofExamplesTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8B7A2B",
+    marginBottom: 4,
+  },
+  proofExampleItem: {
+    fontSize: 13,
+    color: "#6B5E1F",
+    lineHeight: 20,
+  },
+  proofImageContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  proofUploadedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E8F5F3",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  proofUploadedText: {
+    fontSize: 13,
     fontWeight: "600",
     color: "#11796F",
   },

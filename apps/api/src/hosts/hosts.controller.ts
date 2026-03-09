@@ -103,6 +103,38 @@ export class HostsController {
     return { urls };
   }
 
+  // Upload proof of residence document to S3
+  @Post('upload-proof-of-residence')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.HOST)
+  @UseInterceptors(FilesInterceptor('files', 1))
+  @ApiOperation({ summary: 'Upload proof of residence document to S3' })
+  @ApiResponse({ status: 201, description: 'Document uploaded successfully' })
+  async uploadProofOfResidence(
+    @UploadedFiles()
+    files: Array<{ originalname: string; buffer: Buffer; mimetype: string }>,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const file = files[0];
+    const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
+    const key = `proof-of-residence/${uuidv4()}.${fileExt}`;
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: 'public-read',
+      }),
+    );
+    const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+
+    return { url };
+  }
+
   // Public: Browse approved parking locations (any logged-in user)
   @Get('parking/nearby')
   @ApiOperation({ summary: 'Get approved parking locations for browsing' })

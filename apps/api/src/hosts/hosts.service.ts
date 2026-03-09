@@ -147,8 +147,13 @@ export class HostsService {
       );
     }
 
-    const { imageUrls, levelSlots, spaceNames, ...locationData } =
-      createLocationDto;
+    const {
+      imageUrls,
+      levelSlots,
+      spaceNames,
+      proofOfResidenceUrl,
+      ...locationData
+    } = createLocationDto;
 
     // Compute total slots
     const isMulti =
@@ -167,6 +172,7 @@ export class HostsService {
           hostId: host.id,
           availableSlots: computedTotalSlots || 1,
           status: 'PENDING',
+          proofOfResidenceUrl,
         },
       });
 

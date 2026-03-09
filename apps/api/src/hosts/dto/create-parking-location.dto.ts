@@ -117,10 +117,20 @@ export class CreateParkingLocationDto {
       'https://example.com/image1.jpg',
       'https://example.com/image2.jpg',
     ],
-    description: 'Array of image URLs for the parking location',
+    description:
+      'Array of image URLs for the parking location (Entrance, Parking Spot, Street View)',
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   imageUrls?: string[];
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/proof-of-residence.jpg',
+    description:
+      'URL of proof of residence document (e.g., utility bill, property tax, land title)',
+  })
+  @IsOptional()
+  @IsString()
+  proofOfResidenceUrl?: string;
 }

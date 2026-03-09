@@ -23,6 +23,25 @@ export const hostService = {
     });
     return res.data.urls;
   },
+  uploadProofOfResidence: async (imageUri: string): Promise<string> => {
+    const formData = new FormData();
+    const filename = imageUri.split("/").pop() || "proof.jpg";
+    const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
+    const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+    formData.append("files", {
+      uri: imageUri,
+      name: filename,
+      type: mimeType,
+    } as any);
+    const token = await SecureStore.getItemAsync("accessToken");
+    const res = await api.post("/hosts/upload-proof-of-residence", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.data.url;
+  },
   becomeHost: async () => {
     const res = await api.post("/hosts/become");
     return res.data;
@@ -74,6 +93,7 @@ export const hostService = {
     levelSlots?: number[];
     spaceNames?: string[];
     imageUrls?: string[];
+    proofOfResidenceUrl?: string;
   }) => {
     const res = await api.post("/hosts/locations", data);
     return res.data;

@@ -128,23 +128,24 @@ model Host {
 }
 
 model ParkingLocation {
-  id               String                 @id @default(uuid()) @db.Uuid
-  hostId           String                 @map("host_id") @db.Uuid
-  title            String
-  description      String?
-  address          String
-  latitude         Decimal                @db.Decimal(10, 7)
-  longitude        Decimal                @db.Decimal(10, 7)
-  basePricePerHour Decimal                @map("base_price_per_hour") @db.Decimal(10, 2)
-  status           LocationStatus         @default(PENDING)
-  totalSlots       Int?                   @map("total_slots")
-  availableSlots   Int?                   @map("available_slots")
-  isMultiLevel     Boolean                @default(false) @map("is_multi_level")
-  numberOfLevels   Int?                   @map("number_of_levels")
-  createdAt        DateTime               @default(now()) @map("created_at")
-  images           ParkingLocationImage[]
-  host             Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
-  parkingSpaces    ParkingSpace[]
+  id                    String                 @id @default(uuid()) @db.Uuid
+  hostId                String                 @map("host_id") @db.Uuid
+  title                 String
+  description           String?
+  address               String
+  latitude              Decimal                @db.Decimal(10, 7)
+  longitude             Decimal                @db.Decimal(10, 7)
+  basePricePerHour      Decimal                @map("base_price_per_hour") @db.Decimal(10, 2)
+  status                LocationStatus         @default(PENDING)
+  totalSlots            Int?                   @map("total_slots")
+  availableSlots        Int?                   @map("available_slots")
+  isMultiLevel          Boolean                @default(false) @map("is_multi_level")
+  numberOfLevels        Int?                   @map("number_of_levels")
+  proofOfResidenceUrl   String?                @map("proof_of_residence_url")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  images                ParkingLocationImage[]
+  host                  Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  parkingSpaces         ParkingSpace[]
 
   @@map("parking_locations")
 }
