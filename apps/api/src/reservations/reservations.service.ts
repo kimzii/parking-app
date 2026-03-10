@@ -409,7 +409,37 @@ export class ReservationsService {
       );
     }
 
-    return reservation;
+    const typedReservation =
+      reservation as unknown as ReservationWithSpaceAndLocation;
+    const space = typedReservation.parkingSpace;
+    const location = space.parkingLocation;
+
+    return {
+      id: typedReservation.id,
+      qrCode: typedReservation.qrCode,
+      status: typedReservation.status,
+      startTime: typedReservation.startTime,
+      endTime: typedReservation.endTime,
+      actualEntryTime: toNullable(typedReservation.actualEntryTime),
+      actualExitTime: toNullable(typedReservation.actualExitTime),
+      totalAmount: typedReservation.totalAmount,
+      escrowAmount: toNullable(typedReservation.escrowAmount),
+      finalAmount: toNullable(typedReservation.finalAmount),
+      overtimeAmount: toNullable(typedReservation.overtimeAmount),
+      parkingSpace: {
+        id: space.id,
+        slotNumber: space.slotNumber,
+        name: space.name,
+      },
+      parkingLocation: {
+        id: location.id,
+        title: location.title,
+        address: location.address,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        images: location.images,
+      },
+    };
   }
 
   /**
