@@ -244,11 +244,13 @@ export default function HostReservationDetailScreen() {
                 {startTime.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 })}{" "}
                 —{" "}
                 {endTime.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 })}
               </Text>
             </View>
@@ -261,7 +263,7 @@ export default function HostReservationDetailScreen() {
                     Checked in{" "}
                     {new Date(reservation.actualEntryTime).toLocaleTimeString(
                       [],
-                      { hour: "2-digit", minute: "2-digit" },
+                      { hour: "2-digit", minute: "2-digit", hour12: true },
                     )}
                   </Text>
                 </View>
@@ -276,7 +278,7 @@ export default function HostReservationDetailScreen() {
                     Checked out{" "}
                     {new Date(reservation.actualExitTime).toLocaleTimeString(
                       [],
-                      { hour: "2-digit", minute: "2-digit" },
+                      { hour: "2-digit", minute: "2-digit", hour12: true },
                     )}
                   </Text>
                 </View>

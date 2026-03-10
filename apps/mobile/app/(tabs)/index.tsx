@@ -298,11 +298,13 @@ export default function HomeScreen() {
                       {start.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
+                        hour12: true,
                       })}{" "}
                       -{" "}
                       {end.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
+                        hour12: true,
                       })}
                     </Text>
                   </View>
@@ -484,7 +486,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingBottom: 100,
     gap: 12,
   },
   spotCard: {

@@ -94,7 +94,7 @@ export default function ReservationQRScreen() {
     if (!reservation) return;
     try {
       await Share.share({
-        message: `My parking reservation at ${reservation.parkingLocation.title}\nSlot: ${reservation.parkingSpace.slotNumber}\nDate: ${new Date(reservation.startTime).toLocaleDateString()}\nTime: ${new Date(reservation.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${new Date(reservation.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}\nQR Code: ${reservation.qrCode}`,
+        message: `My parking reservation at ${reservation.parkingLocation.title}\nSlot: ${reservation.parkingSpace.slotNumber}\nDate: ${new Date(reservation.startTime).toLocaleDateString()}\nTime: ${new Date(reservation.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })} - ${new Date(reservation.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}\nQR Code: ${reservation.qrCode}`,
       });
     } catch (err) {
       console.error("Failed to share:", err);
@@ -255,6 +255,7 @@ export default function ReservationQRScreen() {
                 {startTime.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 })}
               </Text>
             </View>
@@ -265,6 +266,7 @@ export default function ReservationQRScreen() {
                 {endTime.toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 })}
               </Text>
             </View>
@@ -275,7 +277,7 @@ export default function ReservationQRScreen() {
                 <Text style={[styles.timeValue, { color: "#4CAF50" }]}>
                   {new Date(reservation.actualEntryTime).toLocaleTimeString(
                     [],
-                    { hour: "2-digit", minute: "2-digit" },
+                    { hour: "2-digit", minute: "2-digit", hour12: true },
                   )}
                 </Text>
               </View>
@@ -288,6 +290,7 @@ export default function ReservationQRScreen() {
                   {new Date(reservation.actualExitTime).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
+                    hour12: true,
                   })}
                 </Text>
               </View>

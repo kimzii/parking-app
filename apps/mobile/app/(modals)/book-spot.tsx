@@ -145,7 +145,7 @@ export default function BookSpotScreen() {
     // Confirm booking
     Alert.alert(
       "Confirm Reservation",
-      `Book ${spot?.title}\nSlot: ${selectedSpace.name || selectedSpace.slotNumber}\nDate: ${start.toLocaleDateString()}\nTime: ${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}\n\nTotal: ₱${calculatedFee.totalAmount.toFixed(2)}\n\nThis amount will be deducted from your wallet.`,
+      `Book ${spot?.title}\nSlot: ${selectedSpace.name || selectedSpace.slotNumber}\nDate: ${start.toLocaleDateString()}\nTime: ${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}\n\nTotal: ₱${calculatedFee.totalAmount.toFixed(2)}\n\nThis amount will be deducted from your wallet.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -189,7 +189,11 @@ export default function BookSpotScreen() {
       day: "numeric",
     });
   const formatTime = (d: Date) =>
-    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
 
   if (loading) {
     return (

@@ -235,11 +235,13 @@ export default function HostHomeScreen() {
               {startTime.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
+                hour12: true,
               })}{" "}
               -{" "}
               {endTime.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
+                hour12: true,
               })}
             </Text>
           </View>
@@ -251,6 +253,7 @@ export default function HostHomeScreen() {
                 {new Date(item.actualEntryTime).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 })}
               </Text>
             </View>
@@ -263,6 +266,7 @@ export default function HostHomeScreen() {
                 {new Date(item.actualExitTime).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: true,
                 })}
               </Text>
             </View>

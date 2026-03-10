@@ -168,11 +168,13 @@ export default function MyReservationsScreen() {
               {startTime.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
+                hour12: true,
               })}{" "}
               -{" "}
               {endTime.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
+                hour12: true,
               })}
             </Text>
             <MaterialIcons name="chevron-right" size={20} color="#C7C7CC" />

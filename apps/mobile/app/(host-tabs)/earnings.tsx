@@ -145,6 +145,7 @@ export default function EarningsScreen() {
             {date.toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
+              hour12: true,
             })}
           </Text>
         </View>
