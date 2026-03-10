@@ -11,7 +11,7 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useLocalSearchParams, useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
@@ -74,7 +74,9 @@ const SLOT_COLORS = {
   DISABLED: { bg: "#F5F5F5", color: "#9E9E9E" },
 };
 
-function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
+function decodePolyline(
+  encoded: string,
+): { latitude: number; longitude: number }[] {
   const points: { latitude: number; longitude: number }[] = [];
   let index = 0;
   let lat = 0;
@@ -171,9 +173,7 @@ export default function SpotDetailScreen() {
         if (data.routes?.length > 0) {
           const route = data.routes[0];
           const leg = route.legs[0];
-          const routeCoords = decodePolyline(
-            route.overview_polyline.points,
-          );
+          const routeCoords = decodePolyline(route.overview_polyline.points);
           setDirections({
             distance: leg.distance.text,
             duration: leg.duration.text,
@@ -277,10 +277,7 @@ export default function SpotDetailScreen() {
                 {spot.images.map((_, i) => (
                   <View
                     key={i}
-                    style={[
-                      styles.dot,
-                      i === activeImage && styles.dotActive,
-                    ]}
+                    style={[styles.dot, i === activeImage && styles.dotActive]}
                   />
                 ))}
               </View>
@@ -354,7 +351,9 @@ export default function SpotDetailScreen() {
                 <MaterialIcons name="local-parking" size={20} color="#11796F" />
                 <Text style={styles.infoLabel}>Type</Text>
                 <Text style={styles.infoValue}>
-                  {spot.isMultiLevel ? "Multi-Level Parking" : "Single-Level Parking"}
+                  {spot.isMultiLevel
+                    ? "Multi-Level Parking"
+                    : "Single-Level Parking"}
                 </Text>
               </View>
               {spot.isMultiLevel && (
@@ -362,7 +361,8 @@ export default function SpotDetailScreen() {
                   <MaterialIcons name="layers" size={20} color="#1976D2" />
                   <Text style={styles.infoLabel}>Floors</Text>
                   <Text style={[styles.infoValue, { color: "#1976D2" }]}>
-                    {spot.numberOfLevels ?? "-"} {spot.numberOfLevels === 1 ? "Floor" : "Floors"}
+                    {spot.numberOfLevels ?? "-"}{" "}
+                    {spot.numberOfLevels === 1 ? "Floor" : "Floors"}
                   </Text>
                 </View>
               )}
@@ -459,11 +459,7 @@ export default function SpotDetailScreen() {
                   </View>
                   <View style={styles.dirInfoDivider} />
                   <View style={styles.dirInfoItem}>
-                    <MaterialIcons
-                      name="schedule"
-                      size={20}
-                      color="#11796F"
-                    />
+                    <MaterialIcons name="schedule" size={20} color="#11796F" />
                     <View>
                       <Text style={styles.dirInfoValue}>
                         {directions.duration}
@@ -492,9 +488,7 @@ export default function SpotDetailScreen() {
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="navigation" size={18} color="#fff" />
-                <Text style={styles.openMapsBtnText}>
-                  Open in Google Maps
-                </Text>
+                <Text style={styles.openMapsBtnText}>Open in Google Maps</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -535,26 +529,22 @@ export default function SpotDetailScreen() {
                 <View style={styles.legendRow}>
                   <View style={styles.legendItem}>
                     <View
-                      style={[
-                        styles.legendDot,
-                        { backgroundColor: "#4CAF50" },
-                      ]}
+                      style={[styles.legendDot, { backgroundColor: "#4CAF50" }]}
                     />
                     <Text style={styles.legendText}>{available} Free</Text>
                   </View>
                   <View style={styles.legendItem}>
                     <View
-                      style={[
-                        styles.legendDot,
-                        { backgroundColor: "#F57C00" },
-                      ]}
+                      style={[styles.legendDot, { backgroundColor: "#F57C00" }]}
                     />
                     <Text style={styles.legendText}>{occupied} Busy</Text>
                   </View>
                 </View>
               </View>
               {(() => {
-                const hasLevels = spot.parkingSpaces.some((s) => s.levelNumber != null);
+                const hasLevels = spot.parkingSpaces.some(
+                  (s) => s.levelNumber != null,
+                );
                 if (hasLevels) {
                   const levelMap = new Map<number, ParkingSpace[]>();
                   spot.parkingSpaces.forEach((s) => {
@@ -562,17 +552,27 @@ export default function SpotDetailScreen() {
                     if (!levelMap.has(lvl)) levelMap.set(lvl, []);
                     levelMap.get(lvl)!.push(s);
                   });
-                  const sortedLevels = [...levelMap.keys()].sort((a, b) => a - b);
+                  const sortedLevels = [...levelMap.keys()].sort(
+                    (a, b) => a - b,
+                  );
                   return (
                     <View style={{ gap: 14 }}>
                       {sortedLevels.map((level) => {
                         const levelSpaces = levelMap.get(level)!;
-                        const levelAvail = levelSpaces.filter((s) => s.status === "AVAILABLE").length;
+                        const levelAvail = levelSpaces.filter(
+                          (s) => s.status === "AVAILABLE",
+                        ).length;
                         return (
                           <View key={level} style={{ gap: 8 }}>
                             <View style={styles.floorHeader}>
-                              <MaterialIcons name="layers" size={16} color="#11796F" />
-                              <Text style={styles.floorTitle}>Floor {level}</Text>
+                              <MaterialIcons
+                                name="layers"
+                                size={16}
+                                color="#11796F"
+                              />
+                              <Text style={styles.floorTitle}>
+                                Floor {level}
+                              </Text>
                               <Text style={styles.floorCount}>
                                 {levelAvail}/{levelSpaces.length} available
                               </Text>
@@ -585,7 +585,10 @@ export default function SpotDetailScreen() {
                                     key={space.id}
                                     style={[
                                       styles.slotCell,
-                                      { backgroundColor: colors.bg, borderColor: colors.color },
+                                      {
+                                        backgroundColor: colors.bg,
+                                        borderColor: colors.color,
+                                      },
                                     ]}
                                   >
                                     <MaterialIcons
@@ -599,7 +602,12 @@ export default function SpotDetailScreen() {
                                       size={18}
                                       color={colors.color}
                                     />
-                                    <Text style={[styles.slotNumber, { color: colors.color }]}>
+                                    <Text
+                                      style={[
+                                        styles.slotNumber,
+                                        { color: colors.color },
+                                      ]}
+                                    >
                                       {space.name || space.slotNumber}
                                     </Text>
                                   </View>
@@ -621,7 +629,10 @@ export default function SpotDetailScreen() {
                           key={space.id}
                           style={[
                             styles.slotCell,
-                            { backgroundColor: colors.bg, borderColor: colors.color },
+                            {
+                              backgroundColor: colors.bg,
+                              borderColor: colors.color,
+                            },
                           ]}
                         >
                           <MaterialIcons
@@ -635,7 +646,9 @@ export default function SpotDetailScreen() {
                             size={18}
                             color={colors.color}
                           />
-                          <Text style={[styles.slotNumber, { color: colors.color }]}>
+                          <Text
+                            style={[styles.slotNumber, { color: colors.color }]}
+                          >
                             {space.name || space.slotNumber}
                           </Text>
                         </View>
@@ -648,6 +661,31 @@ export default function SpotDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Book Now Button */}
+      {available > 0 && (
+        <View style={styles.footer}>
+          <View style={styles.footerPrice}>
+            <Text style={styles.footerPriceLabel}>From</Text>
+            <Text style={styles.footerPriceValue}>
+              ₱{Number(spot.basePricePerHour).toFixed(2)}/hr
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.bookBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/(modals)/book-spot",
+                params: { id: spot.id },
+              })
+            }
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="event-available" size={20} color="#fff" />
+            <Text style={styles.bookBtnText}>Book Now</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -695,7 +733,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
 
   // Title Section
@@ -935,4 +973,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
+
+  // Footer/Book Button
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    padding: 16,
+    paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  footerPrice: { gap: 2 },
+  footerPriceLabel: { fontSize: 12, color: "#8E8E93", fontWeight: "600" },
+  footerPriceValue: { fontSize: 20, fontWeight: "800", color: "#1A1A2E" },
+  bookBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#11796F",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

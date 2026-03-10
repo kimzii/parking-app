@@ -11,6 +11,7 @@ import { HostsModule } from './hosts/hosts.module';
 import { DriversModule } from './drivers/drivers.module';
 import { WalletModule } from './wallet/wallet.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DriversModule,
     WalletModule,
     DashboardModule,
+    ReservationsModule,
   ],
   controllers: [AppController],
   providers: [

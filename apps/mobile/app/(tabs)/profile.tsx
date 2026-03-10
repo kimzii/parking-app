@@ -88,17 +88,28 @@ export default function ProfileScreen() {
               {loading
                 ? "Loading..."
                 : user
-                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"
+                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+                    "-"
                   : "-"}
             </Text>
 
-            <View style={[styles.verificationBadge, isDriverVerified && styles.verifiedBadge]}>
+            <View
+              style={[
+                styles.verificationBadge,
+                isDriverVerified && styles.verifiedBadge,
+              ]}
+            >
               <MaterialIcons
                 name={isDriverVerified ? "verified" : "info-outline"}
                 size={14}
                 color={isDriverVerified ? "#fff" : "rgba(255,255,255,0.7)"}
               />
-              <Text style={[styles.badgeText, isDriverVerified && styles.verifiedText]}>
+              <Text
+                style={[
+                  styles.badgeText,
+                  isDriverVerified && styles.verifiedText,
+                ]}
+              >
                 {isDriverVerified ? "Verified Driver" : "Not Verified"}
               </Text>
             </View>
@@ -142,8 +153,12 @@ export default function ProfileScreen() {
                     <MaterialIcons name="home-work" size={20} color="#11796F" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.switchHostTitle}>Switch to Host View</Text>
-                    <Text style={styles.switchHostSubtitle}>Manage your parking spaces</Text>
+                    <Text style={styles.switchHostTitle}>
+                      Switch to Host View
+                    </Text>
+                    <Text style={styles.switchHostSubtitle}>
+                      Manage your parking spaces
+                    </Text>
                   </View>
                   <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
                 </TouchableOpacity>
@@ -168,13 +183,26 @@ export default function ProfileScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.menuItemLeft}>
-                    <View style={[styles.menuIconBg, { backgroundColor: "#F2F2F7" }]}>
-                      <MaterialIcons name="settings" size={18} color="#8E8E93" />
+                    <View
+                      style={[
+                        styles.menuIconBg,
+                        { backgroundColor: "#F2F2F7" },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="settings"
+                        size={18}
+                        color="#8E8E93"
+                      />
                     </View>
                     <Text style={styles.menuItemLabel}>Settings</Text>
                   </View>
                   <MaterialIcons
-                    name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"}
+                    name={
+                      settingsOpen
+                        ? "keyboard-arrow-up"
+                        : "keyboard-arrow-right"
+                    }
                     size={22}
                     color="#8E8E93"
                   />
@@ -187,7 +215,11 @@ export default function ProfileScreen() {
                       onPress={() => router.push("/(modals)/forgot-password")}
                       activeOpacity={0.7}
                     >
-                      <MaterialIcons name="lock-reset" size={18} color="#8E8E93" />
+                      <MaterialIcons
+                        name="lock-reset"
+                        size={18}
+                        color="#8E8E93"
+                      />
                       <Text style={styles.dropdownText}>Forgot Password</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -208,8 +240,19 @@ export default function ProfileScreen() {
                   iconColor="#8E8E93"
                   onPress={() => router.push("/(modals)/my-vehicles")}
                 />
-                <MenuItem label="Parking History" icon="history" iconBg="#F2F2F7" iconColor="#8E8E93" />
-                <MenuItem label="Help & Support" icon="help-outline" iconBg="#F2F2F7" iconColor="#8E8E93" />
+                <MenuItem
+                  label="My Reservations"
+                  icon="confirmation-number"
+                  iconBg="#E8F5F3"
+                  iconColor="#11796F"
+                  onPress={() => router.push("/(modals)/my-reservations")}
+                />
+                <MenuItem
+                  label="Help & Support"
+                  icon="help-outline"
+                  iconBg="#F2F2F7"
+                  iconColor="#8E8E93"
+                />
               </View>
             </View>
 
@@ -268,7 +311,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   verifiedBadge: { backgroundColor: "rgba(255,255,255,0.25)" },
-  badgeText: { fontSize: 12, fontWeight: "600", color: "rgba(255,255,255,0.7)" },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.7)",
+  },
   verifiedText: { color: "#fff" },
   editProfileBtn: {
     flexDirection: "row",

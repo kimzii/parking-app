@@ -188,8 +188,15 @@ model Reservation {
   endTime             DateTime           @map("end_time")
   status              ReservationStatus  @default(PENDING)
   qrCode              String?            @map("qr_code")
+  qrCodeSecret        String?            @map("qr_code_secret")
   totalAmount         Decimal            @map("total_amount") @db.Decimal(10, 2)
+  escrowAmount        Decimal?           @map("escrow_amount") @db.Decimal(10, 2)
+  finalAmount         Decimal?           @map("final_amount") @db.Decimal(10, 2)
+  overtimeAmount      Decimal?           @map("overtime_amount") @db.Decimal(10, 2)
+  actualEntryTime     DateTime?          @map("actual_entry_time")
+  actualExitTime      DateTime?          @map("actual_exit_time")
   walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
+  hostPayoutId        String?            @map("host_payout_id") @db.Uuid
   createdAt           DateTime           @default(now()) @map("created_at")
   payments            Payment[]
   driver              Driver             @relation(fields: [driverId], references: [id])
@@ -198,6 +205,7 @@ model Reservation {
   reviews             Review[]
 
   @@index([parkingSpaceId, startTime, endTime])
+  @@index([qrCode])
   @@map("reservations")
 }
 

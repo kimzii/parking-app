@@ -5,9 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { hostService } from "../../src/services/hosts";
 import { userService } from "../../src/services/user";
@@ -35,7 +36,8 @@ export default function HostHomeScreen() {
           ]);
           setStats(statsData);
           setUserName(
-            `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() || "Host",
+            `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() ||
+              "Host",
           );
         } catch (err) {
           console.error("Failed to fetch host data:", err);
@@ -108,8 +110,14 @@ export default function HostHomeScreen() {
               <View style={styles.statsGrid}>
                 {statCards.map((card) => (
                   <View key={card.label} style={styles.statCard}>
-                    <View style={[styles.statIconBg, { backgroundColor: card.bg }]}>
-                      <MaterialIcons name={card.icon} size={22} color={card.color} />
+                    <View
+                      style={[styles.statIconBg, { backgroundColor: card.bg }]}
+                    >
+                      <MaterialIcons
+                        name={card.icon}
+                        size={22}
+                        color={card.color}
+                      />
                     </View>
                     <Text style={styles.statValue}>{card.value}</Text>
                     <Text style={styles.statLabel}>{card.label}</Text>
@@ -117,13 +125,54 @@ export default function HostHomeScreen() {
                 ))}
               </View>
 
+              {/* Quick Actions */}
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={styles.scanBtn}
+                  onPress={() => router.push("/(modals)/scan-qr")}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons
+                    name="qr-code-scanner"
+                    size={28}
+                    color="#fff"
+                  />
+                  <Text style={styles.scanBtnText}>Scan QR</Text>
+                  <Text style={styles.scanBtnHint}>Check in/out drivers</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionCard}
+                  onPress={() => router.push("/(modals)/host-reservations")}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.actionIconBg,
+                      { backgroundColor: "#E3F2FD" },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="event-note"
+                      size={22}
+                      color="#1976D2"
+                    />
+                  </View>
+                  <Text style={styles.actionLabel}>Reservations</Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.tipCard}>
-                <MaterialIcons name="lightbulb-outline" size={22} color="#F57C00" />
+                <MaterialIcons
+                  name="lightbulb-outline"
+                  size={22}
+                  color="#F57C00"
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.tipTitle}>Get Started</Text>
                   <Text style={styles.tipText}>
-                    Head to the Spaces tab to add your first parking location and start
-                    earning.
+                    Head to the Spaces tab to add your first parking location
+                    and start earning.
                   </Text>
                 </View>
               </View>
@@ -244,5 +293,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#9E6D00",
     lineHeight: 18,
+  },
+  // Quick Actions
+  actionsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  scanBtn: {
+    flex: 1,
+    backgroundColor: "#11796F",
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  scanBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  scanBtnHint: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.7)",
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  actionIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A2E",
   },
 });
