@@ -243,7 +243,6 @@ export default function HostHomeScreen() {
       >
         <MaterialIcons name="qr-code-scanner" size={28} color="#fff" />
         <Text style={styles.scanBtnText}>Scan QR</Text>
-        <Text style={styles.scanBtnHint}>Check in/out drivers</Text>
       </TouchableOpacity>
 
       {/* Reservations Section Title */}
@@ -389,6 +388,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    flexDirection: "row",
   },
   scanBtnText: {
     fontSize: 16,
