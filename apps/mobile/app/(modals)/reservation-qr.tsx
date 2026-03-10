@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Alert,
   Share,
-  Linking,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -104,8 +103,15 @@ export default function ReservationQRScreen() {
 
   const openDirections = () => {
     if (!reservation) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${reservation.parkingLocation.latitude},${reservation.parkingLocation.longitude}`;
-    Linking.openURL(url);
+    router.push({
+      pathname: "/(modals)/navigate-to-spot",
+      params: {
+        lat: String(reservation.parkingLocation.latitude),
+        lng: String(reservation.parkingLocation.longitude),
+        title: reservation.parkingLocation.title,
+        address: reservation.parkingLocation.address,
+      },
+    });
   };
 
   if (loading) {
