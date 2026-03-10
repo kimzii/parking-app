@@ -30,8 +30,21 @@ export class UsersService {
         lastLoginAt: true,
         createdAt: true,
         userRoles: {
-          include: {
-            role: true,
+          select: {
+            status: true,
+            role: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        wallet: {
+          select: {
+            id: true,
+            balance: true,
+            status: true,
           },
         },
       },
@@ -43,6 +56,7 @@ export class UsersService {
 
     return {
       ...user,
+      walletBalance: user.wallet?.balance ?? 0,
       roles: user.userRoles.map((ur) => ur.role.name),
       roleStatuses: user.userRoles.map((ur) => ({
         role: ur.role.name,
@@ -151,8 +165,14 @@ export class UsersService {
           lastLoginAt: true,
           createdAt: true,
           userRoles: {
-            include: {
-              role: true,
+            select: {
+              status: true,
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -312,6 +332,129 @@ export class UsersService {
         hosts,
         admins,
       },
+    };
+  }
+
+  // Admin: Get user by ID with full profile details
+  async getUserById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        profilePicture: true,
+        emailVerified: true,
+        lastLoginAt: true,
+        createdAt: true,
+        userRoles: {
+          select: {
+            status: true,
+            role: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        driver: {
+          select: {
+            id: true,
+            licenseNumber: true,
+            licenseImageUrl: true,
+            vehicles: {
+              select: {
+                id: true,
+                plateNumber: true,
+                vehicleType: true,
+                brand: true,
+                model: true,
+                color: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+        host: {
+          select: {
+            id: true,
+            parkingLocations: {
+              select: {
+                id: true,
+                title: true,
+                address: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Fetch reservations separately if user is a driver
+    let reservations: {
+      id: string;
+      startTime: Date;
+      endTime: Date;
+      status: string;
+      totalAmount: number;
+      parkingLocation: { title: string; address: string } | null;
+    }[] = [];
+
+    if (user.driver) {
+      const driverReservations = await this.prisma.reservation.findMany({
+        where: { driverId: user.driver.id },
+        take: 15,
+        orderBy: { startTime: 'desc' },
+        select: {
+          id: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          totalAmount: true,
+          parkingSpace: {
+            select: {
+              parkingLocation: {
+                select: {
+                  title: true,
+                  address: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      reservations = driverReservations.map((r) => ({
+        id: r.id,
+        startTime: r.startTime,
+        endTime: r.endTime,
+        status: r.status,
+        totalAmount: r.totalAmount ? r.totalAmount.toNumber() : 0,
+        parkingLocation: r.parkingSpace?.parkingLocation || null,
+      }));
+    }
+
+    return {
+      ...user,
+      roles: user.userRoles.map((ur) => ur.role.name),
+      roleStatuses: user.userRoles.map((ur) => ({
+        role: ur.role.name,
+        status: ur.status,
+      })),
+      driver: user.driver
+        ? {
+            ...user.driver,
+            reservations,
+          }
+        : undefined,
     };
   }
 }

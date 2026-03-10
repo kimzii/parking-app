@@ -1,0 +1,1 @@
+This folder contains UI subcomponents migrated from the old components/ui directory.

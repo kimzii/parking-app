@@ -4,10 +4,8 @@ import {
   IsString,
   Matches,
   MinLength,
-  IsEnum,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { RoleName } from '@prisma/client';
 
 export class RegisterDto {
   @ApiProperty({
@@ -32,13 +30,4 @@ export class RegisterDto {
       'Password must contain uppercase, lowercase, number and special character',
   })
   password: string;
-
-  @ApiProperty({
-    example: 'DRIVER',
-    description: 'User role',
-    enum: RoleName,
-  })
-  @IsNotEmpty()
-  @IsEnum(RoleName, { message: 'Invalid role' })
-  role: RoleName;
 }

@@ -22,8 +22,8 @@ export class DriversService {
 
   // Apply as driver (create/update driver profile)
   async applyAsDriver(userId: string, createDriverDto: CreateDriverProfileDto) {
-    // Check if user has DRIVER role
-    const userRole = await this.prisma.userRole.findFirst({
+    // Check if user has DRIVER role, if not create it (e.g. HOST applying as driver)
+    let userRole = await this.prisma.userRole.findFirst({
       where: {
         userId,
         role: {
@@ -36,9 +36,22 @@ export class DriversService {
     });
 
     if (!userRole) {
-      throw new BadRequestException(
-        'User must have DRIVER role to apply as driver',
-      );
+      const driverRole = await this.prisma.role.findUnique({
+        where: { name: RoleName.DRIVER },
+      });
+      if (!driverRole) {
+        throw new BadRequestException('DRIVER role not found in system');
+      }
+      userRole = await this.prisma.userRole.create({
+        data: {
+          userId,
+          roleId: driverRole.id,
+          status: 'PENDING',
+        },
+        include: {
+          role: true,
+        },
+      });
     }
 
     // Check if driver profile already exists

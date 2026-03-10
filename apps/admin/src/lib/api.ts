@@ -1,6 +1,9 @@
 // apps/admin/src/lib/api.ts
 import axios from "axios";
 
+// Helper to check if we're in the browser
+const isBrowser = typeof window !== "undefined";
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
   headers: {
@@ -11,6 +14,11 @@ const api = axios.create({
 // Add token to requests
 api.interceptors.request.use(
   (config) => {
+    // Only access localStorage in the browser
+    if (!isBrowser) {
+      return config;
+    }
+
     // Don't add token for auth endpoints (login, register, etc.)
     const isAuthEndpoint =
       config.url?.includes("/auth/login") ||
@@ -38,7 +46,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Only handle redirects in the browser
     if (
+      isBrowser &&
       error.response?.status === 401 &&
       !window.location.pathname.includes("/login")
     ) {

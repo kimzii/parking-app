@@ -93,14 +93,68 @@ export class CreateParkingLocationDto {
   numberOfLevels?: number;
 
   @ApiPropertyOptional({
+    example: [5, 3, 8],
+    description:
+      'Slots per level as an array (e.g. [5,3,8] means level 1 has 5, level 2 has 3, level 3 has 8)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  levelSlots?: number[];
+
+  @ApiPropertyOptional({
+    example: ['A1', 'A2', 'B1', 'B2'],
+    description:
+      'Custom space names in order. If omitted, auto-generated (A1, A2, B1, B2...)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  spaceNames?: string[];
+
+  @ApiPropertyOptional({
     example: [
       'https://example.com/image1.jpg',
       'https://example.com/image2.jpg',
     ],
-    description: 'Array of image URLs for the parking location',
+    description:
+      'Array of image URLs for the parking location (Entrance, Parking Spot, Street View)',
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   imageUrls?: string[];
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/proof-of-residence.jpg',
+    description:
+      'URL of proof of residence document (e.g., utility bill, property tax, land title)',
+  })
+  @IsOptional()
+  @IsString()
+  proofOfResidenceUrl?: string;
+
+  @ApiPropertyOptional({
+    example: '08:00',
+    description: 'Opening time in HH:mm format (24-hour)',
+  })
+  @IsOptional()
+  @IsString()
+  openTime?: string;
+
+  @ApiPropertyOptional({
+    example: '22:00',
+    description: 'Closing time in HH:mm format (24-hour)',
+  })
+  @IsOptional()
+  @IsString()
+  closeTime?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Whether the parking location is open 24 hours',
+  })
+  @IsOptional()
+  @IsBoolean()
+  is24Hours?: boolean;
 }
