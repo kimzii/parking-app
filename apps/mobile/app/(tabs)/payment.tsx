@@ -11,26 +11,66 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { walletService } from "../../src/services/wallet";
+import { walletService, Transaction } from "../../src/services/wallet";
 import { userService } from "../../src/services/user";
+
+const SOURCE_CONFIG: Record<
+  string,
+  { label: string; icon: string; color: string; bg: string }
+> = {
+  TOP_UP: {
+    label: "Top Up",
+    icon: "add-circle",
+    color: "#4CAF50",
+    bg: "#E8F5E9",
+  },
+  RESERVATION_PAYMENT: {
+    label: "Booking Payment",
+    icon: "local-parking",
+    color: "#11796F",
+    bg: "#E8F5F3",
+  },
+  REFUND: {
+    label: "Refund",
+    icon: "replay",
+    color: "#F57C00",
+    bg: "#FFF3E0",
+  },
+  HOST_PAYOUT: {
+    label: "Withdrawal",
+    icon: "account-balance",
+    color: "#1976D2",
+    bg: "#E3F2FD",
+  },
+  ADMIN_ADJUSTMENT: {
+    label: "Adjustment",
+    icon: "tune",
+    color: "#8E8E93",
+    bg: "#F5F5F5",
+  },
+};
 
 export default function PaymentScreen() {
   const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDriverVerified, setIsDriverVerified] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const [balanceData, profile] = await Promise.all([
+      const [balanceData, profile, txns] = await Promise.all([
         walletService.getBalance(),
         userService.getProfile(),
+        walletService.getTransactions(30),
       ]);
       setBalance(Number(balanceData.balance ?? 0));
-      const verified = profile.roleStatuses?.some(
-        (rs: { role: string; status: string }) =>
-          rs.role === "DRIVER" && rs.status === "VERIFIED",
-      ) ?? false;
+      setTransactions(txns);
+      const verified =
+        profile.roleStatuses?.some(
+          (rs: { role: string; status: string }) =>
+            rs.role === "DRIVER" && rs.status === "VERIFIED",
+        ) ?? false;
       setIsDriverVerified(verified);
     } catch (err) {
       console.error("Failed to fetch payment data:", err);
@@ -42,6 +82,7 @@ export default function PaymentScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setLoading(true);
       fetchData();
     }, [fetchData]),
   );
@@ -51,32 +92,114 @@ export default function PaymentScreen() {
     fetchData();
   };
 
-  const quickActions = [
-    {
-      id: "top-up",
-      label: "Top Up",
-      icon: "add-circle-outline" as const,
-      color: "#11796F",
-      bg: "#E8F5F3",
-      onPress: () => router.push("/(modals)/top-up"),
-    },
-    {
-      id: "history",
-      label: "History",
-      icon: "receipt-long" as const,
-      color: "#F57C00",
-      bg: "#FFF3E0",
-      onPress: () => {},
-    },
-    {
-      id: "withdraw",
-      label: "Withdraw",
-      icon: "account-balance" as const,
-      color: "#1976D2",
-      bg: "#E3F2FD",
-      onPress: () => {},
-    },
-  ];
+  const renderTransaction = ({ item }: { item: Transaction }) => {
+    const config = SOURCE_CONFIG[item.source] ?? SOURCE_CONFIG.ADMIN_ADJUSTMENT;
+    const isCredit = item.type === "CREDIT";
+    const amount = Number(item.amount);
+    const date = new Date(item.createdAt);
+
+    return (
+      <View style={styles.txnCard}>
+        <View style={[styles.txnIconBg, { backgroundColor: config.bg }]}>
+          <MaterialIcons
+            name={config.icon as any}
+            size={20}
+            color={config.color}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.txnLabel}>{config.label}</Text>
+          <Text style={styles.txnDate}>
+            {date.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}{" "}
+            •{" "}
+            {date.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+        <Text
+          style={[
+            styles.txnAmount,
+            { color: isCredit ? "#4CAF50" : "#E53935" },
+          ]}
+        >
+          {isCredit ? "+" : "-"}₱{amount.toFixed(2)}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderHeader = () => (
+    <>
+      {/* Verification Warning */}
+      {!isDriverVerified && (
+        <TouchableOpacity
+          style={styles.verifyBanner}
+          onPress={() => router.push("/(modals)/driver-verification")}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="lock" size={20} color="#F57C00" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.verifyBannerTitle}>
+              Verify to unlock payments
+            </Text>
+            <Text style={styles.verifyBannerText}>
+              Top-up, withdraw, and transactions require driver verification.
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={22} color="#F57C00" />
+        </TouchableOpacity>
+      )}
+
+      {/* Balance Card */}
+      <View style={styles.balanceCard}>
+        <Text style={styles.balanceLabel}>Available Balance</Text>
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color="#11796F"
+            style={{ marginVertical: 8 }}
+          />
+        ) : (
+          <Text style={styles.balanceAmount}>₱{balance.toFixed(2)}</Text>
+        )}
+        <TouchableOpacity
+          style={[
+            styles.topUpButton,
+            !isDriverVerified && { backgroundColor: "#B0BEC5" },
+          ]}
+          onPress={() =>
+            isDriverVerified
+              ? router.push("/(modals)/top-up")
+              : router.push("/(modals)/driver-verification")
+          }
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="add" size={18} color="#fff" />
+          <Text style={styles.topUpButtonText}>Top Up</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Recent Transactions Title */}
+      <Text style={styles.sectionTitle}>Recent Transactions</Text>
+    </>
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIconBg}>
+        <MaterialIcons name="receipt-long" size={36} color="#11796F" />
+      </View>
+      <Text style={styles.emptyTitle}>No transactions yet</Text>
+      <Text style={styles.emptySubtitle}>
+        Your payment history will appear here
+      </Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
@@ -86,88 +209,30 @@ export default function PaymentScreen() {
       </View>
 
       <View style={styles.content}>
-        <FlatList
-          data={[]}
-          keyExtractor={() => ""}
-          renderItem={null}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#11796F"
-            />
-          }
-          ListHeaderComponent={
-            <>
-              {/* Verification Warning */}
-              {!isDriverVerified && (
-                <TouchableOpacity
-                  style={styles.verifyBanner}
-                  onPress={() => router.push("/(modals)/driver-verification")}
-                  activeOpacity={0.8}
-                >
-                  <MaterialIcons name="lock" size={20} color="#F57C00" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.verifyBannerTitle}>
-                      Verify to unlock payments
-                    </Text>
-                    <Text style={styles.verifyBannerText}>
-                      Top-up, withdraw, and transactions require driver
-                      verification.
-                    </Text>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={22} color="#F57C00" />
-                </TouchableOpacity>
-              )}
-
-              {/* Balance Card */}
-              <View style={styles.balanceCard}>
-                <Text style={styles.balanceLabel}>Available Balance</Text>
-                {loading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#11796F"
-                    style={{ marginVertical: 8 }}
-                  />
-                ) : (
-                  <Text style={styles.balanceAmount}>
-                    ₱{balance.toFixed(2)}
-                  </Text>
-                )}
-                <TouchableOpacity
-                  style={[styles.topUpButton, !isDriverVerified && { backgroundColor: "#B0BEC5" }]}
-                  onPress={() =>
-                    isDriverVerified
-                      ? router.push("/(modals)/top-up")
-                      : router.push("/(modals)/driver-verification")
-                  }
-                  activeOpacity={0.8}
-                >
-                  <MaterialIcons name="add" size={18} color="#fff" />
-                  <Text style={styles.topUpButtonText}>Top Up</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Recent Transactions Placeholder */}
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconBg}>
-                  <MaterialIcons
-                    name="receipt-long"
-                    size={36}
-                    color="#11796F"
-                  />
-                </View>
-                <Text style={styles.emptyTitle}>No transactions yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Your payment history will appear here
-                </Text>
-              </View>
-            </>
-          }
-        />
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#11796F"
+            style={{ marginTop: 40 }}
+          />
+        ) : (
+          <FlatList
+            data={transactions}
+            keyExtractor={(item) => item.id}
+            renderItem={renderTransaction}
+            ListHeaderComponent={renderHeader}
+            ListEmptyComponent={renderEmpty}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#11796F"
+              />
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -201,6 +266,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 32,
+    gap: 10,
   },
   balanceCard: {
     backgroundColor: "#fff",
@@ -212,6 +278,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 16,
     elevation: 4,
+    marginBottom: 6,
   },
   balanceLabel: {
     fontSize: 14,
@@ -241,35 +308,49 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginLeft: 4,
+    marginTop: 10,
+    marginBottom: 2,
   },
-  actionsRow: {
+  txnCard: {
     flexDirection: "row",
-    gap: 12,
-  },
-  actionCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingVertical: 20,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
+    gap: 12,
+    backgroundColor: "#fff",
     borderRadius: 14,
+    padding: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  txnIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
   },
-  actionLabel: { fontSize: 13, fontWeight: "600", color: "#1A1A2E" },
+  txnLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1A1A2E",
+  },
+  txnDate: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 2,
+  },
+  txnAmount: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
   emptyState: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -308,7 +389,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF8E1",
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 6,
     borderWidth: 1.5,
     borderColor: "#F57C00",
   },

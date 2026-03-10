@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -71,5 +68,72 @@ export class WalletService {
       wallet: updatedWallet,
       transaction,
     };
+  }
+
+  async withdraw(userId: string, amount: number) {
+    const wallet = await this.getOrCreateWallet(userId);
+
+    if (wallet.status !== 'ACTIVE') {
+      throw new BadRequestException('Wallet is suspended');
+    }
+
+    const currentBalance = new Decimal(wallet.balance);
+    if (currentBalance.lt(amount)) {
+      throw new BadRequestException(
+        `Insufficient balance. Available: ₱${currentBalance.toFixed(2)}`,
+      );
+    }
+
+    const balanceBefore = wallet.balance;
+    const balanceAfter = currentBalance.sub(new Decimal(amount));
+
+    const [updatedWallet, transaction] = await this.prisma.$transaction([
+      this.prisma.wallet.update({
+        where: { userId },
+        data: {
+          balance: { decrement: amount },
+        },
+        select: {
+          id: true,
+          balance: true,
+          status: true,
+        },
+      }),
+      this.prisma.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'DEBIT',
+          source: 'HOST_PAYOUT',
+          amount,
+          balanceBefore,
+          balanceAfter,
+        },
+      }),
+    ]);
+
+    return {
+      wallet: updatedWallet,
+      transaction,
+    };
+  }
+
+  async getTransactions(userId: string, limit = 20) {
+    const wallet = await this.getOrCreateWallet(userId);
+
+    const transactions = await this.prisma.walletTransaction.findMany({
+      where: { walletId: wallet.id },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return transactions.map((t) => ({
+      id: t.id,
+      type: t.type,
+      source: t.source,
+      amount: t.amount,
+      balanceBefore: t.balanceBefore,
+      balanceAfter: t.balanceAfter,
+      createdAt: t.createdAt,
+    }));
   }
 }

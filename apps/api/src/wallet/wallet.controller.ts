@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WalletService } from './wallet.service';
 import { TopUpDto } from './dto/top-up.dto';
+import { WithdrawDto } from './dto/withdraw.dto';
 
 @ApiTags('Wallet')
 @ApiBearerAuth()
@@ -40,5 +42,32 @@ export class WalletController {
     @Body() topUpDto: TopUpDto,
   ) {
     return this.walletService.topUp(req.user.id, topUpDto.amount);
+  }
+
+  @Post('withdraw')
+  @ApiOperation({ summary: 'Withdraw from wallet' })
+  @ApiResponse({ status: 201, description: 'Withdrawal successful' })
+  @ApiResponse({
+    status: 400,
+    description: 'Insufficient balance or wallet suspended',
+  })
+  async withdraw(
+    @Request() req: { user: { id: string } },
+    @Body() withdrawDto: WithdrawDto,
+  ) {
+    return this.walletService.withdraw(req.user.id, withdrawDto.amount);
+  }
+
+  @Get('transactions')
+  @ApiOperation({ summary: 'Get wallet transaction history' })
+  @ApiResponse({ status: 200, description: 'Transaction history retrieved' })
+  async getTransactions(
+    @Request() req: { user: { id: string } },
+    @Query('limit') limit?: string,
+  ) {
+    return this.walletService.getTransactions(
+      req.user.id,
+      limit ? parseInt(limit, 10) : 20,
+    );
   }
 }

@@ -987,7 +987,18 @@ export class ReservationsService {
     };
 
     if (status) {
-      whereClause.status = status as Prisma.EnumReservationStatusFilter;
+      const filterMap: Record<string, Prisma.ReservationWhereInput['status']> =
+        {
+          Upcoming: { in: ['PENDING', 'CONFIRMED'] },
+          Active: { equals: 'ACTIVE' },
+          Past: { in: ['COMPLETED', 'CANCELLED'] },
+        };
+      const mapped = filterMap[status];
+      if (mapped) {
+        whereClause.status = mapped;
+      } else {
+        whereClause.status = status as Prisma.EnumReservationStatusFilter;
+      }
     }
 
     const reservations = await this.prisma.reservation.findMany({
