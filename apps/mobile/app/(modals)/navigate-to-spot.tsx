@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-  Dimensions,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,7 +13,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 interface DirectionsInfo {
@@ -366,7 +364,7 @@ export default function NavigateToSpotScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFB" },
   mapContainer: { flex: 1, position: "relative" },
-  map: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+  map: { flex: 1 },
 
   // Destination marker
   destMarker: {
@@ -419,16 +417,12 @@ const styles = StyleSheet.create({
 
   // Bottom navigation card
   navCard: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    paddingBottom: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
