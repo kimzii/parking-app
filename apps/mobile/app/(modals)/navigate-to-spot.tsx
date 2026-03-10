@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,11 +15,23 @@ import * as Location from "expo-location";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+// Distance in meters to consider "off route" and trigger reroute
+const REROUTE_THRESHOLD_METERS = 50;
+// Minimum interval between reroute requests (ms)
+const REROUTE_COOLDOWN_MS = 10000;
+
+interface StepInfo {
+  instruction: string;
+  distance: string;
+  maneuver: string;
+  endLocation: { latitude: number; longitude: number };
+}
+
 interface DirectionsInfo {
   distance: string;
   duration: string;
   routeCoords: { latitude: number; longitude: number }[];
-  steps: { instruction: string; distance: string }[];
+  steps: StepInfo[];
 }
 
 function decodePolyline(
@@ -59,6 +71,36 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "");
 }
 
+/** Haversine distance between two coordinates in meters */
+function getDistanceMeters(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number },
+): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const h =
+    sinLat * sinLat +
+    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * sinLng * sinLng;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/** Find minimum distance from a point to any point on the route */
+function minDistanceToRoute(
+  point: { latitude: number; longitude: number },
+  route: { latitude: number; longitude: number }[],
+): number {
+  let min = Infinity;
+  for (const coord of route) {
+    const d = getDistanceMeters(point, coord);
+    if (d < min) min = d;
+  }
+  return min;
+}
+
 export default function NavigateToSpotScreen() {
   const { lat, lng, title, address } = useLocalSearchParams<{
     lat: string;
@@ -71,55 +113,31 @@ export default function NavigateToSpotScreen() {
   const destLng = parseFloat(lng || "0");
 
   const mapRef = useRef<MapView>(null);
+  const locationSubRef = useRef<Location.LocationSubscription | null>(null);
+  const lastRerouteRef = useRef<number>(0);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
   const [directions, setDirections] = useState<DirectionsInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rerouting, setRerouting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  // Get user location
-  useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          setError("Location permission is required for navigation");
-          setLoading(false);
-          return;
-        }
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        setUserLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-      } catch {
-        setError("Failed to get your location");
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  // Fetch directions once we have user location
-  useEffect(() => {
-    if (!userLocation || !GOOGLE_MAPS_API_KEY) {
-      if (userLocation && !GOOGLE_MAPS_API_KEY) {
+  /** Fetch directions from a given origin */
+  const fetchDirections = useCallback(
+    async (origin: { latitude: number; longitude: number }) => {
+      if (!GOOGLE_MAPS_API_KEY) {
         setError("Maps API key not configured");
         setLoading(false);
+        return;
       }
-      return;
-    }
-
-    const fetchDirections = async () => {
       try {
-        const origin = `${userLocation.latitude},${userLocation.longitude}`;
+        const originStr = `${origin.latitude},${origin.longitude}`;
         const destination = `${destLat},${destLng}`;
         const res = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&mode=driving&key=${GOOGLE_MAPS_API_KEY}`,
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${originStr}&destination=${destination}&mode=driving&key=${GOOGLE_MAPS_API_KEY}`,
         );
         const data = await res.json();
 
@@ -131,9 +149,16 @@ export default function NavigateToSpotScreen() {
             (step: {
               html_instructions: string;
               distance: { text: string };
+              maneuver?: string;
+              end_location: { lat: number; lng: number };
             }) => ({
               instruction: stripHtml(step.html_instructions),
               distance: step.distance.text,
+              maneuver: step.maneuver || "",
+              endLocation: {
+                latitude: step.end_location.lat,
+                longitude: step.end_location.lng,
+              },
             }),
           );
 
@@ -143,13 +168,14 @@ export default function NavigateToSpotScreen() {
             routeCoords,
             steps,
           });
+          setCurrentStepIndex(0);
 
           // Fit map to route
           setTimeout(() => {
             if (mapRef.current && routeCoords.length > 0) {
               mapRef.current.fitToCoordinates(
                 [
-                  userLocation,
+                  origin,
                   { latitude: destLat, longitude: destLng },
                   ...routeCoords,
                 ],
@@ -167,34 +193,138 @@ export default function NavigateToSpotScreen() {
         setError("Failed to load directions");
       } finally {
         setLoading(false);
+        setRerouting(false);
       }
-    };
+    },
+    [destLat, destLng],
+  );
 
-    fetchDirections();
-  }, [userLocation, destLat, destLng]);
+  // Request permission and start watching location
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          setError("Location permission is required for navigation");
+          setLoading(false);
+          return;
+        }
+
+        // Get initial location
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        const initial = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        };
+        if (!cancelled) {
+          setUserLocation(initial);
+          fetchDirections(initial);
+        }
+
+        // Start continuous tracking
+        const sub = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 10, // update every 10 meters
+            timeInterval: 3000, // or every 3 seconds
+          },
+          (location) => {
+            if (cancelled) return;
+            setUserLocation({
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+          },
+        );
+
+        if (!cancelled) {
+          locationSubRef.current = sub;
+        } else {
+          sub.remove();
+        }
+      } catch {
+        if (!cancelled) {
+          setError("Failed to get your location");
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      locationSubRef.current?.remove();
+    };
+  }, [fetchDirections]);
+
+  // Detect off-route and auto-reroute
+  useEffect(() => {
+    if (!userLocation || !directions || rerouting) return;
+
+    const distToRoute = minDistanceToRoute(
+      userLocation,
+      directions.routeCoords,
+    );
+
+    if (distToRoute > REROUTE_THRESHOLD_METERS) {
+      const now = Date.now();
+      if (now - lastRerouteRef.current > REROUTE_COOLDOWN_MS) {
+        lastRerouteRef.current = now;
+        setRerouting(true);
+        fetchDirections(userLocation);
+      }
+    }
+  }, [userLocation, directions, rerouting, fetchDirections]);
+
+  // Auto-advance step when user is within 30m of the current step's end point
+  useEffect(() => {
+    if (!userLocation || !directions || directions.steps.length === 0) return;
+
+    const step = directions.steps[currentStepIndex];
+    if (!step) return;
+
+    const distToStepEnd = getDistanceMeters(userLocation, step.endLocation);
+
+    // When within 30m of the step endpoint, advance to next step
+    if (distToStepEnd < 30 && currentStepIndex < directions.steps.length - 1) {
+      setCurrentStepIndex((prev) => prev + 1);
+    }
+  }, [userLocation, directions, currentStepIndex]);
 
   const handleRecenter = () => {
-    if (!mapRef.current || !userLocation || !directions) return;
-    mapRef.current.fitToCoordinates(
-      [userLocation, { latitude: destLat, longitude: destLng }],
+    if (!mapRef.current || !userLocation) return;
+    mapRef.current.animateToRegion(
       {
-        edgePadding: { top: 80, right: 60, bottom: 200, left: 60 },
-        animated: true,
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
       },
+      500,
     );
   };
 
-  const nextStep = () => {
-    if (directions && currentStepIndex < directions.steps.length - 1) {
-      setCurrentStepIndex((prev) => prev + 1);
-    }
+  // Get the maneuver icon for the current step
+  const getManeuverIcon = (
+    maneuver: string,
+  ): keyof typeof MaterialIcons.glyphMap => {
+    if (maneuver.includes("left")) return "turn-left";
+    if (maneuver.includes("right")) return "turn-right";
+    if (maneuver.includes("uturn")) return "u-turn-left";
+    if (maneuver.includes("merge")) return "merge-type";
+    if (maneuver.includes("ramp")) return "ramp-left";
+    if (maneuver.includes("roundabout")) return "roundabout-left";
+    return "straight";
   };
 
-  const prevStep = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex((prev) => prev - 1);
-    }
-  };
+  const currentStep = directions?.steps[currentStepIndex];
+  const nextStepInfo =
+    directions && currentStepIndex < directions.steps.length - 1
+      ? directions.steps[currentStepIndex + 1]
+      : null;
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -212,6 +342,27 @@ export default function NavigateToSpotScreen() {
             ) : null,
         }}
       />
+
+      {/* Current step instruction banner (over the map like Google Maps) */}
+      {directions && currentStep && !error && (
+        <View style={styles.instructionBanner}>
+          <View style={styles.instructionIconCircle}>
+            <MaterialIcons
+              name={getManeuverIcon(currentStep.maneuver)}
+              size={28}
+              color="#fff"
+            />
+          </View>
+          <View style={styles.instructionTextContainer}>
+            <Text style={styles.instructionDistance}>
+              {currentStep.distance}
+            </Text>
+            <Text style={styles.instructionText} numberOfLines={2}>
+              {currentStep.instruction}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Map */}
       <View style={styles.mapContainer}>
@@ -275,6 +426,14 @@ export default function NavigateToSpotScreen() {
       {/* Bottom navigation card */}
       {directions && !error && (
         <View style={styles.navCard}>
+          {/* Rerouting indicator */}
+          {rerouting && (
+            <View style={styles.reroutingBanner}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={styles.reroutingText}>Rerouting...</Text>
+            </View>
+          )}
+
           {/* Summary row */}
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
@@ -288,7 +447,7 @@ export default function NavigateToSpotScreen() {
             </View>
           </View>
 
-          {/* Destination info */}
+          {/* Destination & next step */}
           <View style={styles.destInfo}>
             <MaterialIcons name="local-parking" size={20} color="#11796F" />
             <View style={styles.destText}>
@@ -303,55 +462,20 @@ export default function NavigateToSpotScreen() {
             </View>
           </View>
 
-          {/* Turn-by-turn step */}
-          {directions.steps.length > 0 && (
-            <View style={styles.stepContainer}>
-              <View style={styles.stepHeader}>
-                <MaterialIcons name="navigation" size={18} color="#fff" />
-                <Text style={styles.stepCounter}>
-                  Step {currentStepIndex + 1} of {directions.steps.length}
+          {/* Upcoming step preview */}
+          {nextStepInfo && (
+            <View style={styles.nextStepContainer}>
+              <Text style={styles.nextStepLabel}>Then</Text>
+              <View style={styles.nextStepRow}>
+                <MaterialIcons
+                  name={getManeuverIcon(nextStepInfo.maneuver)}
+                  size={18}
+                  color="#8E8E93"
+                />
+                <Text style={styles.nextStepText} numberOfLines={1}>
+                  {nextStepInfo.instruction}
                 </Text>
-              </View>
-              <Text style={styles.stepInstruction} numberOfLines={2}>
-                {directions.steps[currentStepIndex].instruction}
-              </Text>
-              <Text style={styles.stepDistance}>
-                {directions.steps[currentStepIndex].distance}
-              </Text>
-              <View style={styles.stepNav}>
-                <TouchableOpacity
-                  onPress={prevStep}
-                  disabled={currentStepIndex === 0}
-                  style={[
-                    styles.stepNavBtn,
-                    currentStepIndex === 0 && styles.stepNavBtnDisabled,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="chevron-left"
-                    size={24}
-                    color={currentStepIndex === 0 ? "#ccc" : "#11796F"}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={nextStep}
-                  disabled={currentStepIndex === directions.steps.length - 1}
-                  style={[
-                    styles.stepNavBtn,
-                    currentStepIndex === directions.steps.length - 1 &&
-                      styles.stepNavBtnDisabled,
-                  ]}
-                >
-                  <MaterialIcons
-                    name="chevron-right"
-                    size={24}
-                    color={
-                      currentStepIndex === directions.steps.length - 1
-                        ? "#ccc"
-                        : "#11796F"
-                    }
-                  />
-                </TouchableOpacity>
+                <Text style={styles.nextStepDist}>{nextStepInfo.distance}</Text>
               </View>
             </View>
           )}
@@ -430,6 +554,23 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 
+  // Rerouting banner
+  reroutingBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F57C00",
+    borderRadius: 8,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  reroutingText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
+
   // Summary row
   summaryRow: {
     flexDirection: "row",
@@ -468,47 +609,66 @@ const styles = StyleSheet.create({
   destTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
   destAddress: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
 
-  // Step-by-step
-  stepContainer: {
-    backgroundColor: "#11796F",
-    borderRadius: 12,
-    padding: 14,
-  },
-  stepHeader: {
+  // Top instruction banner (Google Maps style)
+  instructionBanner: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
+    backgroundColor: "#11796F",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 14,
   },
-  stepCounter: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.7)",
-  },
-  stepInstruction: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#fff",
-    lineHeight: 20,
-  },
-  stepDistance: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 4,
-  },
-  stepNav: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 8,
-    marginTop: 8,
-  },
-  stepNavBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
+  instructionIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  stepNavBtnDisabled: { opacity: 0.5 },
+  instructionTextContainer: {
+    flex: 1,
+  },
+  instructionDistance: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  instructionText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 2,
+    lineHeight: 20,
+  },
+
+  // Next step preview
+  nextStepContainer: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    padding: 10,
+  },
+  nextStepLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  nextStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  nextStepText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A2E",
+  },
+  nextStepDist: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8E8E93",
+  },
 });
