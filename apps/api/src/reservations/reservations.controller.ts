@@ -110,4 +110,26 @@ export class ReservationsController {
       status,
     );
   }
+
+  /**
+   * Host: Confirm a pending reservation
+   */
+  @Post('host/:id/confirm')
+  async confirmReservation(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.reservationsService.confirmReservation(req.user.id, id);
+  }
+
+  /**
+   * Host: Reject a pending reservation
+   */
+  @Post('host/:id/reject')
+  async rejectReservation(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.reservationsService.rejectReservation(req.user.id, id);
+  }
 }

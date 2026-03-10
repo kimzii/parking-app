@@ -221,12 +221,14 @@ export default function ReservationQRScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
-              style={styles.directionsBtn}
-              onPress={openDirections}
-            >
-              <MaterialIcons name="navigation" size={22} color="#fff" />
-            </TouchableOpacity>
+            {reservation.status !== "PENDING" && (
+              <TouchableOpacity
+                style={styles.directionsBtn}
+                onPress={openDirections}
+              >
+                <MaterialIcons name="navigation" size={22} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

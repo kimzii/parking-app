@@ -66,6 +66,7 @@ export type ReservationWithDriverDetails = Prisma.ReservationGetPayload<{
             firstName: true;
             lastName: true;
             phoneNumber: true;
+            profilePicture: true;
           };
         };
         vehicles: true;

@@ -229,7 +229,7 @@ export class ReservationsService {
           parkingSpaceId: dto.parkingSpaceId,
           startTime,
           endTime,
-          status: 'CONFIRMED',
+          status: 'PENDING',
           qrCode,
           qrCodeSecret,
           totalAmount,
@@ -810,6 +810,152 @@ export class ReservationsService {
   }
 
   /**
+   * Host confirms a pending reservation
+   */
+  async confirmReservation(hostUserId: string, reservationId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId: hostUserId },
+      include: {
+        parkingLocations: { select: { id: true } },
+      },
+    });
+
+    if (!host) {
+      throw new ForbiddenException('Only hosts can confirm reservations');
+    }
+
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: true,
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    const hostLocationIds = host.parkingLocations.map((l) => l.id);
+    if (!hostLocationIds.includes(reservation.parkingSpace.parkingLocationId)) {
+      throw new ForbiddenException(
+        'You can only confirm reservations for your own locations',
+      );
+    }
+
+    if (reservation.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot confirm reservation with status: ${reservation.status}`,
+      );
+    }
+
+    const updated = await this.prisma.reservation.update({
+      where: { id: reservationId },
+      data: { status: 'CONFIRMED' },
+    });
+
+    return {
+      success: true,
+      message: 'Reservation confirmed successfully.',
+      reservation: { id: updated.id, status: updated.status },
+    };
+  }
+
+  /**
+   * Host rejects a pending reservation (refunds driver)
+   */
+  async rejectReservation(hostUserId: string, reservationId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId: hostUserId },
+      include: {
+        parkingLocations: { select: { id: true } },
+      },
+    });
+
+    if (!host) {
+      throw new ForbiddenException('Only hosts can reject reservations');
+    }
+
+    const reservation = (await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: true,
+        walletTransaction: true,
+      },
+    })) as
+      | (ReservationWithTransaction & {
+          parkingSpace: { parkingLocationId: string };
+        })
+      | null;
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    const hostLocationIds = host.parkingLocations.map((l) => l.id);
+    if (!hostLocationIds.includes(reservation.parkingSpace.parkingLocationId)) {
+      throw new ForbiddenException(
+        'You can only reject reservations for your own locations',
+      );
+    }
+
+    if (reservation.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot reject reservation with status: ${reservation.status}`,
+      );
+    }
+
+    // Refund the driver
+    const result = await this.prisma.$transaction(async (tx) => {
+      const driver = await tx.driver.findUnique({
+        where: { id: reservation.driverId },
+      });
+
+      if (driver && reservation.escrowAmount) {
+        const wallet = await tx.wallet.findUnique({
+          where: { userId: driver.userId },
+        });
+
+        if (wallet) {
+          const refundAmount = new Decimal(String(reservation.escrowAmount));
+
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              type: 'CREDIT',
+              source: 'REFUND',
+              amount: refundAmount,
+              referenceId: reservation.id,
+              balanceBefore: wallet.balance,
+              balanceAfter: new Decimal(wallet.balance).add(refundAmount),
+            },
+          });
+
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: {
+              balance: { increment: refundAmount.toNumber() },
+            },
+          });
+        }
+      }
+
+      return tx.reservation.update({
+        where: { id: reservationId },
+        data: {
+          status: 'CANCELLED',
+          escrowAmount: 0,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      message: 'Reservation rejected. The driver has been refunded.',
+      reservation: { id: result.id, status: result.status },
+    };
+  }
+
+  /**
    * Get host's location reservations
    */
   async getHostReservations(
@@ -859,6 +1005,7 @@ export class ReservationsService {
                 firstName: true,
                 lastName: true,
                 phoneNumber: true,
+                profilePicture: true,
               },
             },
             vehicles: {
@@ -896,6 +1043,7 @@ export class ReservationsService {
         driver: {
           name: `${r.driver.user.firstName || ''} ${r.driver.user.lastName || ''}`.trim(),
           phone: r.driver.user.phoneNumber,
+          image: toNullable<string>(r.driver.user.profilePicture),
           vehicle: r.driver.vehicles[0] || null,
         },
       };

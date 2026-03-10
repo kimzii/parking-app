@@ -163,3 +163,19 @@ export async function getHostReservations(
   const response = await api.get("/reservations/host/reservations", { params });
   return response.data;
 }
+
+/**
+ * Host: Confirm a pending reservation
+ */
+export async function confirmReservation(id: string) {
+  const response = await api.post(`/reservations/host/${id}/confirm`);
+  return response.data;
+}
+
+/**
+ * Host: Reject a pending reservation
+ */
+export async function rejectReservation(id: string) {
+  const response = await api.post(`/reservations/host/${id}/reject`);
+  return response.data;
+}

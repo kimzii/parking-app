@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -106,13 +108,67 @@ export default function HostHomeScreen() {
     setRefreshing(false);
   }, [filter, fetchReservations]);
 
+  const handleConfirm = useCallback(
+    (id: string) => {
+      Alert.alert("Confirm Booking", "Accept this reservation?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              await reservationsService.confirmReservation(id);
+              await fetchReservations(filter);
+            } catch {
+              Alert.alert("Error", "Failed to confirm reservation.");
+            }
+          },
+        },
+      ]);
+    },
+    [filter, fetchReservations],
+  );
+
+  const handleReject = useCallback(
+    (id: string) => {
+      Alert.alert(
+        "Reject Booking",
+        "Reject this reservation? The driver will be refunded.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Reject",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await reservationsService.rejectReservation(id);
+                await fetchReservations(filter);
+              } catch {
+                Alert.alert("Error", "Failed to reject reservation.");
+              }
+            },
+          },
+        ],
+      );
+    },
+    [filter, fetchReservations],
+  );
+
   const renderReservationItem = ({ item }: { item: any }) => {
     const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.PENDING;
     const startTime = new Date(item.startTime);
     const endTime = new Date(item.endTime);
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() =>
+          router.push({
+            pathname: "/(modals)/host-reservation-detail",
+            params: { reservation: JSON.stringify(item) },
+          } as any)
+        }
+      >
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
             <Text style={styles.cardLocation}>
@@ -140,25 +196,31 @@ export default function HostHomeScreen() {
 
         {/* Driver Info */}
         <View style={styles.driverRow}>
-          <MaterialIcons name="person" size={18} color="#11796F" />
-          <Text style={styles.driverName}>{item.driver?.name || "Driver"}</Text>
-          {item.driver?.phone && (
-            <TouchableOpacity style={styles.callBtn}>
-              <MaterialIcons name="phone" size={16} color="#11796F" />
-            </TouchableOpacity>
+          {item.driver?.image ? (
+            <Image
+              source={{ uri: item.driver.image }}
+              style={styles.driverAvatar}
+            />
+          ) : (
+            <View style={styles.driverAvatarPlaceholder}>
+              <MaterialIcons name="person" size={18} color="#C7C7CC" />
+            </View>
           )}
-        </View>
-
-        {/* Vehicle Info */}
-        {item.driver?.vehicle && (
-          <View style={styles.vehicleRow}>
-            <MaterialIcons name="directions-car" size={16} color="#8E8E93" />
-            <Text style={styles.vehicleText}>
-              {item.driver.vehicle.brand} {item.driver.vehicle.model} •{" "}
-              {item.driver.vehicle.plateNumber || "N/A"}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.driverName}>
+              {item.driver?.name || "Driver"}
             </Text>
+            {item.driver?.vehicle && (
+              <Text style={styles.vehicleInline}>
+                {item.driver.vehicle.brand} {item.driver.vehicle.model}
+                {item.driver.vehicle.plateNumber
+                  ? ` • ${item.driver.vehicle.plateNumber}`
+                  : ""}
+              </Text>
+            )}
           </View>
-        )}
+          <MaterialIcons name="chevron-right" size={22} color="#C7C7CC" />
+        </View>
 
         {/* Time Info */}
         <View style={styles.timeSection}>
@@ -219,7 +281,29 @@ export default function HostHomeScreen() {
             </Text>
           )}
         </View>
-      </View>
+
+        {/* Accept / Reject for PENDING */}
+        {item.status === "PENDING" && (
+          <View style={styles.actionBtns}>
+            <TouchableOpacity
+              style={styles.rejectBtn}
+              onPress={() => handleReject(item.id)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="close" size={18} color="#E53935" />
+              <Text style={styles.rejectBtnText}>Reject</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.confirmBtn}
+              onPress={() => handleConfirm(item.id)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="check" size={18} color="#fff" />
+              <Text style={styles.confirmBtnText}>Accept</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -463,10 +547,28 @@ const styles = StyleSheet.create({
   driverRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
+    gap: 10,
+    marginBottom: 12,
   },
-  driverName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#E8F5F3",
+  },
+  driverAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#E8F5F3",
+  },
+  driverName: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  vehicleInline: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
   callBtn: {
     width: 32,
     height: 32,
@@ -521,5 +623,45 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     textAlign: "center",
     marginTop: 8,
+  },
+
+  // Accept / Reject buttons
+  actionBtns: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+  },
+  rejectBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#FFEBEE",
+  },
+  rejectBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#E53935",
+  },
+  confirmBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#11796F",
+  },
+  confirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
   },
 });

@@ -54,11 +54,12 @@ export default function HomeScreen() {
 
   const fetchActiveBookings = useCallback(async () => {
     try {
-      const [confirmed, active] = await Promise.all([
+      const [pending, confirmed, active] = await Promise.all([
+        reservationsService.getMyReservations("PENDING"),
         reservationsService.getMyReservations("CONFIRMED"),
         reservationsService.getMyReservations("ACTIVE"),
       ]);
-      setActiveBookings([...active, ...confirmed]);
+      setActiveBookings([...active, ...confirmed, ...pending]);
     } catch {
       // User may not be a driver yet — that's okay
     }
@@ -216,9 +217,22 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Current Booking</Text>
           {activeBookings.map((booking) => {
             const isActive = booking.status === "ACTIVE";
-            const statusColor = isActive ? "#4CAF50" : "#1976D2";
-            const statusBg = isActive ? "#E8F5E9" : "#E3F2FD";
-            const statusLabel = isActive ? "Active - Parked" : "Confirmed";
+            const isPending = booking.status === "PENDING";
+            const statusColor = isActive
+              ? "#4CAF50"
+              : isPending
+                ? "#F57C00"
+                : "#1976D2";
+            const statusBg = isActive
+              ? "#E8F5E9"
+              : isPending
+                ? "#FFF3E0"
+                : "#E3F2FD";
+            const statusLabel = isActive
+              ? "Active - Parked"
+              : isPending
+                ? "Pending Approval"
+                : "Confirmed";
             const start = new Date(booking.startTime);
             const end = new Date(booking.endTime);
             return (
@@ -241,7 +255,13 @@ export default function HomeScreen() {
                     ]}
                   >
                     <MaterialIcons
-                      name={isActive ? "directions-car" : "confirmation-number"}
+                      name={
+                        isActive
+                          ? "directions-car"
+                          : isPending
+                            ? "schedule"
+                            : "confirmation-number"
+                      }
                       size={14}
                       color={statusColor}
                     />
