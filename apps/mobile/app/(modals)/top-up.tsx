@@ -68,7 +68,7 @@ export default function TopUpScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

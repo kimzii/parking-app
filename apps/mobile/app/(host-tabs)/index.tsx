@@ -427,14 +427,14 @@ export default function HostHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{userName}</Text>
         </View>
         <View style={styles.hostBadge}>
-          <MaterialIcons name="home-work" size={16} color="#fff" />
+          <MaterialIcons name="home-work" size={16} color="#11796F" />
           <Text style={styles.hostBadgeText}>Host</Text>
         </View>
       </View>
@@ -470,31 +470,31 @@ export default function HostHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 28,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   greeting: {
     fontSize: 15,
-    color: "rgba(255,255,255,0.7)",
+    color: "#8E8E93",
     fontWeight: "500",
   },
   userName: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#fff",
+    color: "#1A1A2E",
     letterSpacing: -0.3,
   },
   hostBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "#E8F5F3",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
@@ -502,13 +502,11 @@ const styles = StyleSheet.create({
   hostBadgeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#fff",
+    color: "#11796F",
   },
   content: {
     flex: 1,
     backgroundColor: "#F8FAFB",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
   },
   listContent: {
     padding: 20,

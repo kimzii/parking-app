@@ -174,7 +174,7 @@ export default function ReservationQRScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Reservation" }} />
         <ActivityIndicator
           size="large"
@@ -187,7 +187,7 @@ export default function ReservationQRScreen() {
 
   if (!reservation) {
     return (
-      <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Reservation" }} />
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={48} color="#E53935" />
@@ -217,7 +217,7 @@ export default function ReservationQRScreen() {
     : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <Stack.Screen
         options={{
           title: "Reservation",

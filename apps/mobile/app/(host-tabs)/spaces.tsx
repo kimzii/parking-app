@@ -115,14 +115,14 @@ export default function SpacesScreen() {
       </View>
       <Text style={styles.emptyTitle}>No Parking Spaces Yet</Text>
       <Text style={styles.emptyText}>
-        You haven&apos;t added any parking locations. Add your first space to start
-        earning.
+        You haven&apos;t added any parking locations. Add your first space to
+        start earning.
       </Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Spaces</Text>
         <Text style={styles.headerSubtitle}>
@@ -169,29 +169,27 @@ export default function SpacesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 28,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#fff",
+    color: "#1A1A2E",
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.7)",
+    color: "#8E8E93",
     fontWeight: "500",
     marginTop: 4,
   },
   content: {
     flex: 1,
     backgroundColor: "#F8FAFB",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
   },
   listContent: {
     padding: 20,

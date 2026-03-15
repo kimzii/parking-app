@@ -343,7 +343,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   greeting: { fontSize: 14, color: "#8E8E93" },

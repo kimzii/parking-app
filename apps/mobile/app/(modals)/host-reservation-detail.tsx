@@ -69,7 +69,7 @@ export default function HostReservationDetailScreen() {
 
   if (!reservation) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Reservation" }} />
         <ActivityIndicator
           size="large"
@@ -83,7 +83,7 @@ export default function HostReservationDetailScreen() {
   const status = STATUS_CONFIG[reservation.status] ?? STATUS_CONFIG.CONFIRMED;
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <Stack.Screen options={{ title: "Reservation Details" }} />
 
       <ScrollView

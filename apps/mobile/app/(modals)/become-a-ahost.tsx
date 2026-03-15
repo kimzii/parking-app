@@ -51,7 +51,7 @@ export default function BecomeAHostModal() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
       <View style={styles.container}>
         {/* Hero */}
         <View style={styles.heroSection}>

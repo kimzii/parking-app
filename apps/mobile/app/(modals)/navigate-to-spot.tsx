@@ -327,7 +327,7 @@ export default function NavigateToSpotScreen() {
       : null;
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
       <Stack.Screen
         options={{
           title: "Navigation",
