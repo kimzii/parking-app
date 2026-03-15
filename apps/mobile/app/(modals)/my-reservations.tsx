@@ -205,7 +205,7 @@ export default function MyReservationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Stack.Screen options={{ title: "My Reservations" }} />
 
       {/* Filters */}

@@ -122,7 +122,7 @@ export default function BookSpotScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Book Parking" }} />
         <ActivityIndicator
           size="large"
@@ -135,7 +135,7 @@ export default function BookSpotScreen() {
 
   if (!spot) {
     return (
-      <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Book Parking" }} />
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={48} color="#E53935" />
@@ -150,7 +150,7 @@ export default function BookSpotScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Stack.Screen options={{ title: "Book Parking" }} />
       <ScrollView
         style={styles.scroll}

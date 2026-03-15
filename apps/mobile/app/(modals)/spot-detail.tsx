@@ -203,7 +203,7 @@ export default function SpotDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <ActivityIndicator
           size="large"
           color="#11796F"
@@ -215,7 +215,7 @@ export default function SpotDetailScreen() {
 
   if (!spot) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+      <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <View style={styles.errorState}>
           <MaterialIcons name="error-outline" size={48} color="#E53935" />
           <Text style={styles.errorTitle}>Parking spot not found</Text>
@@ -238,7 +238,7 @@ export default function SpotDetailScreen() {
     .join(" ");
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
