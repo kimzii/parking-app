@@ -74,6 +74,7 @@ export const hostService = {
   getNearbyLocations: async (params?: {
     latitude?: number;
     longitude?: number;
+    radius?: number;
     search?: string;
     limit?: number;
   }) => {

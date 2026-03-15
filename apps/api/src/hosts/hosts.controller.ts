@@ -150,11 +150,11 @@ export class HostsController {
     @Query('limit') limit?: number,
   ) {
     return this.hostsService.getApprovedLocations({
-      latitude: latitude ? +latitude : undefined,
-      longitude: longitude ? +longitude : undefined,
-      radius: radius ? +radius : undefined,
+      latitude: latitude !== undefined ? +latitude : undefined,
+      longitude: longitude !== undefined ? +longitude : undefined,
+      radius: radius !== undefined ? +radius : undefined,
       search,
-      limit: limit ? +limit : undefined,
+      limit: limit !== undefined ? +limit : undefined,
     });
   }
 
