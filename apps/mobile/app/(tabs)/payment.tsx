@@ -62,7 +62,7 @@ export default function PaymentScreen() {
       const [balanceData, profile, txns] = await Promise.all([
         walletService.getBalance(),
         userService.getProfile(),
-        walletService.getTransactions(30),
+        walletService.getTransactions(20),
       ]);
       setBalance(Number(balanceData.balance ?? 0));
       setTransactions(txns);

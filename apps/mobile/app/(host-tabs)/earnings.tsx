@@ -65,7 +65,7 @@ export default function EarningsScreen() {
     try {
       const [balanceData, txns] = await Promise.all([
         walletService.getBalance(),
-        walletService.getTransactions(30),
+        walletService.getTransactions(20),
       ]);
       setBalance(parseFloat(balanceData.balance));
       setTransactions(txns);
