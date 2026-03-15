@@ -13,7 +13,6 @@ import { ReservationsService } from './reservations.service';
 import {
   CreateReservationDto,
   VerifyScanDto,
-  CalculateFeeDto,
 } from './dto/create-reservation.dto';
 
 @Controller('reservations')
@@ -22,15 +21,15 @@ export class ReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
   /**
-   * Calculate parking fee without creating a reservation
+   * Get first-hour fee info for a parking space
    */
-  @Post('calculate-fee')
-  async calculateFee(@Body() dto: CalculateFeeDto) {
-    return this.reservationsService.calculateFee(dto);
+  @Get('first-hour-fee/:parkingSpaceId')
+  async getFirstHourFee(@Param('parkingSpaceId') parkingSpaceId: string) {
+    return this.reservationsService.getFirstHourFee(parkingSpaceId);
   }
 
   /**
-   * Create a new reservation (Driver)
+   * Create a new reservation (Driver) — pays 1st hour, then waits for host approval
    */
   @Post()
   async createReservation(
@@ -63,7 +62,7 @@ export class ReservationsController {
   }
 
   /**
-   * Cancel a reservation (Driver)
+   * Cancel a reservation (Driver — before session starts)
    */
   @Post(':id/cancel')
   async cancelReservation(
@@ -74,7 +73,29 @@ export class ReservationsController {
   }
 
   /**
-   * Host: Scan QR code for entry
+   * Host: Approve a pending reservation
+   */
+  @Post('host/:id/approve')
+  async approveReservation(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.reservationsService.approveReservation(req.user.id, id);
+  }
+
+  /**
+   * Host: Reject a pending reservation
+   */
+  @Post('host/:id/reject')
+  async rejectReservation(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.reservationsService.rejectReservation(req.user.id, id);
+  }
+
+  /**
+   * Host: Scan QR code for entry — starts parking session
    */
   @Post('scan/entry')
   async scanEntry(
@@ -85,7 +106,7 @@ export class ReservationsController {
   }
 
   /**
-   * Host: Scan QR code for exit
+   * Host: Scan QR code for exit — ends session, calculates + settles payment
    */
   @Post('scan/exit')
   async scanExit(
@@ -109,27 +130,5 @@ export class ReservationsController {
       locationId,
       status,
     );
-  }
-
-  /**
-   * Host: Confirm a pending reservation
-   */
-  @Post('host/:id/confirm')
-  async confirmReservation(
-    @Request() req: { user: { id: string } },
-    @Param('id') id: string,
-  ) {
-    return this.reservationsService.confirmReservation(req.user.id, id);
-  }
-
-  /**
-   * Host: Reject a pending reservation
-   */
-  @Post('host/:id/reject')
-  async rejectReservation(
-    @Request() req: { user: { id: string } },
-    @Param('id') id: string,
-  ) {
-    return this.reservationsService.rejectReservation(req.user.id, id);
   }
 }

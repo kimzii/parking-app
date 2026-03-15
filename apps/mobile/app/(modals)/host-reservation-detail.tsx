@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,10 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  TouchableOpacity,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, router } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as reservationsService from "../../src/services/reservations";
 
 const STATUS_CONFIG: Record<
   string,
@@ -21,8 +18,8 @@ const STATUS_CONFIG: Record<
   PENDING: {
     color: "#F57C00",
     bg: "#FFF3E0",
-    label: "Pending",
-    icon: "schedule",
+    label: "Pending Approval",
+    icon: "hourglass-top",
   },
   CONFIRMED: {
     color: "#1976D2",
@@ -48,12 +45,17 @@ const STATUS_CONFIG: Record<
     label: "Cancelled",
     icon: "cancel",
   },
+  EXPIRED: {
+    color: "#9E9E9E",
+    bg: "#F5F5F5",
+    label: "Expired",
+    icon: "timer-off",
+  },
 };
 
 export default function HostReservationDetailScreen() {
   const params = useLocalSearchParams<{ reservation: string }>();
   const [reservation, setReservation] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (params.reservation) {
@@ -64,53 +66,6 @@ export default function HostReservationDetailScreen() {
       }
     }
   }, [params.reservation]);
-
-  const handleConfirm = useCallback(() => {
-    if (!reservation) return;
-    Alert.alert("Confirm Booking", "Accept this reservation?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        onPress: async () => {
-          setLoading(true);
-          try {
-            await reservationsService.confirmReservation(reservation.id);
-            setReservation({ ...reservation, status: "CONFIRMED" });
-          } catch {
-            Alert.alert("Error", "Failed to confirm reservation.");
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-    ]);
-  }, [reservation]);
-
-  const handleReject = useCallback(() => {
-    if (!reservation) return;
-    Alert.alert(
-      "Reject Booking",
-      "Reject this reservation? The driver will be refunded.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reject",
-          style: "destructive",
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await reservationsService.rejectReservation(reservation.id);
-              router.back();
-            } catch {
-              Alert.alert("Error", "Failed to reject reservation.");
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-    );
-  }, [reservation]);
 
   if (!reservation) {
     return (
@@ -125,9 +80,7 @@ export default function HostReservationDetailScreen() {
     );
   }
 
-  const status = STATUS_CONFIG[reservation.status] ?? STATUS_CONFIG.PENDING;
-  const startTime = new Date(reservation.startTime);
-  const endTime = new Date(reservation.endTime);
+  const status = STATUS_CONFIG[reservation.status] ?? STATUS_CONFIG.CONFIRMED;
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -223,45 +176,58 @@ export default function HostReservationDetailScreen() {
           </View>
         </View>
 
-        {/* Time Details */}
+        {/* Session Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Schedule</Text>
+          <Text style={styles.sectionLabel}>Session</Text>
           <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="calendar-today" size={18} color="#8E8E93" />
-              <Text style={styles.infoText}>
-                {startTime.toLocaleDateString(undefined, {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Text>
-            </View>
-            <View style={styles.timeDivider} />
-            <View style={styles.infoRow}>
-              <MaterialIcons name="schedule" size={18} color="#8E8E93" />
-              <Text style={styles.infoText}>
-                {startTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                })}{" "}
-                —{" "}
-                {endTime.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                })}
-              </Text>
-            </View>
-            {reservation.actualEntryTime && (
+            {reservation.status === "PENDING" &&
+              reservation.arrivalDeadline && (
+                <View style={styles.infoRow}>
+                  <MaterialIcons
+                    name="hourglass-empty"
+                    size={18}
+                    color="#F57C00"
+                  />
+                  <Text style={[styles.infoText, { color: "#F57C00" }]}>
+                    Approval deadline{" "}
+                    {new Date(reservation.arrivalDeadline).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      },
+                    )}
+                  </Text>
+                </View>
+              )}
+            {reservation.status === "CONFIRMED" &&
+              reservation.arrivalDeadline && (
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="schedule" size={18} color="#8E8E93" />
+                  <Text style={styles.infoText}>
+                    Arrive by{" "}
+                    {new Date(reservation.arrivalDeadline).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      },
+                    )}
+                  </Text>
+                </View>
+              )}
+            {reservation.sessionStartedAt && (
               <>
-                <View style={styles.timeDivider} />
+                {reservation.arrivalDeadline && (
+                  <View style={styles.timeDivider} />
+                )}
                 <View style={styles.infoRow}>
                   <MaterialIcons name="login" size={18} color="#4CAF50" />
                   <Text style={[styles.infoText, { color: "#4CAF50" }]}>
                     Checked in{" "}
-                    {new Date(reservation.actualEntryTime).toLocaleTimeString(
+                    {new Date(reservation.sessionStartedAt).toLocaleTimeString(
                       [],
                       { hour: "2-digit", minute: "2-digit", hour12: true },
                     )}
@@ -269,17 +235,30 @@ export default function HostReservationDetailScreen() {
                 </View>
               </>
             )}
-            {reservation.actualExitTime && (
+            {reservation.sessionEndedAt && (
               <>
                 <View style={styles.timeDivider} />
                 <View style={styles.infoRow}>
                   <MaterialIcons name="logout" size={18} color="#1976D2" />
                   <Text style={[styles.infoText, { color: "#1976D2" }]}>
                     Checked out{" "}
-                    {new Date(reservation.actualExitTime).toLocaleTimeString(
+                    {new Date(reservation.sessionEndedAt).toLocaleTimeString(
                       [],
                       { hour: "2-digit", minute: "2-digit", hour12: true },
                     )}
+                  </Text>
+                </View>
+              </>
+            )}
+            {reservation.status === "ACTIVE" && !reservation.sessionEndedAt && (
+              <>
+                {reservation.sessionStartedAt && (
+                  <View style={styles.timeDivider} />
+                )}
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="timer" size={18} color="#4CAF50" />
+                  <Text style={[styles.infoText, { color: "#4CAF50" }]}>
+                    Session in progress — Pay-as-you-go
                   </Text>
                 </View>
               </>
@@ -309,30 +288,6 @@ export default function HostReservationDetailScreen() {
               )}
           </View>
         </View>
-
-        {/* Action Buttons for PENDING */}
-        {reservation.status === "PENDING" && (
-          <View style={styles.actionBtns}>
-            <TouchableOpacity
-              style={styles.rejectBtn}
-              onPress={handleReject}
-              activeOpacity={0.7}
-              disabled={loading}
-            >
-              <MaterialIcons name="close" size={20} color="#E53935" />
-              <Text style={styles.rejectBtnText}>Reject</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.confirmBtn}
-              onPress={handleConfirm}
-              activeOpacity={0.7}
-              disabled={loading}
-            >
-              <MaterialIcons name="check" size={20} color="#fff" />
-              <Text style={styles.confirmBtnText}>Accept</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

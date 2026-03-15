@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   Image,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -23,8 +23,8 @@ const STATUS_CONFIG: Record<
   PENDING: {
     color: "#F57C00",
     bg: "#FFF3E0",
-    label: "Pending",
-    icon: "schedule",
+    label: "Pending Approval",
+    icon: "hourglass-top",
   },
   CONFIRMED: {
     color: "#1976D2",
@@ -50,7 +50,20 @@ const STATUS_CONFIG: Record<
     label: "Cancelled",
     icon: "cancel",
   },
+  EXPIRED: {
+    color: "#9E9E9E",
+    bg: "#F5F5F5",
+    label: "Expired",
+    icon: "timer-off",
+  },
 };
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Expired";
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  return `${mins}m ${secs.toString().padStart(2, "0")}s`;
+}
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -67,6 +80,12 @@ export default function HostHomeScreen() {
   const [reservations, setReservations] = useState<any[]>([]);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchReservations = useCallback(async (status?: string) => {
     try {
@@ -102,24 +121,37 @@ export default function HostHomeScreen() {
     }, [filter, fetchReservations]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      const interval = setInterval(() => {
+        void fetchReservations(filter);
+      }, 15 * 1000);
+
+      return () => clearInterval(interval);
+    }, [filter, fetchReservations]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchReservations(filter);
     setRefreshing(false);
   }, [filter, fetchReservations]);
 
-  const handleConfirm = useCallback(
+  const handleApprove = useCallback(
     (id: string) => {
-      Alert.alert("Confirm Booking", "Accept this reservation?", [
+      Alert.alert("Approve Booking", "Approve this booking request?", [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Confirm",
+          text: "Approve",
           onPress: async () => {
             try {
-              await reservationsService.confirmReservation(id);
+              await reservationsService.approveReservation(id);
               await fetchReservations(filter);
-            } catch {
-              Alert.alert("Error", "Failed to confirm reservation.");
+            } catch (err: any) {
+              Alert.alert(
+                "Approval Failed",
+                err.response?.data?.message || "Failed to approve reservation",
+              );
             }
           },
         },
@@ -132,7 +164,7 @@ export default function HostHomeScreen() {
     (id: string) => {
       Alert.alert(
         "Reject Booking",
-        "Reject this reservation? The driver will be refunded.",
+        "Reject this booking request? The driver will be refunded.",
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -142,8 +174,11 @@ export default function HostHomeScreen() {
               try {
                 await reservationsService.rejectReservation(id);
                 await fetchReservations(filter);
-              } catch {
-                Alert.alert("Error", "Failed to reject reservation.");
+              } catch (err: any) {
+                Alert.alert(
+                  "Rejection Failed",
+                  err.response?.data?.message || "Failed to reject reservation",
+                );
               }
             },
           },
@@ -154,9 +189,11 @@ export default function HostHomeScreen() {
   );
 
   const renderReservationItem = ({ item }: { item: any }) => {
-    const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.PENDING;
-    const startTime = new Date(item.startTime);
-    const endTime = new Date(item.endTime);
+    const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.CONFIRMED;
+    const pendingRemainingMs =
+      item.status === "PENDING" && item.arrivalDeadline
+        ? new Date(item.arrivalDeadline).getTime() - now.getTime()
+        : null;
 
     return (
       <TouchableOpacity
@@ -224,33 +261,20 @@ export default function HostHomeScreen() {
 
         {/* Time Info */}
         <View style={styles.timeSection}>
-          <View style={styles.timeItem}>
-            <MaterialIcons name="schedule" size={16} color="#8E8E93" />
-            <Text style={styles.timeText}>
-              {startTime.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {startTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}{" "}
-              -{" "}
-              {endTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </Text>
-          </View>
-          {item.actualEntryTime && (
+          {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="login" size={16} color="#4CAF50" />
-              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
-                Checked in:{" "}
-                {new Date(item.actualEntryTime).toLocaleTimeString([], {
+              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <Text style={styles.timeText}>
+                Approve in {formatCountdown(pendingRemainingMs ?? 0)}
+              </Text>
+            </View>
+          )}
+          {item.status === "PENDING" && item.arrivalDeadline && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="hourglass-empty" size={16} color="#F57C00" />
+              <Text style={[styles.timeText, { color: "#F57C00" }]}>
+                Decision deadline{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
@@ -258,16 +282,50 @@ export default function HostHomeScreen() {
               </Text>
             </View>
           )}
-          {item.actualExitTime && (
+          {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="logout" size={16} color="#1976D2" />
-              <Text style={[styles.timeText, { color: "#1976D2" }]}>
-                Checked out:{" "}
-                {new Date(item.actualExitTime).toLocaleTimeString([], {
+              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <Text style={styles.timeText}>
+                Driver arrives by{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
                 })}
+              </Text>
+            </View>
+          )}
+          {item.sessionStartedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="login" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Checked in:{" "}
+                {new Date(item.sessionStartedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="logout" size={16} color="#1976D2" />
+              <Text style={[styles.timeText, { color: "#1976D2" }]}>
+                Checked out:{" "}
+                {new Date(item.sessionEndedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.status === "ACTIVE" && !item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="timer" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Session in progress — Pay-as-you-go
               </Text>
             </View>
           )}
@@ -286,26 +344,30 @@ export default function HostHomeScreen() {
           )}
         </View>
 
-        {/* Accept / Reject for PENDING */}
-        {item.status === "PENDING" && (
+        {item.status === "PENDING" && (pendingRemainingMs ?? 0) > 0 && (
           <View style={styles.actionBtns}>
             <TouchableOpacity
               style={styles.rejectBtn}
               onPress={() => handleReject(item.id)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               <MaterialIcons name="close" size={18} color="#E53935" />
               <Text style={styles.rejectBtnText}>Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.confirmBtn}
-              onPress={() => handleConfirm(item.id)}
-              activeOpacity={0.7}
+              onPress={() => handleApprove(item.id)}
+              activeOpacity={0.8}
             >
               <MaterialIcons name="check" size={18} color="#fff" />
-              <Text style={styles.confirmBtnText}>Accept</Text>
+              <Text style={styles.confirmBtnText}>Approve</Text>
             </TouchableOpacity>
           </View>
+        )}
+        {item.status === "PENDING" && (pendingRemainingMs ?? 0) <= 0 && (
+          <Text style={styles.overtimeText}>
+            Approval window expired. Pull to refresh.
+          </Text>
         )}
       </TouchableOpacity>
     );

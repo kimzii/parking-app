@@ -18,8 +18,8 @@ const STATUS_CONFIG = {
   PENDING: {
     color: "#F57C00",
     bg: "#FFF3E0",
-    label: "Pending",
-    icon: "hourglass-empty",
+    label: "Pending Approval",
+    icon: "hourglass-top",
   },
   CONFIRMED: {
     color: "#1976D2",
@@ -45,13 +45,19 @@ const STATUS_CONFIG = {
     label: "Cancelled",
     icon: "cancel",
   },
+  EXPIRED: {
+    color: "#9E9E9E",
+    bg: "#F5F5F5",
+    label: "Expired",
+    icon: "timer-off",
+  },
 };
 
 const FILTERS = [
   { key: "all", label: "All" },
-  { key: "CONFIRMED", label: "Upcoming" },
+  { key: "Upcoming", label: "Upcoming" },
   { key: "ACTIVE", label: "Active" },
-  { key: "COMPLETED", label: "Past" },
+  { key: "Past", label: "Past" },
 ];
 
 export default function MyReservationsScreen() {
@@ -87,9 +93,7 @@ export default function MyReservationsScreen() {
   };
 
   const renderItem = ({ item }: { item: reservationsService.Reservation }) => {
-    const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDING;
-    const startTime = new Date(item.startTime);
-    const endTime = new Date(item.endTime);
+    const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.CONFIRMED;
 
     return (
       <TouchableOpacity
@@ -149,7 +153,7 @@ export default function MyReservationsScreen() {
             <View style={styles.metaItem}>
               <MaterialIcons name="schedule" size={14} color="#8E8E93" />
               <Text style={styles.metaText}>
-                {startTime.toLocaleDateString(undefined, {
+                {new Date(item.createdAt).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
                 })}
@@ -165,17 +169,17 @@ export default function MyReservationsScreen() {
 
           <View style={styles.timeRow}>
             <Text style={styles.timeText}>
-              {startTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}{" "}
-              -{" "}
-              {endTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
+              {item.status === "PENDING" && item.arrivalDeadline
+                ? `Awaiting host approval until ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                : item.status === "ACTIVE" && item.sessionStartedAt
+                  ? `Started ${new Date(item.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                  : item.status === "COMPLETED" &&
+                      item.sessionStartedAt &&
+                      item.sessionEndedAt
+                    ? `${new Date(item.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })} - ${new Date(item.sessionEndedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                    : item.arrivalDeadline
+                      ? `Arrive by ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                      : "Pay-as-you-go"}
             </Text>
             <MaterialIcons name="chevron-right" size={20} color="#C7C7CC" />
           </View>

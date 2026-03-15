@@ -231,10 +231,8 @@ export default function HomeScreen() {
             const statusLabel = isActive
               ? "Active - Parked"
               : isPending
-                ? "Pending Approval"
+                ? "Pending Host Approval"
                 : "Confirmed";
-            const start = new Date(booking.startTime);
-            const end = new Date(booking.endTime);
             return (
               <TouchableOpacity
                 key={booking.id}
@@ -259,7 +257,7 @@ export default function HomeScreen() {
                         isActive
                           ? "directions-car"
                           : isPending
-                            ? "schedule"
+                            ? "hourglass-top"
                             : "confirmation-number"
                       }
                       size={14}
@@ -295,17 +293,13 @@ export default function HomeScreen() {
                   <View style={styles.bookingDetailItem}>
                     <MaterialIcons name="schedule" size={14} color="#8E8E93" />
                     <Text style={styles.bookingDetailText}>
-                      {start.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}{" "}
-                      -{" "}
-                      {end.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
+                      {isPending && booking.arrivalDeadline
+                        ? `Host decision by ${new Date(booking.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                        : isActive && booking.sessionStartedAt
+                          ? `Started ${new Date(booking.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                          : booking.arrivalDeadline
+                            ? `Arrive by ${new Date(booking.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                            : "Pay-as-you-go"}
                     </Text>
                   </View>
                   <View style={styles.bookingDetailItem}>

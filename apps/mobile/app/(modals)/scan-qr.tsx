@@ -65,8 +65,8 @@ export default function ScanQRScreen() {
         }
       }
 
-      if (scanMode === "exit" && result.hadOvertime) {
-        message += `\n\n⚠️ Overtime charge: ₱${result.overtimeCharge?.toFixed(2)}`;
+      if (scanMode === "exit" && result.additionalCharge) {
+        message += `\n\nAdditional charge: ₱${result.additionalCharge.toFixed(2)}`;
       }
 
       Alert.alert(title, message, [

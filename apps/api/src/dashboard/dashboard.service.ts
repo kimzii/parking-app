@@ -67,8 +67,9 @@ export interface ReservationListItem {
   guestProfilePicture: string | null;
   hostName: string;
   propertyTitle: string;
-  startTime: Date;
-  endTime: Date;
+  arrivalDeadline: Date;
+  sessionStartedAt: Date | null;
+  sessionEndedAt: Date | null;
   status: ReservationStatus;
   totalAmount: number;
 }
@@ -87,7 +88,11 @@ export class DashboardService {
     const currentActiveReservations = await this.prisma.reservation.count({
       where: {
         status: {
-          in: [ReservationStatus.CONFIRMED, ReservationStatus.ACTIVE],
+          in: [
+            ReservationStatus.PENDING,
+            ReservationStatus.CONFIRMED,
+            ReservationStatus.ACTIVE,
+          ],
         },
       },
     });
@@ -464,7 +469,11 @@ export class DashboardService {
       this.prisma.reservation.count({
         where: {
           status: {
-            in: [ReservationStatus.ACTIVE, ReservationStatus.CONFIRMED],
+            in: [
+              ReservationStatus.PENDING,
+              ReservationStatus.CONFIRMED,
+              ReservationStatus.ACTIVE,
+            ],
           },
         },
       }),
@@ -584,8 +593,9 @@ export class DashboardService {
           guestProfilePicture: driverUser.profilePicture,
           hostName,
           propertyTitle: res.parkingSpace.parkingLocation.title,
-          startTime: res.startTime,
-          endTime: res.endTime,
+          arrivalDeadline: res.arrivalDeadline,
+          sessionStartedAt: res.sessionStartedAt,
+          sessionEndedAt: res.sessionEndedAt,
           status: res.status,
           totalAmount: parseFloat(res.totalAmount.toString()),
         };
@@ -651,8 +661,9 @@ export class DashboardService {
     return {
       id: reservation.id,
       status: reservation.status,
-      startTime: reservation.startTime,
-      endTime: reservation.endTime,
+      arrivalDeadline: reservation.arrivalDeadline,
+      sessionStartedAt: reservation.sessionStartedAt,
+      sessionEndedAt: reservation.sessionEndedAt,
       totalAmount: parseFloat(reservation.totalAmount.toString()),
       qrCode: reservation.qrCode,
       createdAt: reservation.createdAt,

@@ -401,8 +401,9 @@ export class UsersService {
     // Fetch reservations separately if user is a driver
     let reservations: {
       id: string;
-      startTime: Date;
-      endTime: Date;
+      arrivalDeadline: Date;
+      sessionStartedAt: Date | null;
+      sessionEndedAt: Date | null;
       status: string;
       totalAmount: number;
       parkingLocation: { title: string; address: string } | null;
@@ -412,11 +413,12 @@ export class UsersService {
       const driverReservations = await this.prisma.reservation.findMany({
         where: { driverId: user.driver.id },
         take: 15,
-        orderBy: { startTime: 'desc' },
+        orderBy: { createdAt: 'desc' },
         select: {
           id: true,
-          startTime: true,
-          endTime: true,
+          arrivalDeadline: true,
+          sessionStartedAt: true,
+          sessionEndedAt: true,
           status: true,
           totalAmount: true,
           parkingSpace: {
@@ -434,8 +436,9 @@ export class UsersService {
 
       reservations = driverReservations.map((r) => ({
         id: r.id,
-        startTime: r.startTime,
-        endTime: r.endTime,
+        arrivalDeadline: r.arrivalDeadline,
+        sessionStartedAt: r.sessionStartedAt,
+        sessionEndedAt: r.sessionEndedAt,
         status: r.status,
         totalAmount: r.totalAmount ? r.totalAmount.toNumber() : 0,
         parkingLocation: r.parkingSpace?.parkingLocation || null,

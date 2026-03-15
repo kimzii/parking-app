@@ -17,8 +17,8 @@ const STATUS_CONFIG = {
   PENDING: {
     color: "#F57C00",
     bg: "#FFF3E0",
-    label: "Pending",
-    icon: "hourglass-empty",
+    label: "Pending Approval",
+    icon: "hourglass-top",
   },
   CONFIRMED: {
     color: "#1976D2",
@@ -43,6 +43,12 @@ const STATUS_CONFIG = {
     bg: "#FFEBEE",
     label: "Cancelled",
     icon: "cancel",
+  },
+  EXPIRED: {
+    color: "#9E9E9E",
+    bg: "#F5F5F5",
+    label: "Expired",
+    icon: "timer-off",
   },
 };
 
@@ -91,9 +97,7 @@ export default function HostReservationsScreen() {
   const renderItem = ({ item }: { item: any }) => {
     const status =
       STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ||
-      STATUS_CONFIG.PENDING;
-    const startTime = new Date(item.startTime);
-    const endTime = new Date(item.endTime);
+      STATUS_CONFIG.CONFIRMED;
 
     return (
       <View style={styles.card}>
@@ -151,33 +155,12 @@ export default function HostReservationsScreen() {
 
         {/* Time Info */}
         <View style={styles.timeSection}>
-          <View style={styles.timeItem}>
-            <MaterialIcons name="schedule" size={16} color="#8E8E93" />
-            <Text style={styles.timeText}>
-              {startTime.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {startTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}{" "}
-              -{" "}
-              {endTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </Text>
-          </View>
-          {item.actualEntryTime && (
+          {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="login" size={16} color="#4CAF50" />
-              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
-                Checked in:{" "}
-                {new Date(item.actualEntryTime).toLocaleTimeString([], {
+              <MaterialIcons name="hourglass-empty" size={16} color="#F57C00" />
+              <Text style={[styles.timeText, { color: "#F57C00" }]}>
+                Decision by{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
@@ -185,16 +168,50 @@ export default function HostReservationsScreen() {
               </Text>
             </View>
           )}
-          {item.actualExitTime && (
+          {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="logout" size={16} color="#1976D2" />
-              <Text style={[styles.timeText, { color: "#1976D2" }]}>
-                Checked out:{" "}
-                {new Date(item.actualExitTime).toLocaleTimeString([], {
+              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <Text style={styles.timeText}>
+                Arrive by{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
                 })}
+              </Text>
+            </View>
+          )}
+          {item.sessionStartedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="login" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Checked in:{" "}
+                {new Date(item.sessionStartedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="logout" size={16} color="#1976D2" />
+              <Text style={[styles.timeText, { color: "#1976D2" }]}>
+                Checked out:{" "}
+                {new Date(item.sessionEndedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.status === "ACTIVE" && !item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="timer" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Session in progress — Pay-as-you-go
               </Text>
             </View>
           )}

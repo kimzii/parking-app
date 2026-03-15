@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
 import { walletService } from "../../src/services/wallet";
@@ -21,6 +19,7 @@ interface ParkingSpace {
   id: string;
   slotNumber: number;
   name: string | null;
+  description?: string | null;
   levelNumber: number | null;
   status: "AVAILABLE" | "OCCUPIED" | "DISABLED";
 }
@@ -30,6 +29,9 @@ interface SpotDetail {
   title: string;
   address: string;
   basePricePerHour: string;
+  openTime?: string;
+  closeTime?: string;
+  is24Hours?: boolean;
   parkingSpaces: ParkingSpace[];
 }
 
@@ -39,40 +41,9 @@ export default function BookSpotScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-
-  // Date/Time state
-  const [date, setDate] = useState(new Date());
-  const [startTime, setStartTime] = useState(new Date());
-  const [endTime, setEndTime] = useState(() => {
-    const end = new Date();
-    end.setHours(end.getHours() + 2);
-    return end;
-  });
-
-  // Picker visibility
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-
-  // Fee calculation
-  const [calculatedFee, setCalculatedFee] =
-    useState<reservationsService.CalculateFeeResponse | null>(null);
-  const [calculating, setCalculating] = useState(false);
-
-  // Booking state
   const [booking, setBooking] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [locationId]);
-
-  useEffect(() => {
-    if (selectedSpace) {
-      calculateFee();
-    }
-  }, [selectedSpace, date, startTime, endTime]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!locationId) return;
     try {
       const [spotData, balanceData] = await Promise.all([
@@ -87,51 +58,23 @@ export default function BookSpotScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId]);
 
-  const getReservationTimes = () => {
-    // Combine date with start/end times
-    const start = new Date(date);
-    start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-    const end = new Date(date);
-    end.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
-
-    // If end time is before start time, assume next day
-    if (end <= start) {
-      end.setDate(end.getDate() + 1);
-    }
-
-    return { start, end };
-  };
-
-  const calculateFee = async () => {
-    if (!selectedSpace) return;
-
-    setCalculating(true);
-    try {
-      const { start, end } = getReservationTimes();
-      const result = await reservationsService.calculateFee({
-        parkingSpaceId: selectedSpace.id,
-        startTime: start.toISOString(),
-        endTime: end.toISOString(),
-      });
-      setCalculatedFee(result);
-    } catch (err: any) {
-      console.error("Failed to calculate fee:", err);
-    } finally {
-      setCalculating(false);
-    }
-  };
+  const firstHourFee = spot ? Number(spot.basePricePerHour) : 0;
+  const hasInsufficientBalance =
+    firstHourFee > 0 && walletBalance < firstHourFee;
 
   const handleBooking = async () => {
-    if (!selectedSpace || !calculatedFee) return;
+    if (!selectedSpace || !spot) return;
 
-    // Check wallet balance
-    if (walletBalance < calculatedFee.totalAmount) {
+    if (hasInsufficientBalance) {
       Alert.alert(
         "Insufficient Balance",
-        `You need ₱${calculatedFee.totalAmount.toFixed(2)} but only have ₱${walletBalance.toFixed(2)}. Please top up your wallet.`,
+        `You need ₱${firstHourFee.toFixed(2)} but only have ₱${walletBalance.toFixed(2)}. Please top up your wallet.`,
         [
           { text: "Cancel", style: "cancel" },
           { text: "Top Up", onPress: () => router.push("/(modals)/top-up") },
@@ -140,26 +83,21 @@ export default function BookSpotScreen() {
       return;
     }
 
-    const { start, end } = getReservationTimes();
-
-    // Confirm booking
     Alert.alert(
-      "Confirm Reservation",
-      `Book ${spot?.title}\nSlot: ${selectedSpace.name || selectedSpace.slotNumber}\nDate: ${start.toLocaleDateString()}\nTime: ${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}\n\nTotal: ₱${calculatedFee.totalAmount.toFixed(2)}\n\nThis amount will be deducted from your wallet.`,
+      "Confirm Booking",
+      `Book ${spot.title}\nSlot: ${selectedSpace.name || `Slot ${selectedSpace.slotNumber}`}\n\nFirst hour fee: ₱${firstHourFee.toFixed(2)}\nRate: ₱${firstHourFee.toFixed(2)}/hr (pay-as-you-go)\n\nHost has 5 minutes to approve your request.\nOnce approved, you have 60 minutes to arrive.\nThis amount will be deducted from your wallet.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Confirm",
+          text: "Confirm & Pay",
           onPress: async () => {
             setBooking(true);
             try {
               const result = await reservationsService.createReservation({
                 parkingSpaceId: selectedSpace.id,
-                startTime: start.toISOString(),
-                endTime: end.toISOString(),
               });
 
-              Alert.alert("Reservation Confirmed! 🎉", result.message, [
+              Alert.alert("Booking Requested", result.message, [
                 {
                   text: "View QR Code",
                   onPress: () =>
@@ -181,19 +119,6 @@ export default function BookSpotScreen() {
       ],
     );
   };
-
-  const formatDate = (d: Date) =>
-    d.toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  const formatTime = (d: Date) =>
-    d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
 
   if (loading) {
     return (
@@ -223,8 +148,6 @@ export default function BookSpotScreen() {
   const availableSpaces = spot.parkingSpaces.filter(
     (s) => s.status === "AVAILABLE",
   );
-  const hasInsufficientBalance =
-    calculatedFee && walletBalance < calculatedFee.totalAmount;
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -237,9 +160,31 @@ export default function BookSpotScreen() {
         <View style={styles.spotInfo}>
           <Text style={styles.spotTitle}>{spot.title}</Text>
           <Text style={styles.spotAddress}>{spot.address}</Text>
-          <Text style={styles.priceText}>
-            ₱{Number(spot.basePricePerHour).toFixed(2)}/hour
-          </Text>
+          <View style={styles.rateRow}>
+            <Text style={styles.priceText}>
+              ₱{Number(spot.basePricePerHour).toFixed(2)}/hour
+            </Text>
+            <View style={styles.payAsYouGoBadge}>
+              <MaterialIcons name="timer" size={14} color="#11796F" />
+              <Text style={styles.payAsYouGoText}>Pay-as-you-go</Text>
+            </View>
+          </View>
+          {!spot.is24Hours && spot.openTime && spot.closeTime && (
+            <View style={styles.hoursRow}>
+              <MaterialIcons name="access-time" size={16} color="#8E8E93" />
+              <Text style={styles.hoursText}>
+                Hours: {spot.openTime} - {spot.closeTime}
+              </Text>
+            </View>
+          )}
+          {spot.is24Hours && (
+            <View style={styles.hoursRow}>
+              <MaterialIcons name="access-time" size={16} color="#4CAF50" />
+              <Text style={[styles.hoursText, { color: "#4CAF50" }]}>
+                Open 24 Hours
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Wallet Balance */}
@@ -314,6 +259,17 @@ export default function BookSpotScreen() {
                     >
                       {space.name || `Slot ${space.slotNumber}`}
                     </Text>
+                    {space.description && (
+                      <Text
+                        style={[
+                          styles.slotDesc,
+                          isSelected && styles.slotDescSelected,
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {space.description}
+                      </Text>
+                    )}
                     {space.levelNumber && (
                       <Text
                         style={[
@@ -331,126 +287,85 @@ export default function BookSpotScreen() {
           )}
         </View>
 
-        {/* Date & Time Selection */}
-        {selectedSpace && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Date & Time</Text>
-
-            {/* Date Picker */}
-            <TouchableOpacity
-              style={styles.dateTimeBtn}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <MaterialIcons name="calendar-today" size={20} color="#11796F" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dtLabel}>Date</Text>
-                <Text style={styles.dtValue}>{formatDate(date)}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#8E8E93" />
-            </TouchableOpacity>
-
-            {/* Start Time */}
-            <TouchableOpacity
-              style={styles.dateTimeBtn}
-              onPress={() => setShowStartPicker(true)}
-            >
-              <MaterialIcons name="schedule" size={20} color="#11796F" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dtLabel}>Start Time</Text>
-                <Text style={styles.dtValue}>{formatTime(startTime)}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#8E8E93" />
-            </TouchableOpacity>
-
-            {/* End Time */}
-            <TouchableOpacity
-              style={styles.dateTimeBtn}
-              onPress={() => setShowEndPicker(true)}
-            >
-              <MaterialIcons name="schedule" size={20} color="#11796F" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.dtLabel}>End Time</Text>
-                <Text style={styles.dtValue}>{formatTime(endTime)}</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={24} color="#8E8E93" />
-            </TouchableOpacity>
-
-            {/* Date/Time Pickers */}
-            {showDatePicker && (
-              <DateTimePicker
-                value={date}
-                mode="date"
-                minimumDate={new Date()}
-                onChange={(_, selected) => {
-                  setShowDatePicker(Platform.OS === "ios");
-                  if (selected) setDate(selected);
-                }}
-              />
-            )}
-            {showStartPicker && (
-              <DateTimePicker
-                value={startTime}
-                mode="time"
-                minuteInterval={15}
-                onChange={(_, selected) => {
-                  setShowStartPicker(Platform.OS === "ios");
-                  if (selected) setStartTime(selected);
-                }}
-              />
-            )}
-            {showEndPicker && (
-              <DateTimePicker
-                value={endTime}
-                mode="time"
-                minuteInterval={15}
-                onChange={(_, selected) => {
-                  setShowEndPicker(Platform.OS === "ios");
-                  if (selected) setEndTime(selected);
-                }}
-              />
-            )}
-          </View>
-        )}
-
-        {/* Fee Summary */}
+        {/* Booking Summary */}
         {selectedSpace && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Booking Summary</Text>
             <View style={styles.summaryCard}>
-              {calculating ? (
-                <ActivityIndicator size="small" color="#11796F" />
-              ) : calculatedFee ? (
-                <>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Duration</Text>
-                    <Text style={styles.summaryValue}>
-                      {calculatedFee.durationHours} hour(s)
-                    </Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Slot</Text>
+                <Text style={styles.summaryValue}>
+                  {selectedSpace.name || `Slot ${selectedSpace.slotNumber}`}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Rate</Text>
+                <Text style={styles.summaryValue}>
+                  ₱{firstHourFee.toFixed(2)}/hr
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Host Approval</Text>
+                <Text style={styles.summaryValue}>5 minutes</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Arrival Window</Text>
+                <Text style={styles.summaryValue}>60 min after approval</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.summaryRow}>
+                <Text style={styles.totalLabel}>First Hour (upfront)</Text>
+                <Text style={styles.totalValue}>
+                  ₱{firstHourFee.toFixed(2)}
+                </Text>
+              </View>
+              <Text style={styles.summaryNote}>
+                Additional hours charged at ₱{firstHourFee.toFixed(2)}/hr when
+                you exit
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* How it Works */}
+        {selectedSpace && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>How it Works</Text>
+            <View style={styles.stepsCard}>
+              {[
+                { icon: "payment" as const, text: "Pay first hour upfront" },
+                {
+                  icon: "hourglass-top" as const,
+                  text: "Host reviews your booking (5-minute window)",
+                },
+                {
+                  icon: "qr-code" as const,
+                  text: "After approval, show QR code to valet on arrival",
+                },
+                {
+                  icon: "timer" as const,
+                  text: "Session starts when you arrive",
+                },
+                {
+                  icon: "exit-to-app" as const,
+                  text: "Scan QR again to exit — remaining fee auto-charged",
+                },
+              ].map((step, i) => (
+                <View key={i} style={styles.stepRow}>
+                  <View style={styles.stepCircle}>
+                    <Text style={styles.stepNum}>{i + 1}</Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>Rate</Text>
-                    <Text style={styles.summaryValue}>
-                      ₱{calculatedFee.pricePerHour.toFixed(2)}/hr
-                    </Text>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalValue}>
-                      ₱{calculatedFee.totalAmount.toFixed(2)}
-                    </Text>
-                  </View>
-                </>
-              ) : (
-                <Text style={styles.summaryError}>Failed to calculate fee</Text>
-              )}
+                  <MaterialIcons name={step.icon} size={20} color="#11796F" />
+                  <Text style={styles.stepText}>{step.text}</Text>
+                </View>
+              ))}
             </View>
           </View>
         )}
       </ScrollView>
 
       {/* Book Button */}
-      {selectedSpace && calculatedFee && (
+      {selectedSpace && (
         <View style={styles.footer}>
           <TouchableOpacity
             style={[
@@ -473,7 +388,7 @@ export default function BookSpotScreen() {
                 <Text style={styles.bookBtnText}>
                   {hasInsufficientBalance
                     ? "Insufficient Balance"
-                    : `Book for ₱${calculatedFee.totalAmount.toFixed(2)}`}
+                    : `Pay ₱${firstHourFee.toFixed(2)} & Book Now`}
                 </Text>
               </>
             )}
@@ -515,7 +430,29 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   spotAddress: { fontSize: 14, color: "#8E8E93", marginBottom: 8 },
+  rateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   priceText: { fontSize: 16, fontWeight: "700", color: "#11796F" },
+  payAsYouGoBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#E8F5E9",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  payAsYouGoText: { fontSize: 11, fontWeight: "700", color: "#11796F" },
+  hoursRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  hoursText: { fontSize: 13, color: "#8E8E93" },
 
   // Wallet Card
   walletCard: {
@@ -561,7 +498,7 @@ const styles = StyleSheet.create({
   // Slots Grid
   slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   slotCell: {
-    width: 90,
+    width: 100,
     backgroundColor: "#E8F5E9",
     borderRadius: 12,
     padding: 12,
@@ -581,26 +518,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   slotNumberSelected: { color: "#fff" },
+  slotDesc: { fontSize: 10, color: "#666", textAlign: "center" },
+  slotDescSelected: { color: "rgba(255,255,255,0.8)" },
   slotLevel: { fontSize: 10, color: "#8E8E93" },
   slotLevelSelected: { color: "rgba(255,255,255,0.8)" },
-
-  // Date/Time Buttons
-  dateTimeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  dtLabel: { fontSize: 12, color: "#8E8E93", fontWeight: "600" },
-  dtValue: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
 
   // Summary Card
   summaryCard: {
@@ -620,10 +541,38 @@ const styles = StyleSheet.create({
   },
   summaryLabel: { fontSize: 14, color: "#8E8E93" },
   summaryValue: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
-  summaryError: { fontSize: 14, color: "#E53935", textAlign: "center" },
   divider: { height: 1, backgroundColor: "#E0E0E0", marginVertical: 10 },
   totalLabel: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
   totalValue: { fontSize: 18, fontWeight: "800", color: "#11796F" },
+  summaryNote: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+
+  // Steps Card
+  stepsCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
+    gap: 14,
+  },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  stepCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  stepNum: { fontSize: 11, fontWeight: "700", color: "#11796F" },
+  stepText: { fontSize: 13, color: "#1A1A2E", flex: 1 },
 
   // Footer
   footer: {
