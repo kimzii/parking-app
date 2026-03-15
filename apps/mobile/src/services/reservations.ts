@@ -74,12 +74,15 @@ export interface ScanResponse {
   };
   driver?: {
     name: string;
-    phone?: string;
+    phone?: string | null;
+    licenseNumber?: string | null;
     vehicle?: {
+      id?: string;
       plateNumber?: string;
       brand?: string;
       model?: string;
       color?: string;
+      vehicleType?: string;
     };
   };
   additionalCharge?: number | null;
@@ -88,13 +91,17 @@ export interface ScanResponse {
 export interface HostReservation extends Reservation {
   driver?: {
     name: string;
-    phone?: string;
+    phone?: string | null;
     image?: string | null;
+    licenseNumber?: string | null;
+    licenseImageUrl?: string | null;
     vehicle?: {
+      id?: string;
       plateNumber?: string;
       brand?: string;
       model?: string;
       color?: string;
+      vehicleType?: string;
     } | null;
   };
 }

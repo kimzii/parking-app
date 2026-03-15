@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Linking,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useFocusEffect, router } from "expo-router";
@@ -17,6 +18,7 @@ import { Image } from "expo-image";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { hostService } from "../../src/services/hosts";
+import { driversService } from "../../src/services/drivers";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_HEIGHT = 220;
@@ -119,6 +121,7 @@ export default function SpotDetailScreen() {
   } | null>(null);
   const [directions, setDirections] = useState<DirectionsInfo | null>(null);
   const [directionsLoading, setDirectionsLoading] = useState(false);
+  const [checkingVehicles, setCheckingVehicles] = useState(false);
 
   const fetchSpot = useCallback(async () => {
     if (!id) return;
@@ -200,6 +203,62 @@ export default function SpotDetailScreen() {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${spot.latitude},${spot.longitude}`;
     Linking.openURL(url);
   };
+
+  const handleBookNow = useCallback(async () => {
+    if (!spot) return;
+
+    setCheckingVehicles(true);
+    try {
+      const vehicles = await driversService.getVehicles();
+
+      if (!Array.isArray(vehicles) || vehicles.length === 0) {
+        Alert.alert(
+          "Vehicle Required",
+          "Please add a vehicle first before booking a parking spot.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Add Vehicle",
+              onPress: () => router.push("/(modals)/my-vehicles"),
+            },
+          ],
+        );
+        return;
+      }
+
+      router.push({
+        pathname: "/(modals)/book-spot",
+        params: { id: spot.id },
+      });
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+
+      if (
+        typeof message === "string" &&
+        message.toLowerCase().includes("driver profile not found")
+      ) {
+        Alert.alert(
+          "Driver Profile Required",
+          "Please complete your driver profile and add a vehicle before booking.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Become a Driver",
+              onPress: () => router.push("/(modals)/become-a-driver"),
+            },
+          ],
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Unable to Check Vehicles",
+        "Please try again before booking.",
+      );
+    } finally {
+      setCheckingVehicles(false);
+    }
+  }, [spot]);
 
   if (loading) {
     return (
@@ -569,17 +628,19 @@ export default function SpotDetailScreen() {
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.bookBtn}
-            onPress={() =>
-              router.push({
-                pathname: "/(modals)/book-spot",
-                params: { id: spot.id },
-              })
-            }
+            style={[styles.bookBtn, checkingVehicles && styles.bookBtnDisabled]}
+            onPress={handleBookNow}
+            disabled={checkingVehicles}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="event-available" size={20} color="#fff" />
-            <Text style={styles.bookBtnText}>Book Now</Text>
+            {checkingVehicles ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <MaterialIcons name="event-available" size={20} color="#fff" />
+                <Text style={styles.bookBtnText}>Book Now</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -902,6 +963,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
+  },
+  bookBtnDisabled: {
+    opacity: 0.75,
   },
   bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

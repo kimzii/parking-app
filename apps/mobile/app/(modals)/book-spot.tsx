@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
 import { walletService } from "../../src/services/wallet";
+import { driversService } from "../../src/services/drivers";
 
 interface ParkingSpace {
   id: string;
@@ -68,8 +69,61 @@ export default function BookSpotScreen() {
   const hasInsufficientBalance =
     firstHourFee > 0 && walletBalance < firstHourFee;
 
+  const ensureVehicleRegistered = async (): Promise<boolean> => {
+    try {
+      const vehicles = await driversService.getVehicles();
+      if (Array.isArray(vehicles) && vehicles.length > 0) {
+        return true;
+      }
+
+      Alert.alert(
+        "Vehicle Required",
+        "Please add a vehicle first before booking a parking spot.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Add Vehicle",
+            onPress: () => router.push("/(modals)/my-vehicles"),
+          },
+        ],
+      );
+      return false;
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+
+      if (
+        typeof message === "string" &&
+        message.toLowerCase().includes("driver profile not found")
+      ) {
+        Alert.alert(
+          "Driver Profile Required",
+          "Please complete your driver profile and add a vehicle before booking.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Become a Driver",
+              onPress: () => router.push("/(modals)/become-a-driver"),
+            },
+          ],
+        );
+        return false;
+      }
+
+      Alert.alert(
+        "Unable to Check Vehicles",
+        "Please try again before booking.",
+      );
+      return false;
+    }
+  };
+
   const handleBooking = async () => {
     if (!selectedSpace || !spot) return;
+
+    const hasVehicle = await ensureVehicleRegistered();
+    if (!hasVehicle) {
+      return;
+    }
 
     if (hasInsufficientBalance) {
       Alert.alert(
@@ -110,6 +164,21 @@ export default function BookSpotScreen() {
             } catch (err: any) {
               const message =
                 err.response?.data?.message || "Failed to create reservation";
+
+              if (
+                typeof message === "string" &&
+                message.toLowerCase().includes("vehicle")
+              ) {
+                Alert.alert("Vehicle Required", message, [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Add Vehicle",
+                    onPress: () => router.push("/(modals)/my-vehicles"),
+                  },
+                ]);
+                return;
+              }
+
               Alert.alert("Booking Failed", message);
             } finally {
               setBooking(false);
@@ -122,7 +191,10 @@ export default function BookSpotScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
         <Stack.Screen options={{ title: "Book Parking" }} />
         <ActivityIndicator
           size="large"
@@ -135,7 +207,10 @@ export default function BookSpotScreen() {
 
   if (!spot) {
     return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
         <Stack.Screen options={{ title: "Book Parking" }} />
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={48} color="#E53935" />

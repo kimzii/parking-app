@@ -77,7 +77,9 @@ type FilterKey = (typeof FILTERS)[number]["key"];
 export default function HostHomeScreen() {
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [reservations, setReservations] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<
+    reservationsService.HostReservation[]
+  >([]);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -188,12 +190,31 @@ export default function HostHomeScreen() {
     [filter, fetchReservations],
   );
 
-  const renderReservationItem = ({ item }: { item: any }) => {
+  const renderReservationItem = ({
+    item,
+  }: {
+    item: reservationsService.HostReservation;
+  }) => {
     const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.CONFIRMED;
     const pendingRemainingMs =
       item.status === "PENDING" && item.arrivalDeadline
         ? new Date(item.arrivalDeadline).getTime() - now.getTime()
         : null;
+    const driverPhone = item.driver?.phone || "Not provided";
+    const driverPlateNumber =
+      item.driver?.vehicle?.plateNumber || "Not provided";
+    const slotName = item.parkingSpace.name?.trim() || "Unnamed Spot";
+    const bookedSpot = slotName;
+    const vehicleLabel = [
+      item.driver?.vehicle?.brand,
+      item.driver?.vehicle?.model,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const vehicleText = item.driver?.vehicle
+      ? vehicleLabel || item.driver.vehicle.vehicleType || "Vehicle"
+      : "Not provided";
 
     return (
       <TouchableOpacity
@@ -223,9 +244,7 @@ export default function HostHomeScreen() {
             </View>
           </View>
           <View style={styles.slotBadge}>
-            <Text style={styles.slotText}>
-              Slot {item.parkingSpace.slotNumber}
-            </Text>
+            <Text style={styles.slotText}>{slotName}</Text>
           </View>
         </View>
 
@@ -247,14 +266,30 @@ export default function HostHomeScreen() {
             <Text style={styles.driverName}>
               {item.driver?.name || "Driver"}
             </Text>
-            {item.driver?.vehicle && (
-              <Text style={styles.vehicleInline}>
-                {item.driver.vehicle.brand} {item.driver.vehicle.model}
-                {item.driver.vehicle.plateNumber
-                  ? ` • ${item.driver.vehicle.plateNumber}`
-                  : ""}
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons name="phone" size={12} color="#8E8E93" />
+              <Text style={styles.driverMetaText}>Phone: {driverPhone}</Text>
+            </View>
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons
+                name="confirmation-number"
+                size={12}
+                color="#8E8E93"
+              />
+              <Text style={styles.driverMetaText}>
+                Plate Number: {driverPlateNumber}
               </Text>
-            )}
+            </View>
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons name="directions-car" size={12} color="#8E8E93" />
+              <Text style={styles.driverMetaText}>Vehicle: {vehicleText}</Text>
+            </View>
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons name="local-parking" size={12} color="#8E8E93" />
+              <Text style={styles.driverMetaText}>
+                Booked Spot: {bookedSpot}
+              </Text>
+            </View>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#C7C7CC" />
         </View>
@@ -632,6 +667,13 @@ const styles = StyleSheet.create({
     borderColor: "#E8F5F3",
   },
   driverName: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  driverMetaText: { flex: 1, fontSize: 12, color: "#8E8E93" },
   vehicleInline: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
   callBtn: {
     width: 32,

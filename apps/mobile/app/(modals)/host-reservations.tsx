@@ -61,7 +61,7 @@ const FILTERS = [
 
 export default function HostReservationsScreen() {
   const [reservations, setReservations] = useState<
-    reservationsService.Reservation[]
+    reservationsService.HostReservation[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -94,10 +94,29 @@ export default function HostReservationsScreen() {
     fetchReservations();
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({
+    item,
+  }: {
+    item: reservationsService.HostReservation;
+  }) => {
     const status =
       STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ||
       STATUS_CONFIG.CONFIRMED;
+    const driverPhone = item.driver?.phone || "Not provided";
+    const driverPlateNumber =
+      item.driver?.vehicle?.plateNumber || "Not provided";
+    const slotName = item.parkingSpace.name?.trim() || "Unnamed Spot";
+    const bookedSpot = slotName;
+    const vehicleLabel = [
+      item.driver?.vehicle?.brand,
+      item.driver?.vehicle?.model,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const vehicleText = item.driver?.vehicle
+      ? vehicleLabel || item.driver.vehicle.vehicleType || "Vehicle"
+      : "Not provided";
 
     return (
       <View style={styles.card}>
@@ -118,9 +137,7 @@ export default function HostReservationsScreen() {
             </View>
           </View>
           <View style={styles.slotBadge}>
-            <Text style={styles.slotText}>
-              Slot {item.parkingSpace.slotNumber}
-            </Text>
+            <Text style={styles.slotText}>{slotName}</Text>
           </View>
         </View>
 
@@ -130,28 +147,32 @@ export default function HostReservationsScreen() {
         <View style={styles.driverRow}>
           <MaterialIcons name="person" size={18} color="#11796F" />
           <Text style={styles.driverName}>{item.driver?.name || "Driver"}</Text>
-          {item.driver?.phone && (
-            <TouchableOpacity
-              style={styles.callBtn}
-              onPress={() => {
-                /* Linking.openURL(`tel:${item.driver.phone}`) */
-              }}
-            >
-              <MaterialIcons name="phone" size={16} color="#11796F" />
-            </TouchableOpacity>
-          )}
         </View>
 
-        {/* Vehicle Info */}
-        {item.driver?.vehicle && (
-          <View style={styles.vehicleRow}>
-            <MaterialIcons name="directions-car" size={16} color="#8E8E93" />
-            <Text style={styles.vehicleText}>
-              {item.driver.vehicle.brand} {item.driver.vehicle.model} •{" "}
-              {item.driver.vehicle.plateNumber || "N/A"}
+        <View style={styles.driverDetails}>
+          <View style={styles.detailRow}>
+            <MaterialIcons name="phone" size={14} color="#8E8E93" />
+            <Text style={styles.detailText}>Phone: {driverPhone}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <MaterialIcons
+              name="confirmation-number"
+              size={14}
+              color="#8E8E93"
+            />
+            <Text style={styles.detailText}>
+              Plate Number: {driverPlateNumber}
             </Text>
           </View>
-        )}
+          <View style={styles.detailRow}>
+            <MaterialIcons name="directions-car" size={14} color="#8E8E93" />
+            <Text style={styles.detailText}>Vehicle: {vehicleText}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <MaterialIcons name="local-parking" size={14} color="#8E8E93" />
+            <Text style={styles.detailText}>Booked Spot: {bookedSpot}</Text>
+          </View>
+        </View>
 
         {/* Time Info */}
         <View style={styles.timeSection}>
@@ -385,9 +406,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   driverName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverDetails: {
+    gap: 4,
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  detailText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#8E8E93",
+  },
   callBtn: {
     width: 32,
     height: 32,

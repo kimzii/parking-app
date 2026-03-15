@@ -238,6 +238,20 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    const activeVehicle = await this.prisma.driverVehicle.findFirst({
+      where: {
+        driverId: driver.id,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeVehicle) {
+      throw new BadRequestException(
+        'Please add at least one active vehicle before booking.',
+      );
+    }
+
     // Get parking space and location
     const parkingSpace = await this.prisma.parkingSpace.findUnique({
       where: { id: dto.parkingSpaceId },
@@ -786,6 +800,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             },
             vehicles: {
               where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
               take: 1,
             },
           },
@@ -847,6 +862,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       driver: {
         name: `${reservation.driver.user.firstName || ''} ${reservation.driver.user.lastName || ''}`.trim(),
         phone: reservation.driver.user.phoneNumber,
+        licenseNumber: toNullable<string>(reservation.driver.licenseNumber),
         vehicle: reservation.driver.vehicles[0] || null,
       },
     };
@@ -1178,6 +1194,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             },
             vehicles: {
               where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
               take: 1,
             },
           },
@@ -1211,6 +1228,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         name: `${r.driver.user.firstName || ''} ${r.driver.user.lastName || ''}`.trim(),
         phone: r.driver.user.phoneNumber,
         image: toNullable<string>(r.driver.user.profilePicture),
+        licenseNumber: toNullable<string>(r.driver.licenseNumber),
+        licenseImageUrl: toNullable<string>(r.driver.licenseImageUrl),
         vehicle: r.driver.vehicles[0] || null,
       },
     }));

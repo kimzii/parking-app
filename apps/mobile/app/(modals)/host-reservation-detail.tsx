@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as reservationsService from "../../src/services/reservations";
 
 const STATUS_CONFIG: Record<
   string,
@@ -55,12 +56,15 @@ const STATUS_CONFIG: Record<
 
 export default function HostReservationDetailScreen() {
   const params = useLocalSearchParams<{ reservation: string }>();
-  const [reservation, setReservation] = useState<any>(null);
+  const [reservation, setReservation] =
+    useState<reservationsService.HostReservation | null>(null);
 
   useEffect(() => {
     if (params.reservation) {
       try {
-        setReservation(JSON.parse(params.reservation));
+        setReservation(
+          JSON.parse(params.reservation) as reservationsService.HostReservation,
+        );
       } catch {
         console.error("Failed to parse reservation data");
       }
@@ -69,7 +73,10 @@ export default function HostReservationDetailScreen() {
 
   if (!reservation) {
     return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
         <Stack.Screen options={{ title: "Reservation" }} />
         <ActivityIndicator
           size="large"
@@ -81,6 +88,10 @@ export default function HostReservationDetailScreen() {
   }
 
   const status = STATUS_CONFIG[reservation.status] ?? STATUS_CONFIG.CONFIRMED;
+  const driverPlateNumber =
+    reservation.driver?.vehicle?.plateNumber || "Not provided";
+  const slotName = reservation.parkingSpace.name?.trim() || "Unnamed Spot";
+  const bookedSpot = slotName;
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -105,9 +116,12 @@ export default function HostReservationDetailScreen() {
           <Text style={styles.driverDisplayName}>
             {reservation.driver?.name || "Driver"}
           </Text>
-          {reservation.driver?.phone && (
-            <Text style={styles.driverPhone}>{reservation.driver.phone}</Text>
-          )}
+          <Text style={styles.driverPhone}>
+            Phone: {reservation.driver?.phone || "Not provided"}
+          </Text>
+          <Text style={styles.driverPhone}>
+            Plate Number: {driverPlateNumber}
+          </Text>
           <View style={[styles.statusChip, { backgroundColor: status.bg }]}>
             <MaterialIcons
               name={status.icon as any}
@@ -121,42 +135,57 @@ export default function HostReservationDetailScreen() {
         </View>
 
         {/* Vehicle Details */}
-        {reservation.driver?.vehicle && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Vehicle</Text>
-            <View style={styles.infoCard}>
-              <View style={styles.vehicleHeader}>
-                <View style={styles.vehicleIconBg}>
-                  <MaterialIcons
-                    name="directions-car"
-                    size={24}
-                    color="#11796F"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.vehicleName}>
-                    {reservation.driver.vehicle.brand}{" "}
-                    {reservation.driver.vehicle.model}
-                  </Text>
-                  {reservation.driver.vehicle.color && (
-                    <Text style={styles.vehicleSubtext}>
-                      {reservation.driver.vehicle.color}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Vehicle</Text>
+          <View style={styles.infoCard}>
+            {reservation.driver?.vehicle ? (
+              <>
+                <View style={styles.vehicleHeader}>
+                  <View style={styles.vehicleIconBg}>
+                    <MaterialIcons
+                      name="directions-car"
+                      size={24}
+                      color="#11796F"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.vehicleName}>
+                      {[
+                        reservation.driver.vehicle.brand,
+                        reservation.driver.vehicle.model,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || "Vehicle"}
                     </Text>
-                  )}
-                </View>
-              </View>
-              {reservation.driver.vehicle.plateNumber && (
-                <View style={styles.plateRow}>
-                  <View style={styles.plateBadge}>
-                    <Text style={styles.plateText}>
-                      {reservation.driver.vehicle.plateNumber}
-                    </Text>
+                    {reservation.driver.vehicle.color && (
+                      <Text style={styles.vehicleSubtext}>
+                        {reservation.driver.vehicle.color}
+                      </Text>
+                    )}
                   </View>
                 </View>
-              )}
-            </View>
+                {reservation.driver.vehicle.plateNumber && (
+                  <View style={styles.plateRow}>
+                    <View style={styles.plateBadge}>
+                      <Text style={styles.plateText}>
+                        {reservation.driver.vehicle.plateNumber}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.infoRow}>
+                <MaterialIcons
+                  name="directions-car"
+                  size={18}
+                  color="#8E8E93"
+                />
+                <Text style={styles.infoText}>No active vehicle provided</Text>
+              </View>
+            )}
           </View>
-        )}
+        </View>
 
         {/* Parking Details */}
         <View style={styles.section}>
@@ -169,7 +198,7 @@ export default function HostReservationDetailScreen() {
                   {reservation.parkingLocation.title}
                 </Text>
                 <Text style={styles.infoSubtext}>
-                  Slot {reservation.parkingSpace.slotNumber}
+                  Booked Spot: {bookedSpot}
                 </Text>
               </View>
             </View>
@@ -334,7 +363,7 @@ const styles = StyleSheet.create({
   driverPhone: {
     fontSize: 14,
     color: "#8E8E93",
-    marginBottom: 12,
+    marginBottom: 2,
   },
   statusChip: {
     flexDirection: "row",
