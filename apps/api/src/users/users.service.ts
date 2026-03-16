@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -9,11 +11,16 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { CreateAdminDto } from './dto/create-admin.dto';
+import { EmailService } from '../common/email.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   // Get current user profile
   async getProfile(userId: string) {
@@ -458,6 +465,141 @@ export class UsersService {
             reservations,
           }
         : undefined,
+    };
+  }
+
+  // Admin: Create a new admin user
+  async createAdmin(createAdminDto: CreateAdminDto) {
+    const { email, firstName, lastName, phoneNumber } = createAdminDto;
+
+    // Check if user with this email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    // Generate a random temporary password
+    const temporaryPassword = this.generateTemporaryPassword();
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    // Get the ADMIN role
+    const adminRole = await this.prisma.role.findUnique({
+      where: { name: 'ADMIN' },
+    });
+
+    if (!adminRole) {
+      throw new NotFoundException('Admin role not found in the system');
+    }
+
+    // Create the user with admin role
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        phoneNumber,
+        emailVerified: true, // Admin accounts are pre-verified
+        userRoles: {
+          create: {
+            roleId: adminRole.id,
+            status: 'VERIFIED', // Admin roles are pre-verified
+          },
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        createdAt: true,
+      },
+    });
+
+    // Try to send credentials via email (don't fail if email service is unavailable)
+    let emailSent = false;
+    try {
+      await this.emailService.sendAdminCredentialsEmail(
+        email,
+        firstName,
+        temporaryPassword,
+      );
+      emailSent = true;
+    } catch (error) {
+      console.error('Failed to send admin credentials email:', error);
+    }
+
+    return {
+      message: emailSent
+        ? 'Admin account created successfully. Credentials have been sent via email.'
+        : 'Admin account created successfully. Email could not be sent - please share credentials manually.',
+      user,
+      temporaryPassword: emailSent ? undefined : temporaryPassword, // Only include password if email failed
+    };
+  }
+
+  // Helper: Generate a random temporary password
+  private generateTemporaryPassword(): string {
+    const length = 12;
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '@$!%*?&';
+    const all = uppercase + lowercase + numbers + special;
+
+    // Ensure at least one of each required character type
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+
+    // Fill the rest randomly
+    for (let i = password.length; i < length; i++) {
+      password += all[Math.floor(Math.random() * all.length)];
+    }
+
+    // Shuffle the password
+    return password
+      .split('')
+      .sort(() => Math.random() - 0.5)
+      .join('');
+  }
+
+  // Admin: Delete user
+  async deleteUser(userId: string, requestingUserId: string) {
+    // Prevent admin from deleting themselves
+    if (userId === requestingUserId) {
+      throw new ForbiddenException('You cannot delete your own account');
+    }
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Delete the user and all related data (cascading deletes handled by Prisma)
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return {
+      message: 'User deleted successfully',
+      deletedUserId: userId,
     };
   }
 }

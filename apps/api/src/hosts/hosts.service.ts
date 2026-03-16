@@ -498,6 +498,8 @@ export class HostsService {
                   email: true,
                   firstName: true,
                   lastName: true,
+                  phoneNumber: true,
+                  profilePicture: true,
                 },
               },
             },

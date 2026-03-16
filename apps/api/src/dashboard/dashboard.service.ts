@@ -42,6 +42,8 @@ export interface RecentListing {
   id: string;
   title: string;
   address: string;
+  latitude: number;
+  longitude: number;
   hostName: string;
   status: LocationStatus;
   createdAt: Date;
@@ -157,17 +159,25 @@ export class DashboardService {
       },
     });
 
-    return listings.map((listing) => ({
-      id: listing.id,
-      title: listing.title,
-      address: listing.address,
-      hostName:
-        listing.host.user.firstName && listing.host.user.lastName
-          ? `${listing.host.user.firstName} ${listing.host.user.lastName}`
-          : listing.host.user.email,
-      status: listing.status,
-      createdAt: listing.createdAt,
-    }));
+    return listings.map((listing) => {
+      const user = listing.host?.user;
+      const hostName = user
+        ? user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user.email
+        : 'Unknown Host';
+
+      return {
+        id: listing.id,
+        title: listing.title,
+        address: listing.address,
+        latitude: parseFloat(listing.latitude.toString()),
+        longitude: parseFloat(listing.longitude.toString()),
+        hostName,
+        status: listing.status,
+        createdAt: listing.createdAt,
+      };
+    });
   }
 
   async getRecentActivity(limit: number = 10): Promise<RecentActivity[]> {
@@ -189,10 +199,12 @@ export class DashboardService {
     });
 
     for (const listing of recentListings) {
-      const userName =
-        listing.host.user.firstName && listing.host.user.lastName
-          ? `${listing.host.user.firstName} ${listing.host.user.lastName.charAt(0)}.`
-          : listing.host.user.email.split('@')[0];
+      const user = listing.host?.user;
+      const userName = user
+        ? user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName.charAt(0)}.`
+          : user.email?.split('@')[0] || 'Unknown'
+        : 'Unknown';
 
       activities.push({
         id: listing.id,
@@ -219,10 +231,12 @@ export class DashboardService {
     });
 
     for (const reservation of recentReservations) {
-      const userName =
-        reservation.driver.user.firstName && reservation.driver.user.lastName
-          ? `${reservation.driver.user.firstName} ${reservation.driver.user.lastName.charAt(0)}.`
-          : reservation.driver.user.email.split('@')[0];
+      const user = reservation.driver?.user;
+      const userName = user
+        ? user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName.charAt(0)}.`
+          : user.email?.split('@')[0] || 'Unknown'
+        : 'Unknown';
 
       activities.push({
         id: reservation.id,
@@ -244,10 +258,12 @@ export class DashboardService {
     });
 
     for (const driver of recentDrivers) {
-      const userName =
-        driver.user.firstName && driver.user.lastName
-          ? `${driver.user.firstName} ${driver.user.lastName.charAt(0)}.`
-          : driver.user.email.split('@')[0];
+      const user = driver.user;
+      const userName = user
+        ? user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName.charAt(0)}.`
+          : user.email?.split('@')[0] || 'Unknown'
+        : 'Unknown';
 
       activities.push({
         id: driver.id,

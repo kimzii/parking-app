@@ -8,6 +8,7 @@ import {
   Query,
   Param,
   Post,
+  Delete,
   UploadedFile,
   UseInterceptors,
   BadRequestException,
@@ -19,6 +20,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { CreateAdminDto } from './dto/create-admin.dto';
 import type { AuthenticatedRequest } from './types';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -175,11 +177,30 @@ export class UsersController {
     return this.usersService.getUserStatistics();
   }
 
+  // Admin: Create a new admin user
+  @Post('admin/create')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  async createAdmin(@Body() createAdminDto: CreateAdminDto) {
+    return this.usersService.createAdmin(createAdminDto);
+  }
+
   // Admin: Get user by ID with full details
   @Get(':id')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)
   async getUserById(@Param('id') id: string) {
     return this.usersService.getUserById(id);
+  }
+
+  // Admin: Delete user
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  async deleteUser(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.deleteUser(id, req.user.id);
   }
 }
