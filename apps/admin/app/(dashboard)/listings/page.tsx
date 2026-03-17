@@ -61,6 +61,7 @@ type ParkingLocation = {
   availableSlots: number | null;
   isMultiLevel: boolean;
   numberOfLevels: number | null;
+  proofOfResidenceUrl: string | null;
   createdAt: string;
   host: Host;
   images: ParkingLocationImage[];
@@ -407,6 +408,23 @@ export default function PendingListings() {
                     <CheckCircle className="w-3 h-3" />
                     Verified
                   </span>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Proof of Residence</p>
+                  {selectedListing.proofOfResidenceUrl ? (
+                    <a
+                      href={selectedListing.proofOfResidenceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                      View Document
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-500">No proof of residence uploaded.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

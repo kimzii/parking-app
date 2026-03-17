@@ -138,6 +138,12 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const clearAuthCookies = () => {
+    document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+    document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+    document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+  };
+
   const {
     register,
     handleSubmit,
@@ -166,9 +172,11 @@ export default function LoginPage() {
             router.replace("/dashboard");
           } else {
             localStorage.clear();
+            clearAuthCookies();
           }
         } catch {
           localStorage.clear();
+          clearAuthCookies();
         }
       }
     };
@@ -183,6 +191,7 @@ export default function LoginPage() {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
+      clearAuthCookies();
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
@@ -209,6 +218,7 @@ export default function LoginPage() {
       const expires = expiryDate.toUTCString();
 
       document.cookie = `accessToken=${accessToken}; path=/; expires=${expires}; samesite=strict`;
+      document.cookie = `refreshToken=${refreshToken}; path=/; expires=${expires}; samesite=strict`;
       document.cookie = `user=${encodeURIComponent(JSON.stringify(user))}; path=/; expires=${expires}; samesite=strict`;
 
       await new Promise((resolve) => setTimeout(resolve, 500));

@@ -47,7 +47,16 @@ interface UserProfile {
     id: string;
     licenseNumber: string | null;
     licenseImageUrl: string | null;
-    vehicles: { id: string; plateNumber: string | null; brand: string | null; model: string | null; }[];
+    vehicles: {
+      id: string;
+      plateNumber: string | null;
+      vehicleType: "CAR" | "MOTORCYCLE" | "SUV" | null;
+      brand: string | null;
+      model: string | null;
+      color: string | null;
+      isActive: boolean;
+      createdAt: string;
+    }[];
     reservations: { id: string; startTime: string; totalAmount: number; status: string; parkingLocation?: { title: string; } }[];
   };
   host?: {
@@ -102,7 +111,7 @@ export default function UserProfileView() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "vehicle" | "property">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "vehicle" | "bookings" | "property">("profile");
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchUserProfile = useCallback(async () => {
@@ -248,6 +257,19 @@ export default function UserProfileView() {
               Vehicle Info
             </button>
           )}
+          {isDriver && (
+            <button
+              onClick={() => setActiveTab("bookings")}
+              className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-colors border-b-2 ${
+                activeTab === "bookings"
+                  ? "border-[#005f56] text-[#005f56] bg-white"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <Clock size={18} />
+              Recent Bookings
+            </button>
+          )}
           {isHost && (
             <button
               onClick={() => setActiveTab("property")}
@@ -265,13 +287,113 @@ export default function UserProfileView() {
 
         {/* Tab Content */}
         <div className="p-8">
+          {isDriver && user?.driver && (
+            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-8">
+              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <ShieldCheck size={20} className="text-[#005f56]" />
+                Verification Actions
+              </h3>
+
+              {getDriverStatus() === "PENDING" ? (
+                <div className="space-y-6">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-yellow-800">Pending Verification</p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          This driver is awaiting verification. Please review the license information and take action.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {actionLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={20} />
+                      )}
+                      Approve Driver Verification
+                    </button>
+
+                    <button
+                      onClick={() => user.driver && handleDriverVerification(user.driver.id, "REJECTED", "Driver license verification failed")}
+                      disabled={actionLoading}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {actionLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <XCircle size={20} />
+                      )}
+                      Reject Driver Verification
+                    </button>
+                  </div>
+                </div>
+              ) : getDriverStatus() === "VERIFIED" ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-green-800">Verified Driver</p>
+                      <p className="text-sm text-green-700 mt-1">
+                        This driver has been verified and can access all driver features.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : getDriverStatus() === "REJECTED" ? (
+                <div className="space-y-6">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-red-800">Verification Rejected</p>
+                        <p className="text-sm text-red-700 mt-1">
+                          This driver&apos;s verification was rejected. You can re-approve if needed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
+                    disabled={actionLoading}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    {actionLoading ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : (
+                      <CheckCircle size={20} />
+                    )}
+                    Re-approve Driver
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle size={20} className="text-gray-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-gray-700">Account Suspended</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        This driver account is currently suspended.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === "profile" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-
-              {/* Left Column: User Details */}
               <div className="lg:col-span-4 flex flex-col items-center lg:items-start text-center lg:text-left">
-
-                {/* Profile Picture */}
                 <div className="w-32 h-32 bg-gray-200 rounded-full mb-6 border-4 border-white shadow-md overflow-hidden flex items-center justify-center">
                   {user.profilePicture ? (
                     <Image
@@ -286,7 +408,6 @@ export default function UserProfileView() {
                   )}
                 </div>
 
-                {/* Name & Role */}
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h2>
                 <span className={`inline-block px-3 py-1 font-semibold text-sm rounded-full mb-8 ${
                   isHost
@@ -296,7 +417,6 @@ export default function UserProfileView() {
                   {primaryRole}
                 </span>
 
-                {/* Contact Info Details */}
                 <div className="w-full space-y-4 mb-8">
                   <div className="flex items-center gap-3 text-gray-600">
                     <Mail size={18} className="text-gray-400 shrink-0" />
@@ -323,7 +443,6 @@ export default function UserProfileView() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg transition-colors border border-gray-200">
                     <Edit size={18} />
@@ -336,264 +455,221 @@ export default function UserProfileView() {
                 </div>
               </div>
 
-              {/* Divider (Hidden on mobile, visible on lg screens) */}
               <div className="hidden lg:block lg:col-span-1">
                 <div className="h-full w-px bg-gray-200 mx-auto"></div>
               </div>
 
-              {/* Right Column: Recent Activity (Bookings for Driver, Listings for Host) */}
-              <div className="lg:col-span-7">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {isDriver ? "Recent Bookings" : "Recent Listings"}
-                  </h3>
-                </div>
+              <div className="lg:col-span-7 space-y-8">
+                {isDriver && user.driver && (
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <CarFront size={20} className="text-[#005f56]" />
+                      Driver License Information
+                    </h3>
 
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                  {isDriver ? (
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
-                        <tr>
-                          <th className="px-4 py-3">Booking ID</th>
-                          <th className="px-4 py-3">Date</th>
-                          <th className="px-4 py-3">Host</th>
-                          <th className="px-4 py-3">Amount</th>
-                          <th className="px-4 py-3 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-sm">
-                        {recentBookings.map((booking, index) => (
-                          <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-gray-900">{booking.id}</td>
-                            <td className="px-4 py-3 text-gray-600">{booking.date}</td>
-                            <td className="px-4 py-3 text-gray-600">{booking.host}</td>
-                            <td className="px-4 py-3 font-medium text-gray-900">{booking.amount}</td>
-                            <td className="px-4 py-3 text-right">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                booking.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                booking.status === 'Active' ? 'bg-blue-100 text-blue-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}>
-                                {booking.status}
-                              </span>
-                            </td>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">License Number</p>
+                        <p className="font-semibold text-gray-900 text-lg">
+                          {user.driver.licenseNumber || "Not provided"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Verification Status</p>
+                        <div className="flex items-center gap-2">
+                          {getVerificationIcon(getDriverStatus() || "PENDING")}
+                          <span className={`font-semibold ${getStatusColor(getDriverStatus() || "PENDING")}`}>
+                            {getDriverStatus() || "PENDING"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">License Image</p>
+                        {user.driver.licenseImageUrl ? (
+                          <div className="relative w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            <Image
+                              src={user.driver.licenseImageUrl}
+                              alt="Driver License"
+                              fill
+                              className="object-contain"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full h-64 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
+                            <div className="text-center text-gray-400">
+                              <AlertCircle size={32} className="mx-auto mb-2" />
+                              <p className="text-sm">No license image uploaded</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isHost && (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold text-gray-900">Recent Listings</h3>
+                    </div>
+
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
+                          <tr>
+                            <th className="px-4 py-3">Listing ID</th>
+                            <th className="px-4 py-3">Property Name</th>
+                            <th className="px-4 py-3">Date Added</th>
+                            <th className="px-4 py-3">Revenue</th>
+                            <th className="px-4 py-3 text-right">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
-                        <tr>
-                          <th className="px-4 py-3">Listing ID</th>
-                          <th className="px-4 py-3">Property Name</th>
-                          <th className="px-4 py-3">Date Added</th>
-                          <th className="px-4 py-3">Revenue</th>
-                          <th className="px-4 py-3 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 text-sm">
-                        {recentListings.map((listing, index) => (
-                          <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-gray-900">{listing.id}</td>
-                            <td className="px-4 py-3 text-gray-600">{listing.name}</td>
-                            <td className="px-4 py-3 text-gray-600">{listing.date}</td>
-                            <td className="px-4 py-3 font-medium text-gray-900">{listing.revenue}</td>
-                            <td className="px-4 py-3 text-right">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                listing.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                listing.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}>
-                                {listing.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 text-sm">
+                          {recentListings.map((listing, index) => (
+                            <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-4 py-3 font-medium text-gray-900">{listing.id}</td>
+                              <td className="px-4 py-3 text-gray-600">{listing.name}</td>
+                              <td className="px-4 py-3 text-gray-600">{listing.date}</td>
+                              <td className="px-4 py-3 font-medium text-gray-900">{listing.revenue}</td>
+                              <td className="px-4 py-3 text-right">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  listing.status === "Active" ? "bg-green-100 text-green-700" :
+                                  listing.status === "Pending" ? "bg-yellow-100 text-yellow-700" :
+                                  "bg-gray-100 text-gray-700"
+                                }`}>
+                                  {listing.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
               </div>
+            </div>
+          )}
+
+          {activeTab === "bookings" && isDriver && (
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3">Booking ID</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Host</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-sm">
+                  {recentBookings.map((booking, index) => (
+                    <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900">{booking.id}</td>
+                      <td className="px-4 py-3 text-gray-600">{booking.date}</td>
+                      <td className="px-4 py-3 text-gray-600">{booking.host}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{booking.amount}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          booking.status === "Completed" ? "bg-green-100 text-green-700" :
+                          booking.status === "Active" ? "bg-blue-100 text-blue-700" :
+                          "bg-gray-100 text-gray-700"
+                        }`}>
+                          {booking.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* Vehicle Info Tab (Driver only) - Driver Verification */}
           {activeTab === "vehicle" && isDriver && user?.driver && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left: Driver License Info */}
+            <div className="grid grid-cols-1 gap-8">
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <CarFront size={20} className="text-[#005f56]" />
-                  Driver License Information
-                </h3>
-
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">License Number</p>
-                    <p className="font-semibold text-gray-900 text-lg">
-                      {user.driver.licenseNumber || "Not provided"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Verification Status</p>
-                    <div className="flex items-center gap-2">
-                      {getVerificationIcon(getDriverStatus() || "PENDING")}
-                      <span className={`font-semibold ${getStatusColor(getDriverStatus() || "PENDING")}`}>
-                        {getDriverStatus() || "PENDING"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Driver License Image */}
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">License Image</p>
-                    {user.driver.licenseImageUrl ? (
-                      <div className="relative w-full h-48 bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        <Image
-                          src={user.driver.licenseImageUrl}
-                          alt="Driver License"
-                          fill
-                          className="object-contain"
-                          unoptimized
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full h-48 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
-                        <div className="text-center text-gray-400">
-                          <AlertCircle size={32} className="mx-auto mb-2" />
-                          <p className="text-sm">No license image uploaded</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Verification Actions */}
-              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <ShieldCheck size={20} className="text-[#005f56]" />
-                  Verification Actions
-                </h3>
-
-                {getDriverStatus() === "PENDING" ? (
-                  <div className="space-y-6">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-yellow-800">Pending Verification</p>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            This driver is awaiting verification. Please review the license information and take action.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
-                        disabled={actionLoading}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
-                      >
-                        {actionLoading ? (
-                          <Loader2 size={20} className="animate-spin" />
-                        ) : (
-                          <CheckCircle size={20} />
-                        )}
-                        Approve Driver Verification
-                      </button>
-
-                      <button
-                        onClick={() => user.driver && handleDriverVerification(user.driver.id, "REJECTED", "Driver license verification failed")}
-                        disabled={actionLoading}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors"
-                      >
-                        {actionLoading ? (
-                          <Loader2 size={20} className="animate-spin" />
-                        ) : (
-                          <XCircle size={20} />
-                        )}
-                        Reject Driver Verification
-                      </button>
-                    </div>
-                  </div>
-                ) : getDriverStatus() === "VERIFIED" ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-green-800">Verified Driver</p>
-                        <p className="text-sm text-green-700 mt-1">
-                          This driver has been verified and can access all driver features.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : getDriverStatus() === "REJECTED" ? (
-                  <div className="space-y-6">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-semibold text-red-800">Verification Rejected</p>
-                          <p className="text-sm text-red-700 mt-1">
-                            This driver&apos;s verification was rejected. You can re-approve if needed.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
-                      disabled={actionLoading}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
-                    >
-                      {actionLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <CheckCircle size={20} />
-                      )}
-                      Re-approve Driver
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle size={20} className="text-gray-500 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-gray-700">Account Suspended</p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          This driver account is currently suspended.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Vehicle List */}
-                {user.driver.vehicles && user.driver.vehicles.length > 0 && (
-                  <div className="mt-8">
-                    <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Registered Vehicles</h4>
+                <div className="mt-8">
+                  <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Registered Vehicles</h4>
+                  {user.driver.vehicles && user.driver.vehicles.length > 0 ? (
                     <div className="space-y-3">
                       {user.driver.vehicles.map((vehicle) => (
-                        <div key={vehicle.id} className="bg-white rounded-lg border border-gray-200 p-4 flex items-center gap-4">
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <CarFront size={20} className="text-gray-500" />
+                        <div key={vehicle.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <CarFront size={20} className="text-gray-500" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">
+                                  {vehicle.brand || "Unknown Brand"} {vehicle.model || "Unknown Model"}
+                                </p>
+                                <p className="text-sm text-gray-500">ID: {vehicle.id.slice(0, 8)}...</p>
+                              </div>
+                            </div>
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                vehicle.isActive
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {vehicle.isActive ? "Active" : "Inactive"}
+                            </span>
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              {vehicle.brand} {vehicle.model}
-                            </p>
-                            <p className="text-sm text-gray-500">{vehicle.plateNumber || "No plate"}</p>
+
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Brand</p>
+                              <p className="text-gray-800 font-medium">{vehicle.brand || "Not specified"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Car Model</p>
+                              <p className="text-gray-800 font-medium">{vehicle.model || "Not specified"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Vehicle Type</p>
+                              <p className="text-gray-800 font-medium">{vehicle.vehicleType || "Not specified"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Plate Number</p>
+                              <p className="text-gray-800 font-medium">{vehicle.plateNumber || "Not provided"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Color</p>
+                              <p className="text-gray-800 font-medium">{vehicle.color || "Not specified"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Vehicle Status</p>
+                              <p className="text-gray-800 font-medium">{vehicle.isActive ? "Active" : "Inactive"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Date Added</p>
+                              <p className="text-gray-800 font-medium">
+                                {vehicle.createdAt
+                                  ? new Date(vehicle.createdAt).toLocaleDateString()
+                                  : "Unknown"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Vehicle ID</p>
+                              <p className="text-gray-800 font-medium break-all">{vehicle.id}</p>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="bg-white rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                      No registered vehicles yet. Vehicle details (car model, vehicle type, plate number, and more) will appear here once a vehicle is added.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

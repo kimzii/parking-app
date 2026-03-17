@@ -132,7 +132,7 @@ export class UsersService {
 
   // Admin: Get all users with filters
   async getAllUsers(queryDto: QueryUsersDto) {
-    const { role, search, page = 1, limit = 10 } = queryDto;
+    const { role, status, search, page = 1, limit = 10 } = queryDto;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -146,12 +146,17 @@ export class UsersService {
       ];
     }
 
-    if (role) {
+    if (role || status) {
       where.userRoles = {
         some: {
-          role: {
-            name: role,
-          },
+          ...(role
+            ? {
+                role: {
+                  name: role,
+                },
+              }
+            : {}),
+          ...(status ? { status } : {}),
         },
       };
     }
@@ -381,6 +386,7 @@ export class UsersService {
                 model: true,
                 color: true,
                 isActive: true,
+                createdAt: true,
               },
             },
           },
