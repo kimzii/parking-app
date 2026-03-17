@@ -192,13 +192,19 @@ export class AuthService {
             status: 'PENDING',
           },
         });
-        const existingDriver = await tx.driver.findUnique({ where: { userId } });
+        const existingDriver = await tx.driver.findUnique({
+          where: { userId },
+        });
         if (!existingDriver) {
           await tx.driver.create({ data: { userId } });
         }
       });
 
-      return { message: 'Driver role assigned', role: 'DRIVER', status: 'PENDING' };
+      return {
+        message: 'Driver role assigned',
+        role: 'DRIVER',
+        status: 'PENDING',
+      };
     } else {
       // HOST: auto-verify
       await this.prisma.$transaction(async (tx) => {
@@ -215,7 +221,11 @@ export class AuthService {
         }
       });
 
-      return { message: 'Host role assigned and verified', role: 'HOST', status: 'VERIFIED' };
+      return {
+        message: 'Host role assigned and verified',
+        role: 'HOST',
+        status: 'VERIFIED',
+      };
     }
   }
 
