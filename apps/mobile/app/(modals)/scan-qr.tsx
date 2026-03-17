@@ -65,8 +65,8 @@ export default function ScanQRScreen() {
         }
       }
 
-      if (scanMode === "exit" && result.hadOvertime) {
-        message += `\n\n⚠️ Overtime charge: ₱${result.overtimeCharge?.toFixed(2)}`;
+      if (scanMode === "exit" && result.additionalCharge) {
+        message += `\n\nAdditional charge: ₱${result.additionalCharge.toFixed(2)}`;
       }
 
       Alert.alert(title, message, [
@@ -98,7 +98,7 @@ export default function ScanQRScreen() {
 
   if (!permission) {
     return (
-      <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Scan QR Code" }} />
         <ActivityIndicator
           size="large"
@@ -111,7 +111,7 @@ export default function ScanQRScreen() {
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Scan QR Code" }} />
         <View style={styles.permissionContainer}>
           <MaterialIcons name="camera-alt" size={64} color="#C7C7CC" />
@@ -139,7 +139,7 @@ export default function ScanQRScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Stack.Screen options={{ title: "Scan QR Code" }} />
 
       {/* Mode Toggle */}

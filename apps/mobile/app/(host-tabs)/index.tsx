@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   Image,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -23,8 +23,8 @@ const STATUS_CONFIG: Record<
   PENDING: {
     color: "#F57C00",
     bg: "#FFF3E0",
-    label: "Pending",
-    icon: "schedule",
+    label: "Pending Approval",
+    icon: "hourglass-top",
   },
   CONFIRMED: {
     color: "#1976D2",
@@ -50,7 +50,20 @@ const STATUS_CONFIG: Record<
     label: "Cancelled",
     icon: "cancel",
   },
+  EXPIRED: {
+    color: "#9E9E9E",
+    bg: "#F5F5F5",
+    label: "Expired",
+    icon: "timer-off",
+  },
 };
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Expired";
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  return `${mins}m ${secs.toString().padStart(2, "0")}s`;
+}
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -64,9 +77,17 @@ type FilterKey = (typeof FILTERS)[number]["key"];
 export default function HostHomeScreen() {
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [reservations, setReservations] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<
+    reservationsService.HostReservation[]
+  >([]);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchReservations = useCallback(async (status?: string) => {
     try {
@@ -102,24 +123,37 @@ export default function HostHomeScreen() {
     }, [filter, fetchReservations]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      const interval = setInterval(() => {
+        void fetchReservations(filter);
+      }, 15 * 1000);
+
+      return () => clearInterval(interval);
+    }, [filter, fetchReservations]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchReservations(filter);
     setRefreshing(false);
   }, [filter, fetchReservations]);
 
-  const handleConfirm = useCallback(
+  const handleApprove = useCallback(
     (id: string) => {
-      Alert.alert("Confirm Booking", "Accept this reservation?", [
+      Alert.alert("Approve Booking", "Approve this booking request?", [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Confirm",
+          text: "Approve",
           onPress: async () => {
             try {
-              await reservationsService.confirmReservation(id);
+              await reservationsService.approveReservation(id);
               await fetchReservations(filter);
-            } catch {
-              Alert.alert("Error", "Failed to confirm reservation.");
+            } catch (err: any) {
+              Alert.alert(
+                "Approval Failed",
+                err.response?.data?.message || "Failed to approve reservation",
+              );
             }
           },
         },
@@ -132,7 +166,7 @@ export default function HostHomeScreen() {
     (id: string) => {
       Alert.alert(
         "Reject Booking",
-        "Reject this reservation? The driver will be refunded.",
+        "Reject this booking request? The driver will be refunded.",
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -142,8 +176,11 @@ export default function HostHomeScreen() {
               try {
                 await reservationsService.rejectReservation(id);
                 await fetchReservations(filter);
-              } catch {
-                Alert.alert("Error", "Failed to reject reservation.");
+              } catch (err: any) {
+                Alert.alert(
+                  "Rejection Failed",
+                  err.response?.data?.message || "Failed to reject reservation",
+                );
               }
             },
           },
@@ -153,10 +190,31 @@ export default function HostHomeScreen() {
     [filter, fetchReservations],
   );
 
-  const renderReservationItem = ({ item }: { item: any }) => {
-    const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.PENDING;
-    const startTime = new Date(item.startTime);
-    const endTime = new Date(item.endTime);
+  const renderReservationItem = ({
+    item,
+  }: {
+    item: reservationsService.HostReservation;
+  }) => {
+    const status = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.CONFIRMED;
+    const pendingRemainingMs =
+      item.status === "PENDING" && item.arrivalDeadline
+        ? new Date(item.arrivalDeadline).getTime() - now.getTime()
+        : null;
+    const driverPhone = item.driver?.phone || "Not provided";
+    const driverPlateNumber =
+      item.driver?.vehicle?.plateNumber || "Not provided";
+    const slotName = item.parkingSpace.name?.trim() || "Unnamed Spot";
+    const bookedSpot = slotName;
+    const vehicleLabel = [
+      item.driver?.vehicle?.brand,
+      item.driver?.vehicle?.model,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const vehicleText = item.driver?.vehicle
+      ? vehicleLabel || item.driver.vehicle.vehicleType || "Vehicle"
+      : "Not provided";
 
     return (
       <TouchableOpacity
@@ -186,9 +244,7 @@ export default function HostHomeScreen() {
             </View>
           </View>
           <View style={styles.slotBadge}>
-            <Text style={styles.slotText}>
-              Slot {item.parkingSpace.slotNumber}
-            </Text>
+            <Text style={styles.slotText}>{slotName}</Text>
           </View>
         </View>
 
@@ -210,47 +266,50 @@ export default function HostHomeScreen() {
             <Text style={styles.driverName}>
               {item.driver?.name || "Driver"}
             </Text>
-            {item.driver?.vehicle && (
-              <Text style={styles.vehicleInline}>
-                {item.driver.vehicle.brand} {item.driver.vehicle.model}
-                {item.driver.vehicle.plateNumber
-                  ? ` • ${item.driver.vehicle.plateNumber}`
-                  : ""}
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons name="phone" size={12} color="#8E8E93" />
+              <Text style={styles.driverMetaText}>Phone: {driverPhone}</Text>
+            </View>
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons
+                name="confirmation-number"
+                size={12}
+                color="#8E8E93"
+              />
+              <Text style={styles.driverMetaText}>
+                Plate Number: {driverPlateNumber}
               </Text>
-            )}
+            </View>
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons name="directions-car" size={12} color="#8E8E93" />
+              <Text style={styles.driverMetaText}>Vehicle: {vehicleText}</Text>
+            </View>
+            <View style={styles.driverMetaRow}>
+              <MaterialIcons name="local-parking" size={12} color="#8E8E93" />
+              <Text style={styles.driverMetaText}>
+                Booked Spot: {bookedSpot}
+              </Text>
+            </View>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#C7C7CC" />
         </View>
 
         {/* Time Info */}
         <View style={styles.timeSection}>
-          <View style={styles.timeItem}>
-            <MaterialIcons name="schedule" size={16} color="#8E8E93" />
-            <Text style={styles.timeText}>
-              {startTime.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {startTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}{" "}
-              -{" "}
-              {endTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </Text>
-          </View>
-          {item.actualEntryTime && (
+          {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="login" size={16} color="#4CAF50" />
-              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
-                Checked in:{" "}
-                {new Date(item.actualEntryTime).toLocaleTimeString([], {
+              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <Text style={styles.timeText}>
+                Approve in {formatCountdown(pendingRemainingMs ?? 0)}
+              </Text>
+            </View>
+          )}
+          {item.status === "PENDING" && item.arrivalDeadline && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="hourglass-empty" size={16} color="#F57C00" />
+              <Text style={[styles.timeText, { color: "#F57C00" }]}>
+                Decision deadline{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
@@ -258,16 +317,50 @@ export default function HostHomeScreen() {
               </Text>
             </View>
           )}
-          {item.actualExitTime && (
+          {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="logout" size={16} color="#1976D2" />
-              <Text style={[styles.timeText, { color: "#1976D2" }]}>
-                Checked out:{" "}
-                {new Date(item.actualExitTime).toLocaleTimeString([], {
+              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <Text style={styles.timeText}>
+                Driver arrives by{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
                 })}
+              </Text>
+            </View>
+          )}
+          {item.sessionStartedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="login" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Checked in:{" "}
+                {new Date(item.sessionStartedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="logout" size={16} color="#1976D2" />
+              <Text style={[styles.timeText, { color: "#1976D2" }]}>
+                Checked out:{" "}
+                {new Date(item.sessionEndedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.status === "ACTIVE" && !item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="timer" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Session in progress — Pay-as-you-go
               </Text>
             </View>
           )}
@@ -286,26 +379,30 @@ export default function HostHomeScreen() {
           )}
         </View>
 
-        {/* Accept / Reject for PENDING */}
-        {item.status === "PENDING" && (
+        {item.status === "PENDING" && (pendingRemainingMs ?? 0) > 0 && (
           <View style={styles.actionBtns}>
             <TouchableOpacity
               style={styles.rejectBtn}
               onPress={() => handleReject(item.id)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               <MaterialIcons name="close" size={18} color="#E53935" />
               <Text style={styles.rejectBtnText}>Reject</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.confirmBtn}
-              onPress={() => handleConfirm(item.id)}
-              activeOpacity={0.7}
+              onPress={() => handleApprove(item.id)}
+              activeOpacity={0.8}
             >
               <MaterialIcons name="check" size={18} color="#fff" />
-              <Text style={styles.confirmBtnText}>Accept</Text>
+              <Text style={styles.confirmBtnText}>Approve</Text>
             </TouchableOpacity>
           </View>
+        )}
+        {item.status === "PENDING" && (pendingRemainingMs ?? 0) <= 0 && (
+          <Text style={styles.overtimeText}>
+            Approval window expired. Pull to refresh.
+          </Text>
         )}
       </TouchableOpacity>
     );
@@ -365,14 +462,14 @@ export default function HostHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{userName}</Text>
         </View>
         <View style={styles.hostBadge}>
-          <MaterialIcons name="home-work" size={16} color="#fff" />
+          <MaterialIcons name="home-work" size={16} color="#11796F" />
           <Text style={styles.hostBadgeText}>Host</Text>
         </View>
       </View>
@@ -408,31 +505,31 @@ export default function HostHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 28,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   greeting: {
     fontSize: 15,
-    color: "rgba(255,255,255,0.7)",
+    color: "#8E8E93",
     fontWeight: "500",
   },
   userName: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#fff",
+    color: "#1A1A2E",
     letterSpacing: -0.3,
   },
   hostBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "#E8F5F3",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
@@ -440,13 +537,11 @@ const styles = StyleSheet.create({
   hostBadgeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#fff",
+    color: "#11796F",
   },
   content: {
     flex: 1,
     backgroundColor: "#F8FAFB",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
   },
   listContent: {
     padding: 20,
@@ -572,6 +667,13 @@ const styles = StyleSheet.create({
     borderColor: "#E8F5F3",
   },
   driverName: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  driverMetaText: { flex: 1, fontSize: 12, color: "#8E8E93" },
   vehicleInline: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
   callBtn: {
     width: 32,

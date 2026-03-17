@@ -72,7 +72,7 @@ export default function BecomeADriverModal() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
       <View style={styles.container}>
         {/* Hero */}
         <View style={styles.heroSection}>

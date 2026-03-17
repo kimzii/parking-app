@@ -94,7 +94,6 @@ const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttrib
 AlertDescription.displayName = "AlertDescription";
 
 // --- 2. BACKGROUND COMPONENT ---
-// Keeps the white background style you requested originally
 
 const BackgroundGraphic = () => {
   const rectangleStyle: React.CSSProperties = {
@@ -103,7 +102,7 @@ const BackgroundGraphic = () => {
     height: "100%",
     left: "0px",
     top: "0px",
-    background: "#FFFFFF", // Plain white background to match the clean design
+    background: "#FFFFFF",
     zIndex: 0,
   };
 

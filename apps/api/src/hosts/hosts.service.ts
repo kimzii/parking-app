@@ -22,6 +22,22 @@ function levelToPrefix(level: number): string {
   return result;
 }
 
+function getDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 @Injectable()
 export class HostsService {
   constructor(private prisma: PrismaService) {}
@@ -482,6 +498,8 @@ export class HostsService {
                   email: true,
                   firstName: true,
                   lastName: true,
+                  phoneNumber: true,
+                  profilePicture: true,
                 },
               },
             },
@@ -562,7 +580,13 @@ export class HostsService {
     search?: string;
     limit?: number;
   }) {
-    const { search, limit = 50 } = params || {};
+    const { latitude, longitude, radius, search, limit } = params || {};
+    const requestedLimit = Number.isFinite(limit) ? Number(limit) : 50;
+    const boundedLimit = Math.min(Math.max(requestedLimit, 1), 100);
+    const requestedRadius = Number.isFinite(radius) ? Number(radius) : 20;
+    const radiusKm = requestedRadius > 0 ? requestedRadius : 20;
+    const hasCoordinates =
+      Number.isFinite(latitude) && Number.isFinite(longitude);
 
     const where: Prisma.ParkingLocationWhereInput = {
       status: 'APPROVED',
@@ -575,9 +599,27 @@ export class HostsService {
       ];
     }
 
+    if (hasCoordinates) {
+      const centerLatitude = Number(latitude);
+      const centerLongitude = Number(longitude);
+      const latitudeDelta = radiusKm / 111;
+      const latitudeRadians = (centerLatitude * Math.PI) / 180;
+      const longitudeDelta =
+        radiusKm / (111 * Math.max(Math.abs(Math.cos(latitudeRadians)), 0.01));
+
+      where.latitude = {
+        gte: centerLatitude - latitudeDelta,
+        lte: centerLatitude + latitudeDelta,
+      };
+      where.longitude = {
+        gte: centerLongitude - longitudeDelta,
+        lte: centerLongitude + longitudeDelta,
+      };
+    }
+
     const locations = await this.prisma.parkingLocation.findMany({
       where,
-      take: limit,
+      take: hasCoordinates ? Math.min(boundedLimit * 2, 200) : boundedLimit,
       select: {
         id: true,
         title: true,
@@ -596,7 +638,27 @@ export class HostsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return locations;
+    if (!hasCoordinates) {
+      return locations;
+    }
+
+    const centerLatitude = Number(latitude);
+    const centerLongitude = Number(longitude);
+
+    return locations
+      .map((location) => ({
+        location,
+        distanceKm: getDistanceKm(
+          centerLatitude,
+          centerLongitude,
+          Number(location.latitude),
+          Number(location.longitude),
+        ),
+      }))
+      .filter((item) => item.distanceKm <= radiusKm)
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, boundedLimit)
+      .map((item) => item.location);
   }
 
   // Public: Get single approved parking location details

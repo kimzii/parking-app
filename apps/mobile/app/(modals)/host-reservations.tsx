@@ -17,8 +17,8 @@ const STATUS_CONFIG = {
   PENDING: {
     color: "#F57C00",
     bg: "#FFF3E0",
-    label: "Pending",
-    icon: "hourglass-empty",
+    label: "Pending Approval",
+    icon: "hourglass-top",
   },
   CONFIRMED: {
     color: "#1976D2",
@@ -44,6 +44,12 @@ const STATUS_CONFIG = {
     label: "Cancelled",
     icon: "cancel",
   },
+  EXPIRED: {
+    color: "#9E9E9E",
+    bg: "#F5F5F5",
+    label: "Expired",
+    icon: "timer-off",
+  },
 };
 
 const FILTERS = [
@@ -55,7 +61,7 @@ const FILTERS = [
 
 export default function HostReservationsScreen() {
   const [reservations, setReservations] = useState<
-    reservationsService.Reservation[]
+    reservationsService.HostReservation[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -88,12 +94,29 @@ export default function HostReservationsScreen() {
     fetchReservations();
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({
+    item,
+  }: {
+    item: reservationsService.HostReservation;
+  }) => {
     const status =
       STATUS_CONFIG[item.status as keyof typeof STATUS_CONFIG] ||
-      STATUS_CONFIG.PENDING;
-    const startTime = new Date(item.startTime);
-    const endTime = new Date(item.endTime);
+      STATUS_CONFIG.CONFIRMED;
+    const driverPhone = item.driver?.phone || "Not provided";
+    const driverPlateNumber =
+      item.driver?.vehicle?.plateNumber || "Not provided";
+    const slotName = item.parkingSpace.name?.trim() || "Unnamed Spot";
+    const bookedSpot = slotName;
+    const vehicleLabel = [
+      item.driver?.vehicle?.brand,
+      item.driver?.vehicle?.model,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    const vehicleText = item.driver?.vehicle
+      ? vehicleLabel || item.driver.vehicle.vehicleType || "Vehicle"
+      : "Not provided";
 
     return (
       <View style={styles.card}>
@@ -114,9 +137,7 @@ export default function HostReservationsScreen() {
             </View>
           </View>
           <View style={styles.slotBadge}>
-            <Text style={styles.slotText}>
-              Slot {item.parkingSpace.slotNumber}
-            </Text>
+            <Text style={styles.slotText}>{slotName}</Text>
           </View>
         </View>
 
@@ -126,58 +147,41 @@ export default function HostReservationsScreen() {
         <View style={styles.driverRow}>
           <MaterialIcons name="person" size={18} color="#11796F" />
           <Text style={styles.driverName}>{item.driver?.name || "Driver"}</Text>
-          {item.driver?.phone && (
-            <TouchableOpacity
-              style={styles.callBtn}
-              onPress={() => {
-                /* Linking.openURL(`tel:${item.driver.phone}`) */
-              }}
-            >
-              <MaterialIcons name="phone" size={16} color="#11796F" />
-            </TouchableOpacity>
-          )}
         </View>
 
-        {/* Vehicle Info */}
-        {item.driver?.vehicle && (
-          <View style={styles.vehicleRow}>
-            <MaterialIcons name="directions-car" size={16} color="#8E8E93" />
-            <Text style={styles.vehicleText}>
-              {item.driver.vehicle.brand} {item.driver.vehicle.model} •{" "}
-              {item.driver.vehicle.plateNumber || "N/A"}
+        <View style={styles.driverDetails}>
+          <View style={styles.detailRow}>
+            <MaterialIcons name="phone" size={14} color="#8E8E93" />
+            <Text style={styles.detailText}>Phone: {driverPhone}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <MaterialIcons
+              name="confirmation-number"
+              size={14}
+              color="#8E8E93"
+            />
+            <Text style={styles.detailText}>
+              Plate Number: {driverPlateNumber}
             </Text>
           </View>
-        )}
+          <View style={styles.detailRow}>
+            <MaterialIcons name="directions-car" size={14} color="#8E8E93" />
+            <Text style={styles.detailText}>Vehicle: {vehicleText}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <MaterialIcons name="local-parking" size={14} color="#8E8E93" />
+            <Text style={styles.detailText}>Booked Spot: {bookedSpot}</Text>
+          </View>
+        </View>
 
         {/* Time Info */}
         <View style={styles.timeSection}>
-          <View style={styles.timeItem}>
-            <MaterialIcons name="schedule" size={16} color="#8E8E93" />
-            <Text style={styles.timeText}>
-              {startTime.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}{" "}
-              •{" "}
-              {startTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}{" "}
-              -{" "}
-              {endTime.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </Text>
-          </View>
-          {item.actualEntryTime && (
+          {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="login" size={16} color="#4CAF50" />
-              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
-                Checked in:{" "}
-                {new Date(item.actualEntryTime).toLocaleTimeString([], {
+              <MaterialIcons name="hourglass-empty" size={16} color="#F57C00" />
+              <Text style={[styles.timeText, { color: "#F57C00" }]}>
+                Decision by{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
@@ -185,16 +189,50 @@ export default function HostReservationsScreen() {
               </Text>
             </View>
           )}
-          {item.actualExitTime && (
+          {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="logout" size={16} color="#1976D2" />
-              <Text style={[styles.timeText, { color: "#1976D2" }]}>
-                Checked out:{" "}
-                {new Date(item.actualExitTime).toLocaleTimeString([], {
+              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <Text style={styles.timeText}>
+                Arrive by{" "}
+                {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: true,
                 })}
+              </Text>
+            </View>
+          )}
+          {item.sessionStartedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="login" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Checked in:{" "}
+                {new Date(item.sessionStartedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="logout" size={16} color="#1976D2" />
+              <Text style={[styles.timeText, { color: "#1976D2" }]}>
+                Checked out:{" "}
+                {new Date(item.sessionEndedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </Text>
+            </View>
+          )}
+          {item.status === "ACTIVE" && !item.sessionEndedAt && (
+            <View style={styles.timeItem}>
+              <MaterialIcons name="timer" size={16} color="#4CAF50" />
+              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+                Session in progress — Pay-as-you-go
               </Text>
             </View>
           )}
@@ -227,7 +265,7 @@ export default function HostReservationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Stack.Screen
         options={{
           title: "Reservations",
@@ -368,9 +406,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   driverName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverDetails: {
+    gap: 4,
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  detailText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#8E8E93",
+  },
   callBtn: {
     width: 32,
     height: 32,

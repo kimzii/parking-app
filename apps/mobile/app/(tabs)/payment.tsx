@@ -62,7 +62,7 @@ export default function PaymentScreen() {
       const [balanceData, profile, txns] = await Promise.all([
         walletService.getBalance(),
         userService.getProfile(),
-        walletService.getTransactions(30),
+        walletService.getTransactions(20),
       ]);
       setBalance(Number(balanceData.balance ?? 0));
       setTransactions(txns);
@@ -203,7 +203,7 @@ export default function PaymentScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Payment</Text>
         <Text style={styles.headerSubtitle}>Manage your wallet</Text>
@@ -240,29 +240,27 @@ export default function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 28,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#fff",
+    color: "#1A1A2E",
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "rgba(255,255,255,0.7)",
+    color: "#8E8E93",
     fontWeight: "500",
     marginTop: 4,
   },
   content: {
     flex: 1,
     backgroundColor: "#F8FAFB",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
   },
   scrollContent: {
     padding: 20,

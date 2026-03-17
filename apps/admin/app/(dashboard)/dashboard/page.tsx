@@ -12,6 +12,7 @@ import {
   MoreVertical,
   Loader2
 } from "lucide-react";
+import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import api from "../../../src/lib/api";
 
 // --- Components ---
@@ -79,6 +80,8 @@ interface RecentListing {
   id: string;
   title: string;
   address: string;
+  latitude: number;
+  longitude: number;
   hostName: string;
   status: string;
   createdAt: string;
@@ -90,6 +93,12 @@ interface RecentActivity {
   action: string;
   time: string;
 }
+
+const DAVAO_OBRERO_PINS = [
+  { lat: 7.0739, lng: 125.6123 },
+  { lat: 7.0761, lng: 125.6105 },
+  { lat: 7.0718, lng: 125.6142 },
+];
 
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
@@ -106,11 +115,41 @@ const formatTimeAgo = (dateString: string) => {
 };
 
 export default function DashboardPage() {
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentListings, setRecentListings] = useState<RecentListing[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const pinnedListings = DAVAO_OBRERO_PINS.map((pin, index) => {
+    const listing = recentListings[index];
+    if (listing) {
+      return {
+        ...listing,
+        latitude: pin.lat,
+        longitude: pin.lng,
+      };
+    }
+
+    return {
+      id: `obrero-fallback-${index}`,
+      title: `Obrero Listing ${index + 1}`,
+      address: "Obrero, Davao City",
+      latitude: pin.lat,
+      longitude: pin.lng,
+      hostName: "Demo Host",
+      status: "APPROVED",
+      createdAt: new Date().toISOString(),
+    };
+  });
+
+  const mapCenter = { lat: 7.0739, lng: 125.6123 };
+
+  const { isLoaded: isMapLoaded, loadError } = useJsApiLoader({
+    id: "parking-admin-google-map-script",
+    googleMapsApiKey,
+  });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -214,73 +253,116 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
           {/* Recent Listings Table */}
-          <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-50 flex justify-between items-center">
-              <h2 className="font-bold text-lg text-gray-900">Recent Listings</h2>
-              <button className="text-sm text-[#005f56] font-medium hover:underline">View All</button>
-            </div>
+          <div className="xl:col-span-2 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+                <h2 className="font-bold text-lg text-gray-900">Recent Listings</h2>
+                <button className="text-sm text-[#005f56] font-medium hover:underline">View All</button>
+              </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50/50 text-gray-400 text-xs uppercase font-semibold">
-                  <tr>
-                    <th className="px-6 py-4">Property</th>
-                    <th className="px-6 py-4">Host</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 text-sm">
-                  {recentListings.length === 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50/50 text-gray-400 text-xs uppercase font-semibold">
                     <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                        No recent listings found
-                      </td>
+                      <th className="px-6 py-4">Property</th>
+                      <th className="px-6 py-4">Host</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4 text-right">Action</th>
                     </tr>
-                  ) : (
-                    recentListings.map((listing) => (
-                      <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-md flex-shrink-0 flex items-center justify-center text-gray-400">
-                              <MapPin size={16} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">{listing.title}</p>
-                              <p className="text-gray-500 text-xs">{listing.address}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-600">{listing.hostName}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                            listing.status === 'APPROVED'
-                              ? 'bg-green-100 text-green-700'
-                              : listing.status === 'PENDING'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {listing.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-500">
-                          {new Date(listing.createdAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button className="text-gray-400 hover:text-gray-600">
-                            <MoreVertical size={18} />
-                          </button>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-sm">
+                    {recentListings.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                          No recent listings found
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      recentListings.map((listing) => (
+                        <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gray-100 rounded-md flex-shrink-0 flex items-center justify-center text-gray-400">
+                                <MapPin size={16} />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">{listing.title}</p>
+                                <p className="text-gray-500 text-xs">{listing.address}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-gray-600">{listing.hostName}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                              listing.status === 'APPROVED'
+                                ? 'bg-green-100 text-green-700'
+                                : listing.status === 'PENDING'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {listing.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-gray-500">
+                            {new Date(listing.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button className="text-gray-400 hover:text-gray-600">
+                              <MoreVertical size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+                <h2 className="font-bold text-lg text-gray-900">Listings Map</h2>
+                <span className="text-xs text-gray-500">{pinnedListings.length} pinned locations</span>
+              </div>
+              <div className="h-[340px]">
+                {!googleMapsApiKey ? (
+                  <div className="h-full flex items-center justify-center text-sm text-gray-500 px-6 text-center">
+                    Google Maps key is missing. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in admin .env.local.
+                  </div>
+                ) : loadError ? (
+                  <div className="h-full flex items-center justify-center text-sm text-red-600 px-6 text-center">
+                    Failed to load Google Maps. Please verify the API key and allowed referrers.
+                  </div>
+                ) : !isMapLoaded ? (
+                  <div className="h-full flex items-center justify-center text-sm text-gray-500 px-6 text-center">
+                    Loading map...
+                  </div>
+                ) : (
+                  <GoogleMap
+                    mapContainerStyle={{ width: "100%", height: "100%" }}
+                    center={mapCenter}
+                    zoom={13}
+                    options={{
+                      streetViewControl: false,
+                      mapTypeControl: false,
+                      fullscreenControl: false,
+                    }}
+                  >
+                    {pinnedListings.map((listing) => (
+                      <MarkerF
+                        key={listing.id}
+                        position={{ lat: listing.latitude, lng: listing.longitude }}
+                        title={`${listing.title} - ${listing.address}`}
+                      />
+                    ))}
+                  </GoogleMap>
+                )}
+              </div>
             </div>
           </div>
 

@@ -46,6 +46,7 @@ interface UserProfile {
   driver?: {
     id: string;
     licenseNumber: string | null;
+    licenseImageUrl: string | null;
     vehicles: { id: string; plateNumber: string | null; brand: string | null; model: string | null; }[];
     reservations: { id: string; startTime: string; totalAmount: number; status: string; parkingLocation?: { title: string; } }[];
   };
@@ -102,6 +103,7 @@ export default function UserProfileView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "vehicle" | "property">("profile");
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -122,6 +124,31 @@ export default function UserProfileView() {
       fetchUserProfile();
     }
   }, [userId, fetchUserProfile]);
+
+  // Update driver verification status
+  const handleDriverVerification = async (driverId: string, status: "VERIFIED" | "REJECTED", adminNotes?: string) => {
+    try {
+      setActionLoading(true);
+      await api.put(`/drivers/admin/${driverId}/status`, {
+        status,
+        adminNotes: adminNotes || `Driver ${status.toLowerCase()} by admin`,
+      });
+      // Refresh user data
+      await fetchUserProfile();
+    } catch (err) {
+      console.error("Error updating driver status:", err);
+      alert(`Failed to ${status.toLowerCase()} driver. Please try again.`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Get driver role status
+  const getDriverStatus = (): VerificationStatus | null => {
+    if (!user) return null;
+    const driverRole = user.roleStatuses.find(rs => rs.role === "DRIVER");
+    return driverRole?.status ?? null;
+  };
 
   // Determine user roles from fetched data
   const isDriver = user?.roles.includes("DRIVER") ?? false;
@@ -391,19 +418,238 @@ export default function UserProfileView() {
             </div>
           )}
 
-          {/* Empty State for Vehicle Info Tab (Driver only) */}
-          {activeTab === "vehicle" && isDriver && (
-            <div className="py-20 flex flex-col items-center justify-center text-gray-500">
-              <CarFront size={48} className="text-gray-300 mb-4" />
-              <p className="text-lg font-medium">No vehicle information provided.</p>
+          {/* Vehicle Info Tab (Driver only) - Driver Verification */}
+          {activeTab === "vehicle" && isDriver && user?.driver && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left: Driver License Info */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <CarFront size={20} className="text-[#005f56]" />
+                  Driver License Information
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">License Number</p>
+                    <p className="font-semibold text-gray-900 text-lg">
+                      {user.driver.licenseNumber || "Not provided"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Verification Status</p>
+                    <div className="flex items-center gap-2">
+                      {getVerificationIcon(getDriverStatus() || "PENDING")}
+                      <span className={`font-semibold ${getStatusColor(getDriverStatus() || "PENDING")}`}>
+                        {getDriverStatus() || "PENDING"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Driver License Image */}
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">License Image</p>
+                    {user.driver.licenseImageUrl ? (
+                      <div className="relative w-full h-48 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <Image
+                          src={user.driver.licenseImageUrl}
+                          alt="Driver License"
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-48 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
+                        <div className="text-center text-gray-400">
+                          <AlertCircle size={32} className="mx-auto mb-2" />
+                          <p className="text-sm">No license image uploaded</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Verification Actions */}
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <ShieldCheck size={20} className="text-[#005f56]" />
+                  Verification Actions
+                </h3>
+
+                {getDriverStatus() === "PENDING" ? (
+                  <div className="space-y-6">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-yellow-800">Pending Verification</p>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            This driver is awaiting verification. Please review the license information and take action.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
+                        disabled={actionLoading}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                      >
+                        {actionLoading ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <CheckCircle size={20} />
+                        )}
+                        Approve Driver Verification
+                      </button>
+
+                      <button
+                        onClick={() => user.driver && handleDriverVerification(user.driver.id, "REJECTED", "Driver license verification failed")}
+                        disabled={actionLoading}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors"
+                      >
+                        {actionLoading ? (
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                          <XCircle size={20} />
+                        )}
+                        Reject Driver Verification
+                      </button>
+                    </div>
+                  </div>
+                ) : getDriverStatus() === "VERIFIED" ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-green-800">Verified Driver</p>
+                        <p className="text-sm text-green-700 mt-1">
+                          This driver has been verified and can access all driver features.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : getDriverStatus() === "REJECTED" ? (
+                  <div className="space-y-6">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-red-800">Verification Rejected</p>
+                          <p className="text-sm text-red-700 mt-1">
+                            This driver&apos;s verification was rejected. You can re-approve if needed.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
+                      disabled={actionLoading}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {actionLoading ? (
+                        <Loader2 size={20} className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={20} />
+                      )}
+                      Re-approve Driver
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle size={20} className="text-gray-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-gray-700">Account Suspended</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          This driver account is currently suspended.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Vehicle List */}
+                {user.driver.vehicles && user.driver.vehicles.length > 0 && (
+                  <div className="mt-8">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Registered Vehicles</h4>
+                    <div className="space-y-3">
+                      {user.driver.vehicles.map((vehicle) => (
+                        <div key={vehicle.id} className="bg-white rounded-lg border border-gray-200 p-4 flex items-center gap-4">
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <CarFront size={20} className="text-gray-500" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              {vehicle.brand} {vehicle.model}
+                            </p>
+                            <p className="text-sm text-gray-500">{vehicle.plateNumber || "No plate"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Empty State for Property Info Tab (Host only) */}
-          {activeTab === "property" && isHost && (
-            <div className="py-20 flex flex-col items-center justify-center text-gray-500">
-              <Home size={48} className="text-gray-300 mb-4" />
-              <p className="text-lg font-medium">Detailed property information will appear here.</p>
+          {/* Property Info Tab (Host only) */}
+          {activeTab === "property" && isHost && user?.host && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Home size={20} className="text-[#005f56]" />
+                  Parking Locations ({user.host.parkingLocations?.length || 0})
+                </h3>
+                <button
+                  onClick={() => router.push("/listings")}
+                  className="text-sm text-[#005f56] hover:text-[#004a43] font-medium"
+                >
+                  View All Pending Listings →
+                </button>
+              </div>
+
+              {user.host.parkingLocations && user.host.parkingLocations.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {user.host.parkingLocations.map((location) => (
+                    <div
+                      key={location.id}
+                      className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="font-semibold text-gray-900 line-clamp-1">{location.title}</h4>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          location.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                          location.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {location.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 line-clamp-2">{location.address}</p>
+                      {location.status === "PENDING" && (
+                        <button
+                          onClick={() => router.push("/listings")}
+                          className="mt-4 w-full px-4 py-2 bg-[#005f56] hover:bg-[#004a43] text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Review in Listings
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-16 flex flex-col items-center justify-center text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+                  <Home size={48} className="text-gray-300 mb-4" />
+                  <p className="text-lg font-medium">No parking locations yet</p>
+                  <p className="text-sm text-gray-400 mt-1">This host hasn&apos;t added any parking locations.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -32,6 +32,8 @@ export default function StackLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: "#fff" },
         headerTintColor: "#11796F",
+        statusBarTranslucent: false,
+        statusBarStyle: "dark",
         headerTitle: "", // Hide the title
         headerLeft: () => (
           <TouchableOpacity

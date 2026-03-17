@@ -12,13 +12,13 @@ model User {
   email                 String      @unique
   password              String
   googleId              String?     @unique
-  
+
   // Profile fields
   firstName             String?
   lastName              String?
   phoneNumber           String?
   profilePicture        String?
-  
+
   emailVerified         Boolean     @default(false)
   verificationCode      String?
   verificationExpiry    DateTime?
@@ -169,6 +169,7 @@ model ParkingSpace {
   parkingLocationId String          @map("parking_location_id") @db.Uuid
   slotNumber        Int             @map("slot_number")
   name              String?
+  description       String?
   levelNumber       Int?            @map("level_number")
   status            SlotStatus      @default(AVAILABLE)
   isActive          Boolean         @default(true) @map("is_active")
@@ -184,8 +185,6 @@ model Reservation {
   id                  String             @id @default(uuid()) @db.Uuid
   driverId            String             @map("driver_id") @db.Uuid
   parkingSpaceId      String             @map("parking_space_id") @db.Uuid
-  startTime           DateTime           @map("start_time")
-  endTime             DateTime           @map("end_time")
   status              ReservationStatus  @default(PENDING)
   qrCode              String?            @map("qr_code")
   qrCodeSecret        String?            @map("qr_code_secret")
@@ -193,8 +192,9 @@ model Reservation {
   escrowAmount        Decimal?           @map("escrow_amount") @db.Decimal(10, 2)
   finalAmount         Decimal?           @map("final_amount") @db.Decimal(10, 2)
   overtimeAmount      Decimal?           @map("overtime_amount") @db.Decimal(10, 2)
-  actualEntryTime     DateTime?          @map("actual_entry_time")
-  actualExitTime      DateTime?          @map("actual_exit_time")
+  arrivalDeadline     DateTime           @map("arrival_deadline")
+  sessionStartedAt    DateTime?          @map("session_started_at")
+  sessionEndedAt      DateTime?          @map("session_ended_at")
   walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
   hostPayoutId        String?            @map("host_payout_id") @db.Uuid
   createdAt           DateTime           @default(now()) @map("created_at")
@@ -204,7 +204,7 @@ model Reservation {
   walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id])
   reviews             Review[]
 
-  @@index([parkingSpaceId, startTime, endTime])
+  @@index([parkingSpaceId])
   @@index([qrCode])
   @@map("reservations")
 }
@@ -311,6 +311,7 @@ enum ReservationStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+  EXPIRED
 }
 
 enum PaymentStatus {

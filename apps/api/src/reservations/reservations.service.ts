@@ -3,21 +3,17 @@ import {
   BadRequestException,
   NotFoundException,
   ForbiddenException,
+  OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
-import {
-  CreateReservationDto,
-  CalculateFeeDto,
-} from './dto/create-reservation.dto';
+import { CreateReservationDto } from './dto/create-reservation.dto';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import * as crypto from 'crypto';
 import type {
   ReservationRecord,
-  ReservationWithSpaceAndLocation,
-  ReservationWithPrimaryImage,
-  ReservationWithDriverDetails,
   ReservationWithTransaction,
 } from './types/reservation.types';
 
@@ -27,11 +23,133 @@ function toNullable<T>(value: unknown): T | null {
 }
 
 @Injectable()
-export class ReservationsService {
+export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private prisma: PrismaService,
     private walletService: WalletService,
   ) {}
+
+  private readonly HOST_APPROVAL_WINDOW_MS = 5 * 60 * 1000;
+  private readonly DRIVER_ARRIVAL_WINDOW_MS = 60 * 60 * 1000;
+  private timeoutSweepInterval: NodeJS.Timeout | null = null;
+
+  onModuleInit() {
+    this.timeoutSweepInterval = setInterval(() => {
+      void this.processReservationTimeouts().catch((error: unknown) => {
+        console.error('Failed to process reservation timeouts:', error);
+      });
+    }, 30 * 1000);
+  }
+
+  onModuleDestroy() {
+    if (this.timeoutSweepInterval) {
+      clearInterval(this.timeoutSweepInterval);
+      this.timeoutSweepInterval = null;
+    }
+  }
+
+  /**
+   * Process timed-out reservations:
+   * - PENDING: cancel + refund escrow
+   * - CONFIRMED: mark expired (no refund)
+   */
+  private async processReservationTimeouts() {
+    const now = new Date();
+
+    const timedOutReservations = await this.prisma.reservation.findMany({
+      where: {
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        arrivalDeadline: { lt: now },
+      },
+      include: {
+        driver: {
+          select: { userId: true },
+        },
+      },
+    });
+
+    for (const timedOut of timedOutReservations) {
+      await this.prisma.$transaction(async (tx) => {
+        const reservation = await tx.reservation.findUnique({
+          where: { id: timedOut.id },
+          include: {
+            driver: {
+              select: { userId: true },
+            },
+          },
+        });
+
+        if (!reservation) {
+          return;
+        }
+
+        if (reservation.status === 'PENDING') {
+          if (reservation.escrowAmount) {
+            const driverWallet = await tx.wallet.findUnique({
+              where: { userId: reservation.driver.userId },
+            });
+
+            if (driverWallet) {
+              const refundAmount = new Decimal(
+                String(reservation.escrowAmount),
+              );
+
+              await tx.walletTransaction.create({
+                data: {
+                  walletId: driverWallet.id,
+                  type: 'CREDIT',
+                  source: 'REFUND',
+                  amount: refundAmount,
+                  referenceId: reservation.id,
+                  balanceBefore: driverWallet.balance,
+                  balanceAfter: new Decimal(driverWallet.balance).add(
+                    refundAmount,
+                  ),
+                },
+              });
+
+              await tx.wallet.update({
+                where: { id: driverWallet.id },
+                data: {
+                  balance: { increment: refundAmount.toNumber() },
+                },
+              });
+            }
+          }
+
+          await tx.parkingSpace.update({
+            where: { id: reservation.parkingSpaceId },
+            data: { status: 'AVAILABLE' },
+          });
+
+          await tx.reservation.update({
+            where: { id: reservation.id },
+            data: {
+              status: 'CANCELLED',
+              escrowAmount: 0,
+            },
+          });
+
+          return;
+        }
+
+        if (reservation.status === 'CONFIRMED') {
+          await tx.parkingSpace.update({
+            where: { id: reservation.parkingSpaceId },
+            data: { status: 'AVAILABLE' },
+          });
+
+          await tx.reservation.update({
+            where: { id: reservation.id },
+            data: {
+              status: 'EXPIRED',
+              escrowAmount: 0,
+            },
+          });
+        }
+      });
+    }
+  }
 
   /**
    * Generate a unique QR code for the reservation
@@ -46,57 +164,69 @@ export class ReservationsService {
   }
 
   /**
-   * Calculate parking duration in hours
+   * Check if a parking location is currently open based on openTime/closeTime
    */
-  private calculateDurationHours(startTime: Date, endTime: Date): number {
-    const durationMs = endTime.getTime() - startTime.getTime();
-    return Math.ceil(durationMs / (1000 * 60 * 60)); // Round up to nearest hour
+  private isLocationOpen(location: {
+    is24Hours: boolean;
+    openTime: string | null;
+    closeTime: string | null;
+  }): boolean {
+    if (location.is24Hours) return true;
+    if (!location.openTime || !location.closeTime) return true;
+
+    const now = new Date();
+    const [openH, openM] = location.openTime.split(':').map(Number);
+    const [closeH, closeM] = location.closeTime.split(':').map(Number);
+
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const openMinutes = openH * 60 + openM;
+    const closeMinutes = closeH * 60 + closeM;
+
+    if (closeMinutes > openMinutes) {
+      return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+    }
+    // Overnight hours (e.g. 22:00 - 06:00)
+    return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
   }
 
   /**
-   * Calculate estimated parking fee
+   * Get first-hour fee for a parking space
    */
-  async calculateFee(dto: CalculateFeeDto) {
+  async getFirstHourFee(parkingSpaceId: string) {
     const parkingSpace = await this.prisma.parkingSpace.findUnique({
-      where: { id: dto.parkingSpaceId },
-      include: {
-        parkingLocation: true,
-      },
+      where: { id: parkingSpaceId },
+      include: { parkingLocation: true },
     });
 
     if (!parkingSpace) {
       throw new NotFoundException('Parking space not found');
     }
 
-    const startTime = new Date(dto.startTime);
-    const endTime = new Date(dto.endTime);
-
-    if (endTime <= startTime) {
-      throw new BadRequestException('End time must be after start time');
-    }
-
-    const durationHours = this.calculateDurationHours(startTime, endTime);
     const pricePerHour = new Decimal(
       parkingSpace.parkingLocation.basePricePerHour,
     );
-    const totalAmount = pricePerHour.mul(durationHours);
 
     return {
-      parkingSpaceId: dto.parkingSpaceId,
+      parkingSpaceId,
       locationTitle: parkingSpace.parkingLocation.title,
       slotNumber: parkingSpace.slotNumber,
-      startTime,
-      endTime,
-      durationHours,
+      slotName: parkingSpace.name,
+      description: parkingSpace.description,
       pricePerHour: pricePerHour.toNumber(),
-      totalAmount: totalAmount.toNumber(),
+      firstHourFee: pricePerHour.toNumber(),
+      isOpen: this.isLocationOpen(parkingSpace.parkingLocation),
+      openTime: parkingSpace.parkingLocation.openTime,
+      closeTime: parkingSpace.parkingLocation.closeTime,
+      is24Hours: parkingSpace.parkingLocation.is24Hours,
     };
   }
 
   /**
-   * Create a new reservation with wallet debit and escrow
+   * Create a new reservation — driver pays first hour upfront, then waits for host approval
    */
   async createReservation(userId: string, dto: CreateReservationDto) {
+    await this.processReservationTimeouts();
+
     // Get the driver record
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
@@ -108,6 +238,20 @@ export class ReservationsService {
       );
     }
 
+    const activeVehicle = await this.prisma.driverVehicle.findFirst({
+      where: {
+        driverId: driver.id,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeVehicle) {
+      throw new BadRequestException(
+        'Please add at least one active vehicle before booking.',
+      );
+    }
+
     // Get parking space and location
     const parkingSpace = await this.prisma.parkingSpace.findUnique({
       where: { id: dto.parkingSpaceId },
@@ -115,6 +259,7 @@ export class ReservationsService {
         parkingLocation: {
           include: {
             host: true,
+            images: true,
           },
         },
       },
@@ -132,51 +277,32 @@ export class ReservationsService {
       throw new BadRequestException('Parking location is not approved');
     }
 
-    const startTime = new Date(dto.startTime);
-    const endTime = new Date(dto.endTime);
-    const now = new Date();
-
-    // Validate times
-    if (startTime < now) {
-      throw new BadRequestException('Start time cannot be in the past');
+    // Check if location is currently open
+    if (!this.isLocationOpen(parkingSpace.parkingLocation)) {
+      throw new BadRequestException(
+        `This location is currently closed. Operating hours: ${parkingSpace.parkingLocation.openTime} - ${parkingSpace.parkingLocation.closeTime}`,
+      );
     }
 
-    if (endTime <= startTime) {
-      throw new BadRequestException('End time must be after start time');
-    }
-
-    // Check for conflicting reservations
-    const conflictingReservation = await this.prisma.reservation.findFirst({
+    // Check for existing active reservation by this driver
+    const existingReservation = await this.prisma.reservation.findFirst({
       where: {
-        parkingSpaceId: dto.parkingSpaceId,
+        driverId: driver.id,
         status: { in: ['PENDING', 'CONFIRMED', 'ACTIVE'] },
-        OR: [
-          {
-            startTime: { lte: startTime },
-            endTime: { gt: startTime },
-          },
-          {
-            startTime: { lt: endTime },
-            endTime: { gte: endTime },
-          },
-          {
-            startTime: { gte: startTime },
-            endTime: { lte: endTime },
-          },
-        ],
       },
     });
 
-    if (conflictingReservation) {
-      throw new BadRequestException('This time slot is already booked');
+    if (existingReservation) {
+      throw new BadRequestException(
+        'You already have a pending or active reservation. Please complete or cancel it first.',
+      );
     }
 
-    // Calculate fee
-    const durationHours = this.calculateDurationHours(startTime, endTime);
+    // Calculate first hour fee
     const pricePerHour = new Decimal(
       parkingSpace.parkingLocation.basePricePerHour,
     );
-    const totalAmount = pricePerHour.mul(durationHours);
+    const firstHourFee = pricePerHour;
 
     // Check wallet balance
     const wallet = await this.prisma.wallet.findUnique({
@@ -189,27 +315,47 @@ export class ReservationsService {
       );
     }
 
-    if (new Decimal(wallet.balance).lt(totalAmount)) {
+    if (new Decimal(wallet.balance).lt(firstHourFee)) {
       throw new BadRequestException(
-        `Insufficient balance. Required: ${totalAmount.toFixed(2)}, Available: ${new Decimal(wallet.balance).toFixed(2)}`,
+        `Insufficient balance. Required: ₱${firstHourFee.toFixed(2)}, Available: ₱${new Decimal(wallet.balance).toFixed(2)}`,
       );
     }
 
     // Generate QR code
     const { qrCode, qrCodeSecret } = this.generateQRCode(crypto.randomUUID());
 
+    // Set host approval deadline — 5 minutes from now
+    const now = new Date();
+    const approvalDeadline = new Date(
+      now.getTime() + this.HOST_APPROVAL_WINDOW_MS,
+    );
+
     // Create reservation with wallet debit in a transaction
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Debit wallet and put amount in escrow
+    type CreatedReservation = Prisma.ReservationGetPayload<{
+      include: {
+        parkingSpace: {
+          include: {
+            parkingLocation: {
+              include: {
+                images: true;
+              };
+            };
+          };
+        };
+      };
+    }>;
+
+    const result = (await this.prisma.$transaction(async (tx) => {
+      // Debit wallet for first hour
       const balanceBefore = wallet.balance;
-      const balanceAfter = new Decimal(balanceBefore).sub(totalAmount);
+      const balanceAfter = new Decimal(balanceBefore).sub(firstHourFee);
 
       const walletTransaction = await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
           type: 'DEBIT',
           source: 'RESERVATION_PAYMENT',
-          amount: totalAmount,
+          amount: firstHourFee,
           balanceBefore,
           balanceAfter,
         },
@@ -218,8 +364,14 @@ export class ReservationsService {
       await tx.wallet.update({
         where: { id: wallet.id },
         data: {
-          balance: { decrement: totalAmount.toNumber() },
+          balance: { decrement: firstHourFee.toNumber() },
         },
+      });
+
+      // Mark parking space as occupied (reserved)
+      await tx.parkingSpace.update({
+        where: { id: dto.parkingSpaceId },
+        data: { status: 'OCCUPIED' },
       });
 
       // Create reservation
@@ -227,13 +379,12 @@ export class ReservationsService {
         data: {
           driverId: driver.id,
           parkingSpaceId: dto.parkingSpaceId,
-          startTime,
-          endTime,
           status: 'PENDING',
           qrCode,
           qrCodeSecret,
-          totalAmount,
-          escrowAmount: totalAmount,
+          totalAmount: firstHourFee,
+          escrowAmount: firstHourFee,
+          arrivalDeadline: approvalDeadline,
           walletTransactionId: walletTransaction.id,
         },
         include: {
@@ -246,38 +397,27 @@ export class ReservationsService {
               },
             },
           },
-          driver: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-          },
         },
       });
 
-      return { reservation, walletTransaction };
-    });
+      return reservation;
+    })) as CreatedReservation;
 
-    const reservation = result.reservation as ReservationWithSpaceAndLocation;
-    const space = reservation.parkingSpace;
+    const space = result.parkingSpace;
     const location = space.parkingLocation;
 
     return {
-      id: reservation.id,
-      qrCode: reservation.qrCode,
-      status: reservation.status,
-      startTime: reservation.startTime,
-      endTime: reservation.endTime,
-      totalAmount: reservation.totalAmount,
-      escrowAmount: toNullable(reservation.escrowAmount),
+      id: result.id,
+      qrCode: result.qrCode,
+      status: result.status,
+      totalAmount: result.totalAmount,
+      escrowAmount: toNullable(result.escrowAmount),
+      arrivalDeadline: result.arrivalDeadline,
       parkingSpace: {
         id: space.id,
         slotNumber: space.slotNumber,
         name: space.name,
+        description: space.description,
       },
       parkingLocation: {
         id: location.id,
@@ -288,7 +428,7 @@ export class ReservationsService {
         images: location.images,
       },
       message:
-        'Reservation confirmed! Show your QR code to the host when you arrive.',
+        'Booking request submitted. Waiting for host approval (5-minute window).',
     };
   }
 
@@ -296,6 +436,8 @@ export class ReservationsService {
    * Get driver's reservations
    */
   async getDriverReservations(userId: string, status?: string) {
+    await this.processReservationTimeouts();
+
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
     });
@@ -306,7 +448,18 @@ export class ReservationsService {
 
     const whereClause: Prisma.ReservationWhereInput = { driverId: driver.id };
     if (status) {
-      whereClause.status = status as Prisma.EnumReservationStatusFilter;
+      const filterMap: Record<string, Prisma.ReservationWhereInput['status']> =
+        {
+          Upcoming: { in: ['PENDING', 'CONFIRMED'] },
+          Active: { equals: 'ACTIVE' },
+          Past: { in: ['COMPLETED', 'CANCELLED', 'EXPIRED'] },
+        };
+      const mapped = filterMap[status];
+      if (mapped) {
+        whereClause.status = mapped;
+      } else {
+        whereClause.status = status as Prisma.EnumReservationStatusFilter;
+      }
     }
 
     const reservations = await this.prisma.reservation.findMany({
@@ -328,41 +481,41 @@ export class ReservationsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return reservations.map((record) => {
-      const r = record as ReservationWithPrimaryImage;
-      return {
-        id: r.id,
-        qrCode: r.qrCode,
-        status: r.status,
-        startTime: r.startTime,
-        endTime: r.endTime,
-        actualEntryTime: toNullable<Date>(r.actualEntryTime),
-        actualExitTime: toNullable<Date>(r.actualExitTime),
-        totalAmount: r.totalAmount,
-        escrowAmount: toNullable(r.escrowAmount),
-        finalAmount: toNullable(r.finalAmount),
-        overtimeAmount: toNullable(r.overtimeAmount),
-        parkingSpace: {
-          id: r.parkingSpace.id,
-          slotNumber: r.parkingSpace.slotNumber,
-          name: r.parkingSpace.name,
-        },
-        parkingLocation: {
-          id: r.parkingSpace.parkingLocation.id,
-          title: r.parkingSpace.parkingLocation.title,
-          address: r.parkingSpace.parkingLocation.address,
-          latitude: r.parkingSpace.parkingLocation.latitude,
-          longitude: r.parkingSpace.parkingLocation.longitude,
-          image: r.parkingSpace.parkingLocation.images[0]?.imageUrl || null,
-        },
-      };
-    });
+    return reservations.map((r) => ({
+      id: r.id,
+      qrCode: r.qrCode,
+      status: r.status,
+      arrivalDeadline: r.arrivalDeadline,
+      sessionStartedAt: toNullable<Date>(r.sessionStartedAt),
+      sessionEndedAt: toNullable<Date>(r.sessionEndedAt),
+      totalAmount: r.totalAmount,
+      escrowAmount: toNullable(r.escrowAmount),
+      finalAmount: toNullable(r.finalAmount),
+      overtimeAmount: toNullable(r.overtimeAmount),
+      createdAt: r.createdAt,
+      parkingSpace: {
+        id: r.parkingSpace.id,
+        slotNumber: r.parkingSpace.slotNumber,
+        name: r.parkingSpace.name,
+        description: r.parkingSpace.description,
+      },
+      parkingLocation: {
+        id: r.parkingSpace.parkingLocation.id,
+        title: r.parkingSpace.parkingLocation.title,
+        address: r.parkingSpace.parkingLocation.address,
+        latitude: r.parkingSpace.parkingLocation.latitude,
+        longitude: r.parkingSpace.parkingLocation.longitude,
+        image: r.parkingSpace.parkingLocation.images[0]?.imageUrl || null,
+      },
+    }));
   }
 
   /**
    * Get a single reservation by ID
    */
   async getReservation(userId: string, reservationId: string) {
+    await this.processReservationTimeouts();
+
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
     });
@@ -409,27 +562,26 @@ export class ReservationsService {
       );
     }
 
-    const typedReservation =
-      reservation as unknown as ReservationWithSpaceAndLocation;
-    const space = typedReservation.parkingSpace;
+    const space = reservation.parkingSpace;
     const location = space.parkingLocation;
 
     return {
-      id: typedReservation.id,
-      qrCode: typedReservation.qrCode,
-      status: typedReservation.status,
-      startTime: typedReservation.startTime,
-      endTime: typedReservation.endTime,
-      actualEntryTime: toNullable(typedReservation.actualEntryTime),
-      actualExitTime: toNullable(typedReservation.actualExitTime),
-      totalAmount: typedReservation.totalAmount,
-      escrowAmount: toNullable(typedReservation.escrowAmount),
-      finalAmount: toNullable(typedReservation.finalAmount),
-      overtimeAmount: toNullable(typedReservation.overtimeAmount),
+      id: reservation.id,
+      qrCode: reservation.qrCode,
+      status: reservation.status,
+      arrivalDeadline: reservation.arrivalDeadline,
+      sessionStartedAt: toNullable<Date>(reservation.sessionStartedAt),
+      sessionEndedAt: toNullable<Date>(reservation.sessionEndedAt),
+      totalAmount: reservation.totalAmount,
+      escrowAmount: toNullable(reservation.escrowAmount),
+      finalAmount: toNullable(reservation.finalAmount),
+      overtimeAmount: toNullable(reservation.overtimeAmount),
+      createdAt: reservation.createdAt,
       parkingSpace: {
         id: space.id,
         slotNumber: space.slotNumber,
         name: space.name,
+        description: space.description,
       },
       parkingLocation: {
         id: location.id,
@@ -438,14 +590,189 @@ export class ReservationsService {
         latitude: location.latitude,
         longitude: location.longitude,
         images: location.images,
+        basePricePerHour: location.basePricePerHour,
       },
     };
   }
 
   /**
-   * Host: Verify QR code for entry scan
+   * Host: Approve reservation request (within 5-minute approval window)
+   */
+  async approveReservation(hostUserId: string, reservationId: string) {
+    await this.processReservationTimeouts();
+
+    const host = await this.prisma.host.findUnique({
+      where: { userId: hostUserId },
+    });
+
+    if (!host) {
+      throw new ForbiddenException('Only hosts can approve reservations');
+    }
+
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: {
+          include: {
+            parkingLocation: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (reservation.parkingSpace.parkingLocation.hostId !== host.id) {
+      throw new ForbiddenException(
+        'This reservation is not for your parking location',
+      );
+    }
+
+    if (reservation.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot approve reservation with status: ${reservation.status}`,
+      );
+    }
+
+    const now = new Date();
+    if (now > reservation.arrivalDeadline) {
+      await this.processReservationTimeouts();
+      throw new BadRequestException(
+        'Approval window has expired and the reservation was cancelled.',
+      );
+    }
+
+    const arrivalDeadline = new Date(
+      now.getTime() + this.DRIVER_ARRIVAL_WINDOW_MS,
+    );
+
+    const updated = await this.prisma.reservation.update({
+      where: { id: reservation.id },
+      data: {
+        status: 'CONFIRMED',
+        arrivalDeadline,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Reservation approved. Driver now has 60 minutes to arrive.',
+      reservation: {
+        id: updated.id,
+        status: updated.status,
+        arrivalDeadline: updated.arrivalDeadline,
+      },
+    };
+  }
+
+  /**
+   * Host: Reject reservation request (within 5-minute approval window)
+   */
+  async rejectReservation(hostUserId: string, reservationId: string) {
+    await this.processReservationTimeouts();
+
+    const host = await this.prisma.host.findUnique({
+      where: { userId: hostUserId },
+    });
+
+    if (!host) {
+      throw new ForbiddenException('Only hosts can reject reservations');
+    }
+
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: {
+          include: {
+            parkingLocation: true,
+          },
+        },
+        driver: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (reservation.parkingSpace.parkingLocation.hostId !== host.id) {
+      throw new ForbiddenException(
+        'This reservation is not for your parking location',
+      );
+    }
+
+    if (reservation.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Cannot reject reservation with status: ${reservation.status}`,
+      );
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (reservation.escrowAmount) {
+        const driverWallet = await tx.wallet.findUnique({
+          where: { userId: reservation.driver.userId },
+        });
+
+        if (driverWallet) {
+          const refundAmount = new Decimal(String(reservation.escrowAmount));
+
+          await tx.walletTransaction.create({
+            data: {
+              walletId: driverWallet.id,
+              type: 'CREDIT',
+              source: 'REFUND',
+              amount: refundAmount,
+              referenceId: reservation.id,
+              balanceBefore: driverWallet.balance,
+              balanceAfter: new Decimal(driverWallet.balance).add(refundAmount),
+            },
+          });
+
+          await tx.wallet.update({
+            where: { id: driverWallet.id },
+            data: {
+              balance: { increment: refundAmount.toNumber() },
+            },
+          });
+        }
+      }
+
+      await tx.parkingSpace.update({
+        where: { id: reservation.parkingSpaceId },
+        data: { status: 'AVAILABLE' },
+      });
+
+      return tx.reservation.update({
+        where: { id: reservation.id },
+        data: {
+          status: 'CANCELLED',
+          escrowAmount: 0,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      message: 'Reservation rejected. Driver has been refunded.',
+      reservation: {
+        id: updated.id,
+        status: updated.status,
+      },
+    };
+  }
+
+  /**
+   * Valet/Host: Scan QR code for entry — starts the parking session
    */
   async verifyEntryQR(hostUserId: string, qrCode: string) {
+    await this.processReservationTimeouts();
+
     const host = await this.prisma.host.findUnique({
       where: { userId: hostUserId },
     });
@@ -473,6 +800,7 @@ export class ReservationsService {
             },
             vehicles: {
               where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
               take: 1,
             },
           },
@@ -498,38 +826,23 @@ export class ReservationsService {
       );
     }
 
-    // Check time window (allow 30 minutes before start time)
+    // Check arrival window
     const now = new Date();
-    const windowStart = new Date(
-      reservation.startTime.getTime() - 30 * 60 * 1000,
-    );
-    const windowEnd = reservation.endTime;
-
-    if (now < windowStart) {
+    if (now > reservation.arrivalDeadline) {
       throw new BadRequestException(
-        `Too early to check in. Reservation starts at ${reservation.startTime.toLocaleTimeString()}`,
+        'Arrival window has expired. The reservation has been forfeited.',
       );
     }
 
-    if (now > windowEnd) {
-      throw new BadRequestException('Reservation time has expired');
-    }
-
-    // Update reservation to ACTIVE and record entry time
+    // Update reservation to ACTIVE and start session
     const updatedReservation: ReservationRecord =
       await this.prisma.$transaction(async (tx) => {
         const updated = await tx.reservation.update({
           where: { id: reservation.id },
           data: {
             status: 'ACTIVE',
-            actualEntryTime: now,
+            sessionStartedAt: now,
           },
-        });
-
-        // Update parking space status
-        await tx.parkingSpace.update({
-          where: { id: reservation.parkingSpaceId },
-          data: { status: 'OCCUPIED' },
         });
 
         return updated;
@@ -537,26 +850,26 @@ export class ReservationsService {
 
     return {
       success: true,
-      message: 'Entry verified successfully',
+      message: `Session started at Slot ${reservation.parkingSpace.name || reservation.parkingSpace.slotNumber}`,
       reservation: {
         id: updatedReservation.id,
         status: updatedReservation.status,
         slotNumber: reservation.parkingSpace.slotNumber,
-        startTime: updatedReservation.startTime,
-        endTime: updatedReservation.endTime,
-        actualEntryTime: toNullable<Date>(updatedReservation.actualEntryTime),
+        slotName: reservation.parkingSpace.name,
+        sessionStartedAt: toNullable<Date>(updatedReservation.sessionStartedAt),
         totalAmount: updatedReservation.totalAmount,
       },
       driver: {
         name: `${reservation.driver.user.firstName || ''} ${reservation.driver.user.lastName || ''}`.trim(),
         phone: reservation.driver.user.phoneNumber,
+        licenseNumber: toNullable<string>(reservation.driver.licenseNumber),
         vehicle: reservation.driver.vehicles[0] || null,
       },
     };
   }
 
   /**
-   * Host: Verify QR code for exit scan
+   * Valet/Host: Scan QR code for exit — ends session, calculates total, settles payment
    */
   async verifyExitQR(hostUserId: string, qrCode: string) {
     const host = await this.prisma.host.findUnique({
@@ -602,85 +915,78 @@ export class ReservationsService {
     }
 
     const now = new Date();
+    const sessionStart = new Date(reservation.sessionStartedAt as Date);
     const pricePerHour = new Decimal(
       reservation.parkingSpace.parkingLocation.basePricePerHour,
     );
 
-    // Calculate actual duration and any overtime
-    let overtimeAmount = new Decimal(0);
-    let finalAmount = new Decimal(reservation.totalAmount);
+    // Calculate actual duration (round up to nearest hour)
+    const durationMs = now.getTime() - sessionStart.getTime();
+    const durationHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
+    const totalFee = pricePerHour.mul(durationHours);
 
-    if (now > reservation.endTime) {
-      // Calculate overtime
-      const overtimeHours = this.calculateDurationHours(
-        reservation.endTime,
-        now,
-      );
-      overtimeAmount = pricePerHour.mul(overtimeHours).mul(1.5); // 1.5x rate for overtime
-      finalAmount = finalAmount.add(overtimeAmount);
-    }
+    // First hour was already paid (escrow)
+    const escrowAmount = new Decimal(String(reservation.escrowAmount ?? 0));
+    const additionalCharge = Decimal.max(totalFee.sub(escrowAmount), 0);
 
     // Process exit and payment
     const result: ReservationRecord = await this.prisma.$transaction(
       async (tx) => {
-        // If there's overtime, deduct from driver's wallet
-        if (overtimeAmount.gt(0)) {
+        // If there's additional charge beyond the first hour, deduct from driver wallet
+        if (additionalCharge.gt(0)) {
           const driverWallet = await tx.wallet.findUnique({
             where: { userId: reservation.driver.userId },
           });
 
-          if (
-            driverWallet &&
-            new Decimal(driverWallet.balance).gte(overtimeAmount)
-          ) {
-            // Deduct overtime from driver wallet
-            await tx.walletTransaction.create({
-              data: {
-                walletId: driverWallet.id,
-                type: 'DEBIT',
-                source: 'RESERVATION_PAYMENT',
-                amount: overtimeAmount,
-                referenceId: reservation.id,
-                balanceBefore: driverWallet.balance,
-                balanceAfter: new Decimal(driverWallet.balance).sub(
-                  overtimeAmount,
-                ),
-              },
-            });
+          if (driverWallet) {
+            const balance = new Decimal(driverWallet.balance);
+            const chargeAmount = Decimal.min(additionalCharge, balance);
 
-            await tx.wallet.update({
-              where: { id: driverWallet.id },
-              data: {
-                balance: { decrement: overtimeAmount.toNumber() },
-              },
-            });
+            if (chargeAmount.gt(0)) {
+              await tx.walletTransaction.create({
+                data: {
+                  walletId: driverWallet.id,
+                  type: 'DEBIT',
+                  source: 'RESERVATION_PAYMENT',
+                  amount: chargeAmount,
+                  referenceId: reservation.id,
+                  balanceBefore: driverWallet.balance,
+                  balanceAfter: balance.sub(chargeAmount),
+                },
+              });
+
+              await tx.wallet.update({
+                where: { id: driverWallet.id },
+                data: {
+                  balance: { decrement: chargeAmount.toNumber() },
+                },
+              });
+            }
           }
         }
 
-        // Release escrow to host wallet
+        // Release total to host wallet
         const hostWallet = await tx.wallet.findUnique({
           where: { userId: host.userId },
         });
 
         if (hostWallet) {
-          const payoutAmount = finalAmount;
-
           await tx.walletTransaction.create({
             data: {
               walletId: hostWallet.id,
               type: 'CREDIT',
               source: 'HOST_PAYOUT',
-              amount: payoutAmount,
+              amount: totalFee,
               referenceId: reservation.id,
               balanceBefore: hostWallet.balance,
-              balanceAfter: new Decimal(hostWallet.balance).add(payoutAmount),
+              balanceAfter: new Decimal(hostWallet.balance).add(totalFee),
             },
           });
 
           await tx.wallet.update({
             where: { id: hostWallet.id },
             data: {
-              balance: { increment: payoutAmount.toNumber() },
+              balance: { increment: totalFee.toNumber() },
             },
           });
         }
@@ -690,9 +996,9 @@ export class ReservationsService {
           where: { id: reservation.id },
           data: {
             status: 'COMPLETED',
-            actualExitTime: now,
-            finalAmount,
-            overtimeAmount: overtimeAmount.gt(0) ? overtimeAmount : null,
+            sessionEndedAt: now,
+            finalAmount: totalFee,
+            totalAmount: totalFee,
           },
         });
 
@@ -708,27 +1014,28 @@ export class ReservationsService {
 
     return {
       success: true,
-      message: 'Exit verified successfully. Payment released to host.',
+      message: 'Session ended. Payment has been processed.',
       reservation: {
         id: result.id,
         status: result.status,
-        startTime: result.startTime,
-        endTime: result.endTime,
-        actualEntryTime: toNullable<Date>(result.actualEntryTime),
-        actualExitTime: toNullable<Date>(result.actualExitTime),
+        sessionStartedAt: toNullable<Date>(result.sessionStartedAt),
+        sessionEndedAt: toNullable<Date>(result.sessionEndedAt),
         totalAmount: result.totalAmount,
         finalAmount: toNullable(result.finalAmount),
-        overtimeAmount: toNullable(result.overtimeAmount),
+        durationHours,
       },
-      hadOvertime: overtimeAmount.gt(0),
-      overtimeCharge: overtimeAmount.gt(0) ? overtimeAmount.toNumber() : null,
+      additionalCharge: additionalCharge.gt(0)
+        ? additionalCharge.toNumber()
+        : null,
     };
   }
 
   /**
-   * Cancel a reservation (before entry)
+   * Cancel a reservation (before session starts)
    */
   async cancelReservation(userId: string, reservationId: string) {
+    await this.processReservationTimeouts();
+
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
     });
@@ -760,13 +1067,15 @@ export class ReservationsService {
       );
     }
 
+    const shouldRefund = reservation.status === 'PENDING';
+
     // Refund the escrow amount
     const result = await this.prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.findUnique({
         where: { userId },
       });
 
-      if (wallet && reservation.escrowAmount) {
+      if (shouldRefund && wallet && reservation.escrowAmount) {
         const refundAmount = new Decimal(String(reservation.escrowAmount));
 
         await tx.walletTransaction.create({
@@ -789,6 +1098,12 @@ export class ReservationsService {
         });
       }
 
+      // Free up the parking space
+      await tx.parkingSpace.update({
+        where: { id: reservation.parkingSpaceId },
+        data: { status: 'AVAILABLE' },
+      });
+
       // Update reservation status
       return tx.reservation.update({
         where: { id: reservationId },
@@ -801,157 +1116,13 @@ export class ReservationsService {
 
     return {
       success: true,
-      message: 'Reservation cancelled. Your payment has been refunded.',
+      message: shouldRefund
+        ? 'Reservation cancelled. Your payment has been refunded.'
+        : 'Reservation cancelled. No refund was issued because the host already approved this booking.',
       reservation: {
         id: result.id,
         status: result.status,
       },
-    };
-  }
-
-  /**
-   * Host confirms a pending reservation
-   */
-  async confirmReservation(hostUserId: string, reservationId: string) {
-    const host = await this.prisma.host.findUnique({
-      where: { userId: hostUserId },
-      include: {
-        parkingLocations: { select: { id: true } },
-      },
-    });
-
-    if (!host) {
-      throw new ForbiddenException('Only hosts can confirm reservations');
-    }
-
-    const reservation = await this.prisma.reservation.findUnique({
-      where: { id: reservationId },
-      include: {
-        parkingSpace: true,
-      },
-    });
-
-    if (!reservation) {
-      throw new NotFoundException('Reservation not found');
-    }
-
-    const hostLocationIds = host.parkingLocations.map((l) => l.id);
-    if (!hostLocationIds.includes(reservation.parkingSpace.parkingLocationId)) {
-      throw new ForbiddenException(
-        'You can only confirm reservations for your own locations',
-      );
-    }
-
-    if (reservation.status !== 'PENDING') {
-      throw new BadRequestException(
-        `Cannot confirm reservation with status: ${reservation.status}`,
-      );
-    }
-
-    const updated = await this.prisma.reservation.update({
-      where: { id: reservationId },
-      data: { status: 'CONFIRMED' },
-    });
-
-    return {
-      success: true,
-      message: 'Reservation confirmed successfully.',
-      reservation: { id: updated.id, status: updated.status },
-    };
-  }
-
-  /**
-   * Host rejects a pending reservation (refunds driver)
-   */
-  async rejectReservation(hostUserId: string, reservationId: string) {
-    const host = await this.prisma.host.findUnique({
-      where: { userId: hostUserId },
-      include: {
-        parkingLocations: { select: { id: true } },
-      },
-    });
-
-    if (!host) {
-      throw new ForbiddenException('Only hosts can reject reservations');
-    }
-
-    const reservation = (await this.prisma.reservation.findUnique({
-      where: { id: reservationId },
-      include: {
-        parkingSpace: true,
-        walletTransaction: true,
-      },
-    })) as
-      | (ReservationWithTransaction & {
-          parkingSpace: { parkingLocationId: string };
-        })
-      | null;
-
-    if (!reservation) {
-      throw new NotFoundException('Reservation not found');
-    }
-
-    const hostLocationIds = host.parkingLocations.map((l) => l.id);
-    if (!hostLocationIds.includes(reservation.parkingSpace.parkingLocationId)) {
-      throw new ForbiddenException(
-        'You can only reject reservations for your own locations',
-      );
-    }
-
-    if (reservation.status !== 'PENDING') {
-      throw new BadRequestException(
-        `Cannot reject reservation with status: ${reservation.status}`,
-      );
-    }
-
-    // Refund the driver
-    const result = await this.prisma.$transaction(async (tx) => {
-      const driver = await tx.driver.findUnique({
-        where: { id: reservation.driverId },
-      });
-
-      if (driver && reservation.escrowAmount) {
-        const wallet = await tx.wallet.findUnique({
-          where: { userId: driver.userId },
-        });
-
-        if (wallet) {
-          const refundAmount = new Decimal(String(reservation.escrowAmount));
-
-          await tx.walletTransaction.create({
-            data: {
-              walletId: wallet.id,
-              type: 'CREDIT',
-              source: 'REFUND',
-              amount: refundAmount,
-              referenceId: reservation.id,
-              balanceBefore: wallet.balance,
-              balanceAfter: new Decimal(wallet.balance).add(refundAmount),
-            },
-          });
-
-          await tx.wallet.update({
-            where: { id: wallet.id },
-            data: {
-              balance: { increment: refundAmount.toNumber() },
-            },
-          });
-        }
-      }
-
-      return tx.reservation.update({
-        where: { id: reservationId },
-        data: {
-          status: 'CANCELLED',
-          escrowAmount: 0,
-        },
-      });
-    });
-
-    return {
-      success: true,
-      message: 'Reservation rejected. The driver has been refunded.',
-      reservation: { id: result.id, status: result.status },
     };
   }
 
@@ -963,6 +1134,8 @@ export class ReservationsService {
     locationId?: string,
     status?: string,
   ) {
+    await this.processReservationTimeouts();
+
     const host = await this.prisma.host.findUnique({
       where: { userId: hostUserId },
       include: {
@@ -991,7 +1164,7 @@ export class ReservationsService {
         {
           Upcoming: { in: ['PENDING', 'CONFIRMED'] },
           Active: { equals: 'ACTIVE' },
-          Past: { in: ['COMPLETED', 'CANCELLED'] },
+          Past: { in: ['COMPLETED', 'CANCELLED', 'EXPIRED'] },
         };
       const mapped = filterMap[status];
       if (mapped) {
@@ -1021,6 +1194,7 @@ export class ReservationsService {
             },
             vehicles: {
               where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
               take: 1,
             },
           },
@@ -1029,35 +1203,35 @@ export class ReservationsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return reservations.map((record) => {
-      const r = record as ReservationWithDriverDetails;
-      return {
-        id: r.id,
-        qrCode: r.qrCode,
-        status: r.status,
-        startTime: r.startTime,
-        endTime: r.endTime,
-        actualEntryTime: toNullable<Date>(r.actualEntryTime),
-        actualExitTime: toNullable<Date>(r.actualExitTime),
-        totalAmount: r.totalAmount,
-        finalAmount: toNullable(r.finalAmount),
-        overtimeAmount: toNullable(r.overtimeAmount),
-        parkingSpace: {
-          id: r.parkingSpace.id,
-          slotNumber: r.parkingSpace.slotNumber,
-          name: r.parkingSpace.name,
-        },
-        parkingLocation: {
-          id: r.parkingSpace.parkingLocation.id,
-          title: r.parkingSpace.parkingLocation.title,
-        },
-        driver: {
-          name: `${r.driver.user.firstName || ''} ${r.driver.user.lastName || ''}`.trim(),
-          phone: r.driver.user.phoneNumber,
-          image: toNullable<string>(r.driver.user.profilePicture),
-          vehicle: r.driver.vehicles[0] || null,
-        },
-      };
-    });
+    return reservations.map((r) => ({
+      id: r.id,
+      qrCode: r.qrCode,
+      status: r.status,
+      arrivalDeadline: r.arrivalDeadline,
+      sessionStartedAt: toNullable<Date>(r.sessionStartedAt),
+      sessionEndedAt: toNullable<Date>(r.sessionEndedAt),
+      totalAmount: r.totalAmount,
+      finalAmount: toNullable(r.finalAmount),
+      overtimeAmount: toNullable(r.overtimeAmount),
+      createdAt: r.createdAt,
+      parkingSpace: {
+        id: r.parkingSpace.id,
+        slotNumber: r.parkingSpace.slotNumber,
+        name: r.parkingSpace.name,
+        description: r.parkingSpace.description,
+      },
+      parkingLocation: {
+        id: r.parkingSpace.parkingLocation.id,
+        title: r.parkingSpace.parkingLocation.title,
+      },
+      driver: {
+        name: `${r.driver.user.firstName || ''} ${r.driver.user.lastName || ''}`.trim(),
+        phone: r.driver.user.phoneNumber,
+        image: toNullable<string>(r.driver.user.profilePicture),
+        licenseNumber: toNullable<string>(r.driver.licenseNumber),
+        licenseImageUrl: toNullable<string>(r.driver.licenseImageUrl),
+        vehicle: r.driver.vehicles[0] || null,
+      },
+    }));
   }
 }

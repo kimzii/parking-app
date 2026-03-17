@@ -90,6 +90,7 @@ async function main() {
       driver: {
         create: {
           licenseNumber: 'D123-45-678901',
+          licenseImageUrl: 'https://park-link.s3.ap-southeast-2.amazonaws.com/driver-licenses/8d714381-2d6b-4c52-9996-8030159fecf9.jpeg',
         },
       },
       userRoles: {
@@ -278,25 +279,39 @@ async function main() {
         longitude: 120.9842,
         basePricePerHour: 25.0,
         status: 'APPROVED',
-        totalSlots: 10,
-        availableSlots: 10,
+        totalSlots: 12,
+        availableSlots: 12,
+        isMultiLevel: true,
+        numberOfLevels: 3,
         images: {
           createMany: {
             data: [
               {
-                imageUrl: 'https://example.com/parking1-main.jpg',
+                imageUrl: 'https://park-link.s3.ap-southeast-2.amazonaws.com/parking-images/336fe79e-63d0-499c-91a4-b86b748ea2e9.jpeg',
                 isPrimary: true,
               },
-              { imageUrl: 'https://example.com/parking1-entrance.jpg' },
-              { imageUrl: 'https://example.com/parking1-security.jpg' },
             ],
           },
         },
         parkingSpaces: {
           createMany: {
-            data: Array.from({ length: 10 }, (_, i) => ({
-              slotNumber: i + 1,
-            })),
+            data: [
+              // Level 1
+              { slotNumber: 1, name: 'L1-A1', levelNumber: 1 },
+              { slotNumber: 2, name: 'L1-A2', levelNumber: 1 },
+              { slotNumber: 3, name: 'L1-A3', levelNumber: 1 },
+              { slotNumber: 4, name: 'L1-A4', levelNumber: 1 },
+              // Level 2
+              { slotNumber: 5, name: 'L2-B1', levelNumber: 2 },
+              { slotNumber: 6, name: 'L2-B2', levelNumber: 2 },
+              { slotNumber: 7, name: 'L2-B3', levelNumber: 2 },
+              { slotNumber: 8, name: 'L2-B4', levelNumber: 2 },
+              // Level 3
+              { slotNumber: 9, name: 'L3-C1', levelNumber: 3 },
+              { slotNumber: 10, name: 'L3-C2', levelNumber: 3 },
+              { slotNumber: 11, name: 'L3-C3', levelNumber: 3 },
+              { slotNumber: 12, name: 'L3-C4', levelNumber: 3 },
+            ],
           },
         },
       },
@@ -312,13 +327,15 @@ async function main() {
         longitude: 121.0194,
         basePricePerHour: 35.0,
         status: 'PENDING', // Waiting for approval
-        totalSlots: 5,
-        availableSlots: 5,
+        totalSlots: 8,
+        availableSlots: 8,
+        isMultiLevel: true,
+        numberOfLevels: 2,
         images: {
           createMany: {
             data: [
               {
-                imageUrl: 'https://example.com/parking2-main.jpg',
+                imageUrl: 'https://park-link.s3.ap-southeast-2.amazonaws.com/parking-images/336fe79e-63d0-499c-91a4-b86b748ea2e9.jpeg',
                 isPrimary: true,
               },
             ],
@@ -326,9 +343,18 @@ async function main() {
         },
         parkingSpaces: {
           createMany: {
-            data: Array.from({ length: 5 }, (_, i) => ({
-              slotNumber: i + 1,
-            })),
+            data: [
+              // Ground Level
+              { slotNumber: 1, name: 'G-01', levelNumber: 1 },
+              { slotNumber: 2, name: 'G-02', levelNumber: 1 },
+              { slotNumber: 3, name: 'G-03', levelNumber: 1 },
+              { slotNumber: 4, name: 'G-04', levelNumber: 1 },
+              // Upper Level
+              { slotNumber: 5, name: 'U-01', levelNumber: 2 },
+              { slotNumber: 6, name: 'U-02', levelNumber: 2 },
+              { slotNumber: 7, name: 'U-03', levelNumber: 2 },
+              { slotNumber: 8, name: 'U-04', levelNumber: 2 },
+            ],
           },
         },
       },
@@ -349,11 +375,19 @@ async function main() {
         status: 'PENDING',
         totalSlots: 8,
         availableSlots: 8,
+        isMultiLevel: false, // Single level parking
         parkingSpaces: {
           createMany: {
-            data: Array.from({ length: 8 }, (_, i) => ({
-              slotNumber: i + 1,
-            })),
+            data: [
+              { slotNumber: 1, name: 'A1' },
+              { slotNumber: 2, name: 'A2' },
+              { slotNumber: 3, name: 'A3' },
+              { slotNumber: 4, name: 'A4' },
+              { slotNumber: 5, name: 'B1' },
+              { slotNumber: 6, name: 'B2' },
+              { slotNumber: 7, name: 'B3' },
+              { slotNumber: 8, name: 'B4' },
+            ],
           },
         },
       },

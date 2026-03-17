@@ -105,7 +105,7 @@ export default function LocationDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+      <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <ActivityIndicator
           size="large"
           color="#11796F"
@@ -117,7 +117,7 @@ export default function LocationDetailScreen() {
 
   if (!location) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+      <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <View style={styles.errorState}>
           <MaterialIcons name="error-outline" size={48} color="#E53935" />
           <Text style={styles.errorTitle}>Location not found</Text>
@@ -133,7 +133,7 @@ export default function LocationDetailScreen() {
   const disabledCount = spaces.filter((s) => s.status === "DISABLED").length;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

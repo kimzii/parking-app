@@ -1,0 +1,299 @@
+name: Monorepo CI/CD Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - develop
+      - feature/**
+    # Trigger workflow only when relevant monorepo paths change.
+    paths:
+      - apps/api/**
+      - apps/admin/**
+      - apps/mobile/**
+      - packages/**
+      - package.json
+      - package-lock.json
+      - turbo.json
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Optional override for deploy environment
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+# One deployment per branch at a time.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect Changed Apps
+    runs-on: ubuntu-latest
+    outputs:
+      api_changed: ${{ steps.filter.outputs.api }}
+      admin_changed: ${{ steps.filter.outputs.admin }}
+      mobile_changed: ${{ steps.filter.outputs.mobile }}
+      deploy_env: ${{ steps.env_select.outputs.deploy_env }}
+      mobile_profile: ${{ steps.env_select.outputs.mobile_profile }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect which app paths changed
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'turbo.json'
+            admin:
+              - 'apps/admin/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'turbo.json'
+            mobile:
+              - 'apps/mobile/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+
+      - name: Resolve deployment environment and mobile build profile
+        id: env_select
+        shell: bash
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.target_environment }}" ]]; then
+            DEPLOY_ENV="${{ github.event.inputs.target_environment }}"
+          elif [[ "${BRANCH}" == "main" ]]; then
+            DEPLOY_ENV="production"
+          else
+            DEPLOY_ENV="staging"
+          fi
+
+          if [[ "${BRANCH}" == "main" ]]; then
+            MOBILE_PROFILE="production"
+          else
+            MOBILE_PROFILE="preview"
+          fi
+
+          echo "deploy_env=${DEPLOY_ENV}" >> "$GITHUB_OUTPUT"
+          echo "mobile_profile=${MOBILE_PROFILE}" >> "$GITHUB_OUTPUT"
+
+  deploy_api:
+    name: Deploy API (NestJS) to DigitalOcean
+    needs: changes
+    runs-on: ubuntu-latest
+    # API deploys on main/staging pushes and manual dispatch when API paths changed.
+    if: needs.changes.outputs.api_changed == 'true' && (github.ref_name == 'main' || github.ref_name == 'staging' || github.event_name == 'workflow_dispatch')
+    environment: ${{ needs.changes.outputs.deploy_env }}
+    steps:
+      - name: Deploy over SSH with rollback and zero-downtime PM2 reload
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          BRANCH: ${{ github.ref_name }}
+          REPO_URL: git@github.com:${{ github.repository }}.git
+          APP_ROOT: ${{ secrets.API_APP_ROOT }}
+          DEPLOY_ENV: ${{ needs.changes.outputs.deploy_env }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          API_PORT: ${{ secrets.API_PORT }}
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_PRIVATE_KEY }}
+          script_stop: true
+          envs: BRANCH,REPO_URL,APP_ROOT,DEPLOY_ENV,DATABASE_URL,JWT_SECRET,SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,SMTP_FROM,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,AWS_S3_BUCKET,API_PORT
+          script: |
+            set -Eeuo pipefail
+
+            APP_ROOT="${APP_ROOT:-/var/www/parking-app}"
+            REPO_DIR="${APP_ROOT}/repo"
+            BRANCH="${BRANCH:-main}"
+            DEPLOY_ENV="${DEPLOY_ENV:-production}"
+            API_PORT="${API_PORT:-3001}"
+
+            mkdir -p "${APP_ROOT}"
+
+            if [ ! -d "${REPO_DIR}/.git" ]; then
+              git clone "${REPO_URL}" "${REPO_DIR}"
+            fi
+
+            cd "${REPO_DIR}"
+
+            PREVIOUS_COMMIT="$(git rev-parse HEAD || true)"
+
+            rollback() {
+              if [ -n "${PREVIOUS_COMMIT}" ]; then
+                echo "Deployment failed. Rolling back code to ${PREVIOUS_COMMIT}."
+                git reset --hard "${PREVIOUS_COMMIT}" || true
+                npm ci --prefer-offline --no-audit || true
+                npm run build --workspace apps/api || true
+                pm2 startOrReload apps/api/ecosystem.config.cjs --env "${DEPLOY_ENV}" --update-env || true
+                pm2 save || true
+              fi
+            }
+            trap rollback ERR
+
+            # Pull latest code from target branch.
+            git fetch --prune origin
+            git checkout "${BRANCH}"
+            git reset --hard "origin/${BRANCH}"
+            git clean -fd
+
+            # Write runtime env for API from GitHub secrets.
+            cat > apps/api/.env <<EOF
+            DATABASE_URL="${DATABASE_URL}"
+            JWT_SECRET="${JWT_SECRET}"
+            PORT="${API_PORT}"
+            SMTP_HOST="${SMTP_HOST}"
+            SMTP_PORT="${SMTP_PORT}"
+            SMTP_USER="${SMTP_USER}"
+            SMTP_PASS="${SMTP_PASS}"
+            SMTP_FROM="${SMTP_FROM}"
+            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+            AWS_REGION="${AWS_REGION}"
+            AWS_S3_BUCKET="${AWS_S3_BUCKET}"
+            EOF
+
+            # Install all workspace dependencies.
+            npm ci --prefer-offline --no-audit
+
+            # Prisma safe migration handling:
+            # 1) check migration status
+            # 2) apply only committed migrations with migrate deploy
+            npx prisma migrate status --schema apps/api/prisma/schema.prisma
+            npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+
+            # Build API and reload with zero downtime (PM2 cluster reload).
+            npm run build --workspace apps/api
+            pm2 startOrReload apps/api/ecosystem.config.cjs --env "${DEPLOY_ENV}" --update-env
+            pm2 save
+
+            echo "API deployment complete (${DEPLOY_ENV})."
+
+  deploy_admin:
+    name: Deploy Admin (Next.js) to Vercel
+    needs: changes
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.admin_changed == 'true'
+    environment: ${{ needs.changes.outputs.deploy_env }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node with npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace)
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings
+        working-directory: apps/admin
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+          else
+            vercel pull --yes --environment=preview --token="${VERCEL_TOKEN}"
+          fi
+
+      - name: Build admin app
+        working-directory: apps/admin
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            vercel build --prod --token="${VERCEL_TOKEN}"
+          else
+            vercel build --token="${VERCEL_TOKEN}"
+          fi
+
+      - name: Deploy admin app
+        working-directory: apps/admin
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            vercel deploy --prebuilt --prod --token="${VERCEL_TOKEN}"
+          else
+            # Non-main branches produce preview URLs for staging/testing.
+            vercel deploy --prebuilt --token="${VERCEL_TOKEN}"
+          fi
+
+      # If you do not use Vercel, replace the Vercel build/deploy steps above with:
+      # - npm run build --workspace apps/admin
+      # - rsync/scp artifacts to your server
+      # - restart next server with PM2/systemd on the target host
+
+  build_mobile_android:
+    name: Build Mobile Android (Expo EAS)
+    needs: changes
+    runs-on: ubuntu-latest
+    if: needs.changes.outputs.mobile_changed == 'true'
+    environment: ${{ needs.changes.outputs.deploy_env }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node with npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies (workspace)
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Setup Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Trigger EAS Android build
+        working-directory: apps/mobile
+        env:
+          EAS_NO_VCS: 1
+        run: |
+          PROFILE="${{ needs.changes.outputs.mobile_profile }}"
+          echo "Using EAS profile: ${PROFILE}"
+          eas build --platform android --profile "${PROFILE}" --non-interactive

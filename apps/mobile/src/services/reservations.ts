@@ -1,45 +1,46 @@
 import api from "./api";
 
-export interface CalculateFeeRequest {
-  parkingSpaceId: string;
-  startTime: string;
-  endTime: string;
-}
-
-export interface CalculateFeeResponse {
+export interface FirstHourFeeResponse {
   parkingSpaceId: string;
   locationTitle: string;
   slotNumber: number;
-  startTime: string;
-  endTime: string;
-  durationHours: number;
+  slotName?: string;
+  description?: string;
   pricePerHour: number;
-  totalAmount: number;
+  firstHourFee: number;
+  isOpen: boolean;
+  openTime?: string;
+  closeTime?: string;
+  is24Hours: boolean;
 }
 
 export interface CreateReservationRequest {
   parkingSpaceId: string;
-  startTime: string;
-  endTime: string;
-  vehicleId?: string;
 }
 
 export interface Reservation {
   id: string;
   qrCode: string;
-  status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-  startTime: string;
-  endTime: string;
-  actualEntryTime?: string;
-  actualExitTime?: string;
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "ACTIVE"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "EXPIRED";
+  arrivalDeadline: string;
+  sessionStartedAt?: string | null;
+  sessionEndedAt?: string | null;
   totalAmount: number;
-  escrowAmount?: number;
-  finalAmount?: number;
-  overtimeAmount?: number;
+  escrowAmount?: number | null;
+  finalAmount?: number | null;
+  overtimeAmount?: number | null;
+  createdAt: string;
   parkingSpace: {
     id: string;
     slotNumber: number;
     name?: string;
+    description?: string;
   };
   parkingLocation: {
     id: string;
@@ -48,7 +49,8 @@ export interface Reservation {
     latitude: number;
     longitude: number;
     image?: string;
-    images?: Array<{ id: string; imageUrl: string; isPrimary: boolean }>;
+    images?: { id: string; imageUrl: string; isPrimary: boolean }[];
+    basePricePerHour?: number;
   };
 }
 
@@ -63,40 +65,61 @@ export interface ScanResponse {
     id: string;
     status: string;
     slotNumber?: number;
-    startTime: string;
-    endTime: string;
-    actualEntryTime?: string;
-    actualExitTime?: string;
+    slotName?: string;
+    sessionStartedAt?: string | null;
+    sessionEndedAt?: string | null;
     totalAmount: number;
     finalAmount?: number;
-    overtimeAmount?: number;
+    durationHours?: number;
   };
   driver?: {
     name: string;
-    phone?: string;
+    phone?: string | null;
+    licenseNumber?: string | null;
     vehicle?: {
+      id?: string;
       plateNumber?: string;
       brand?: string;
       model?: string;
       color?: string;
+      vehicleType?: string;
     };
   };
-  hadOvertime?: boolean;
-  overtimeCharge?: number;
+  additionalCharge?: number | null;
+}
+
+export interface HostReservation extends Reservation {
+  driver?: {
+    name: string;
+    phone?: string | null;
+    image?: string | null;
+    licenseNumber?: string | null;
+    licenseImageUrl?: string | null;
+    vehicle?: {
+      id?: string;
+      plateNumber?: string;
+      brand?: string;
+      model?: string;
+      color?: string;
+      vehicleType?: string;
+    } | null;
+  };
 }
 
 /**
- * Calculate estimated parking fee
+ * Get first-hour fee info for a parking space
  */
-export async function calculateFee(
-  data: CalculateFeeRequest,
-): Promise<CalculateFeeResponse> {
-  const response = await api.post("/reservations/calculate-fee", data);
+export async function getFirstHourFee(
+  parkingSpaceId: string,
+): Promise<FirstHourFeeResponse> {
+  const response = await api.get(
+    `/reservations/first-hour-fee/${parkingSpaceId}`,
+  );
   return response.data;
 }
 
 /**
- * Create a new reservation
+ * Create a new reservation — pays 1st hour, then waits for host approval
  */
 export async function createReservation(
   data: CreateReservationRequest,
@@ -135,7 +158,29 @@ export async function cancelReservation(
 }
 
 /**
- * Host: Scan QR code for entry
+ * Host: Approve a pending reservation
+ */
+export async function approveReservation(id: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const response = await api.post(`/reservations/host/${id}/approve`);
+  return response.data;
+}
+
+/**
+ * Host: Reject a pending reservation
+ */
+export async function rejectReservation(id: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const response = await api.post(`/reservations/host/${id}/reject`);
+  return response.data;
+}
+
+/**
+ * Host: Scan QR code for entry — starts parking session
  */
 export async function scanEntry(qrCode: string): Promise<ScanResponse> {
   const response = await api.post("/reservations/scan/entry", { qrCode });
@@ -143,7 +188,7 @@ export async function scanEntry(qrCode: string): Promise<ScanResponse> {
 }
 
 /**
- * Host: Scan QR code for exit
+ * Host: Scan QR code for exit — ends session, calculates payment
  */
 export async function scanExit(qrCode: string): Promise<ScanResponse> {
   const response = await api.post("/reservations/scan/exit", { qrCode });
@@ -156,26 +201,10 @@ export async function scanExit(qrCode: string): Promise<ScanResponse> {
 export async function getHostReservations(
   locationId?: string,
   status?: string,
-): Promise<Reservation[]> {
+): Promise<HostReservation[]> {
   const params: Record<string, string> = {};
   if (locationId) params.locationId = locationId;
   if (status) params.status = status;
   const response = await api.get("/reservations/host/reservations", { params });
-  return response.data;
-}
-
-/**
- * Host: Confirm a pending reservation
- */
-export async function confirmReservation(id: string) {
-  const response = await api.post(`/reservations/host/${id}/confirm`);
-  return response.data;
-}
-
-/**
- * Host: Reject a pending reservation
- */
-export async function rejectReservation(id: string) {
-  const response = await api.post(`/reservations/host/${id}/reject`);
   return response.data;
 }

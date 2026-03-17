@@ -35,23 +35,18 @@ const DEFAULT_REGION: Region = {
 };
 
 const RADIUS_KM = 20;
+const MAP_FETCH_LIMIT = 50;
+const MAP_MOVE_DEBOUNCE_MS = 450;
 
-// Haversine formula — returns distance in km between two coordinates
-const getDistanceKm = (
-  lat1: number, lon1: number,
-  lat2: number, lon2: number,
-) => {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
+type Coordinates = { latitude: number; longitude: number };
 
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
+  const mapMoveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isProgrammaticMoveRef = useRef(false);
+  const hasInitializedRef = useRef(false);
+  const regionRef = useRef<Region>(DEFAULT_REGION);
+  const userLocationRef = useRef<Coordinates | null>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,48 +54,129 @@ export default function MapScreen() {
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDriverVerified, setIsDriverVerified] = useState(true);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
 
   const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
-    initLocationAndSpots();
+    userLocationRef.current = userLocation;
+  }, [userLocation]);
+
+  useEffect(() => {
+    regionRef.current = region;
+  }, [region]);
+
+  const moveMapToRegion = useCallback((nextRegion: Region) => {
+    isProgrammaticMoveRef.current = true;
+    setRegion(nextRegion);
+    mapRef.current?.animateToRegion(nextRegion, 500);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      // Re-filter spots on focus if we already have a location
-      if (userLocation) {
-        fetchNearbySpots(userLocation);
+  const fetchNearbySpots = useCallback(
+    async (options?: {
+      center?: Coordinates | null;
+      radiusKm?: number;
+      limit?: number;
+    }) => {
+      const center = options?.center ?? userLocationRef.current;
+      const radiusKm = options?.radiusKm ?? RADIUS_KM;
+      const limit = options?.limit ?? MAP_FETCH_LIMIT;
+
+      try {
+        const [data, profile] = await Promise.all([
+          hostService.getNearbyLocations(
+            center
+              ? {
+                  latitude: center.latitude,
+                  longitude: center.longitude,
+                  radius: radiusKm,
+                  limit,
+                }
+              : { limit },
+          ),
+          userService.getProfile(),
+        ]);
+
+        setSpots(data || []);
+
+        const verified =
+          profile.roleStatuses?.some(
+            (rs: { role: string; status: string }) =>
+              rs.role === "DRIVER" && rs.status === "VERIFIED",
+          ) ?? false;
+        setIsDriverVerified(verified);
+      } catch (err) {
+        console.error("Failed to fetch parking spots:", err);
+      } finally {
+        setLoading(false);
       }
-    }, [userLocation]),
+    },
+    [],
   );
 
-  const initLocationAndSpots = async () => {
+  const initLocationAndSpots = useCallback(async () => {
     setLocating(true);
-    let loc: { latitude: number; longitude: number } | null = null;
+    let loc: Coordinates | null = null;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const location = await Location.getCurrentPositionAsync({});
-        loc = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+        loc = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
         const newRegion: Region = {
           ...loc,
           latitudeDelta: 0.02,
           longitudeDelta: 0.02,
         };
-        setRegion(newRegion);
         setUserLocation(loc);
-        mapRef.current?.animateToRegion(newRegion, 500);
+        moveMapToRegion(newRegion);
       }
     } catch {
       console.error("Failed to get location");
     } finally {
       setLocating(false);
     }
-    // Fetch spots after location is resolved (or null if denied)
-    fetchNearbySpots(loc);
-  };
+
+    await fetchNearbySpots({
+      center: loc,
+      radiusKm: RADIUS_KM,
+      limit: MAP_FETCH_LIMIT,
+    });
+    hasInitializedRef.current = true;
+  }, [fetchNearbySpots, moveMapToRegion]);
+
+  useEffect(() => {
+    void initLocationAndSpots();
+  }, [initLocationAndSpots]);
+
+  useEffect(() => {
+    return () => {
+      if (mapMoveDebounceRef.current) {
+        clearTimeout(mapMoveDebounceRef.current);
+      }
+    };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh using current camera center without forcing a recenter to GPS.
+      if (!hasInitializedRef.current) {
+        return;
+      }
+
+      const focusRegion = regionRef.current;
+      void fetchNearbySpots({
+        center: {
+          latitude: focusRegion.latitude,
+          longitude: focusRegion.longitude,
+        },
+        radiusKm: RADIUS_KM,
+        limit: MAP_FETCH_LIMIT,
+      });
+    }, [fetchNearbySpots]),
+  );
 
   const getCurrentLocation = async () => {
     setLocating(true);
@@ -111,52 +187,26 @@ export default function MapScreen() {
         return;
       }
       const location = await Location.getCurrentPositionAsync({});
-      const loc = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+      const loc = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
       const newRegion: Region = {
         ...loc,
         latitudeDelta: 0.02,
         longitudeDelta: 0.02,
       };
-      setRegion(newRegion);
       setUserLocation(loc);
-      mapRef.current?.animateToRegion(newRegion, 500);
-      fetchNearbySpots(loc);
+      moveMapToRegion(newRegion);
+      await fetchNearbySpots({
+        center: loc,
+        radiusKm: RADIUS_KM,
+        limit: MAP_FETCH_LIMIT,
+      });
     } catch {
       console.error("Failed to get location");
     } finally {
       setLocating(false);
-    }
-  };
-
-  const fetchNearbySpots = async (loc?: { latitude: number; longitude: number } | null) => {
-    try {
-      const [data, profile] = await Promise.all([
-        hostService.getNearbyLocations({ limit: 50 }),
-        userService.getProfile(),
-      ]);
-      const allSpots: ParkingSpot[] = data || [];
-      const ref = loc ?? userLocation;
-      if (ref) {
-        setSpots(
-          allSpots.filter((spot) =>
-            getDistanceKm(
-              ref.latitude, ref.longitude,
-              Number(spot.latitude), Number(spot.longitude),
-            ) <= RADIUS_KM,
-          ),
-        );
-      } else {
-        setSpots(allSpots);
-      }
-      const verified = profile.roleStatuses?.some(
-        (rs: { role: string; status: string }) =>
-          rs.role === "DRIVER" && rs.status === "VERIFIED",
-      ) ?? false;
-      setIsDriverVerified(verified);
-    } catch (err) {
-      console.error("Failed to fetch parking spots:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -175,8 +225,12 @@ export default function MapScreen() {
           latitudeDelta: 0.02,
           longitudeDelta: 0.02,
         };
-        setRegion(newRegion);
-        mapRef.current?.animateToRegion(newRegion, 500);
+        moveMapToRegion(newRegion);
+        await fetchNearbySpots({
+          center: { latitude: lat, longitude: lng },
+          radiusKm: RADIUS_KM,
+          limit: MAP_FETCH_LIMIT,
+        });
       }
     } catch {
       console.error("Search failed");
@@ -222,6 +276,33 @@ export default function MapScreen() {
               showsUserLocation
               showsMyLocationButton={false}
               onPress={() => setSelectedSpot(null)}
+              onRegionChangeComplete={(nextRegion) => {
+                setRegion(nextRegion);
+
+                if (!hasInitializedRef.current) {
+                  return;
+                }
+
+                if (isProgrammaticMoveRef.current) {
+                  isProgrammaticMoveRef.current = false;
+                  return;
+                }
+
+                if (mapMoveDebounceRef.current) {
+                  clearTimeout(mapMoveDebounceRef.current);
+                }
+
+                mapMoveDebounceRef.current = setTimeout(() => {
+                  void fetchNearbySpots({
+                    center: {
+                      latitude: nextRegion.latitude,
+                      longitude: nextRegion.longitude,
+                    },
+                    radiusKm: RADIUS_KM,
+                    limit: MAP_FETCH_LIMIT,
+                  });
+                }, MAP_MOVE_DEBOUNCE_MS);
+              }}
             >
               {spots.map((spot) => (
                 <Marker
@@ -264,7 +345,8 @@ export default function MapScreen() {
           <View style={styles.spotCountBadge}>
             <MaterialIcons name="local-parking" size={14} color="#11796F" />
             <Text style={styles.spotCountText}>
-              {spots.length} spot{spots.length !== 1 ? "s" : ""} within {RADIUS_KM}km
+              {spots.length} spot{spots.length !== 1 ? "s" : ""} within{" "}
+              {RADIUS_KM}km
             </Text>
           </View>
         </View>
@@ -274,11 +356,7 @@ export default function MapScreen() {
           <View style={styles.spotCard}>
             <View style={styles.spotCardHeader}>
               <View style={styles.spotIconBg}>
-                <MaterialIcons
-                  name="local-parking"
-                  size={22}
-                  color="#11796F"
-                />
+                <MaterialIcons name="local-parking" size={22} color="#11796F" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.spotTitle} numberOfLines={1}>
@@ -308,7 +386,10 @@ export default function MapScreen() {
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.viewDetailsBtn, !isDriverVerified && styles.viewDetailsBtnLocked]}
+              style={[
+                styles.viewDetailsBtn,
+                !isDriverVerified && styles.viewDetailsBtnLocked,
+              ]}
               activeOpacity={0.8}
               onPress={() => {
                 if (!isDriverVerified) {
