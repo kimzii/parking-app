@@ -5,7 +5,7 @@ module.exports = {
     {
       name: 'parking-api',
       cwd: path.resolve(__dirname),
-      script: 'dist/main.js',
+      script: 'dist/src/main.js',
       exec_mode: 'cluster',
       instances: 2,
       max_memory_restart: '512M',

@@ -21,13 +21,18 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  const clearCookie = useCallback((name: string) => {
+    document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=strict`;
+  }, []);
+
   const clearAuthAndRedirect = useCallback((path: string) => {
     localStorage.clear();
-    document.cookie = "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    clearCookie("accessToken");
+    clearCookie("refreshToken");
+    clearCookie("user");
+    setIsLoading(false);
     router.replace(path);
-  }, [router]);
+  }, [clearCookie, router]);
 
   useEffect(() => {
     let isMounted = true;
@@ -37,7 +42,7 @@ export default function DashboardLayout({
       const userStr = localStorage.getItem("user");
 
       if (!token || !userStr) {
-        router.replace("/login");
+        clearAuthAndRedirect("/login");
         return;
       }
 
@@ -63,7 +68,7 @@ export default function DashboardLayout({
     return () => {
       isMounted = false;
     };
-  }, [router, clearAuthAndRedirect]);
+  }, [clearAuthAndRedirect]);
 
   const handleLogout = useCallback(() => {
     clearAuthAndRedirect("/login");

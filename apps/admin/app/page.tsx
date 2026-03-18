@@ -35,6 +35,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false); // Added for the "eye" toggle
   const router = useRouter();
   const searchParams = useSearchParams();
+  const cookieFlags =
+    typeof window !== "undefined" && window.location.protocol === "https:"
+      ? "; secure; samesite=strict"
+      : "; samesite=lax";
+
+  const clearAuthCookies = () => {
+    document.cookie =
+      "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+    document.cookie =
+      "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+    document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
+  };
 
   const {
     register,
@@ -65,13 +77,11 @@ export default function LoginPage() {
             router.replace("/dashboard");
           } else {
             localStorage.clear();
-            document.cookie =
-              "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            clearAuthCookies();
           }
         } catch (_error) {
           localStorage.clear();
-          document.cookie =
-            "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          clearAuthCookies();
         }
       }
     };
@@ -87,12 +97,7 @@ export default function LoginPage() {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("user");
-
-      document.cookie =
-        "accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie =
-        "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie = "user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      clearAuthCookies();
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
@@ -117,9 +122,9 @@ export default function LoginPage() {
       expiryDate.setDate(expiryDate.getDate() + 7);
       const expires = expiryDate.toUTCString();
 
-      document.cookie = `accessToken=${accessToken}; path=/; expires=${expires}; secure; samesite=strict`;
-      document.cookie = `refreshToken=${refreshToken}; path=/; expires=${expires}; secure; samesite=strict`;
-      document.cookie = `user=${encodeURIComponent(JSON.stringify(user))}; path=/; expires=${expires}; secure; samesite=strict`;
+      document.cookie = `accessToken=${accessToken}; path=/; expires=${expires}${cookieFlags}`;
+      document.cookie = `refreshToken=${refreshToken}; path=/; expires=${expires}${cookieFlags}`;
+      document.cookie = `user=${encodeURIComponent(JSON.stringify(user))}; path=/; expires=${expires}${cookieFlags}`;
 
       await new Promise((resolve) => setTimeout(resolve, 500));
       router.push("/dashboard");

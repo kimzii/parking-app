@@ -24,6 +24,7 @@ import Image from "next/image";
 // --- Types aligned with Prisma schema ---
 type RoleName = "DRIVER" | "HOST" | "ADMIN";
 type VerificationStatus = "PENDING" | "VERIFIED" | "REJECTED" | "SUSPENDED";
+type VerificationFilter = "" | "PENDING" | "VERIFIED" | "REJECTED";
 
 interface RoleStatus {
   role: RoleName;
@@ -146,6 +147,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleName | "">("");
+  const [statusFilter, setStatusFilter] = useState<VerificationFilter>("");
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -164,6 +166,7 @@ export default function UsersPage() {
 
       if (search) params.append("search", search);
       if (roleFilter) params.append("role", roleFilter);
+      if (statusFilter) params.append("status", statusFilter);
 
       const response = await api.get<UsersResponse>(`/users?${params}`);
       setUsers(response.data.data);
@@ -175,7 +178,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, roleFilter]);
+  }, [page, limit, search, roleFilter, statusFilter]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
@@ -210,6 +213,11 @@ export default function UsersPage() {
   const handleRoleFilter = (role: RoleName | "") => {
     setRoleFilter(role);
     setShowRoleDropdown(false);
+    setPage(1);
+  };
+
+  const handleStatusFilter = (status: VerificationFilter) => {
+    setStatusFilter(status);
     setPage(1);
   };
 
@@ -332,7 +340,7 @@ export default function UsersPage() {
       {/* Main Users Table Container */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
         {/* Table Controls (Search & Filter) */}
-        <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="p-6 border-b border-gray-50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           {/* Search Bar */}
           <div className="relative w-full sm:w-[400px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -345,46 +353,91 @@ export default function UsersPage() {
             />
           </div>
 
-          {/* Filter Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-              className="flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <span className="text-sm font-medium">
-                {roleFilter ? `Role: ${roleFilter}` : "Filter by Role"}
-              </span>
-              <ChevronDown size={18} className="text-gray-500" />
-            </button>
+          {/* Filter Controls */}
+          <div className="w-full lg:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="relative">
+              <button
+                onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+                className="flex items-center gap-2 bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <span className="text-sm font-medium">
+                  {roleFilter ? `Role: ${roleFilter}` : "Filter by Role"}
+                </span>
+                <ChevronDown size={18} className="text-gray-500" />
+              </button>
 
-            {showRoleDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                <button
-                  onClick={() => handleRoleFilter("")}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
-                >
-                  All Roles
-                </button>
-                <button
-                  onClick={() => handleRoleFilter("DRIVER")}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
-                >
-                  Drivers
-                </button>
-                <button
-                  onClick={() => handleRoleFilter("HOST")}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
-                >
-                  Hosts
-                </button>
-                <button
-                  onClick={() => handleRoleFilter("ADMIN")}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
-                >
-                  Admins
-                </button>
-              </div>
-            )}
+              {showRoleDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  <button
+                    onClick={() => handleRoleFilter("")}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
+                  >
+                    All Roles
+                  </button>
+                  <button
+                    onClick={() => handleRoleFilter("DRIVER")}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
+                  >
+                    Drivers
+                  </button>
+                  <button
+                    onClick={() => handleRoleFilter("HOST")}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
+                  >
+                    Hosts
+                  </button>
+                  <button
+                    onClick={() => handleRoleFilter("ADMIN")}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm text-gray-700"
+                  >
+                    Admins
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => handleStatusFilter("")}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                  statusFilter === ""
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                All Statuses
+              </button>
+              <button
+                onClick={() => handleStatusFilter("PENDING")}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                  statusFilter === "PENDING"
+                    ? "bg-yellow-500 text-white border-yellow-500"
+                    : "bg-white text-yellow-700 border-yellow-200 hover:bg-yellow-50"
+                }`}
+              >
+                Pending
+              </button>
+              <button
+                onClick={() => handleStatusFilter("VERIFIED")}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                  statusFilter === "VERIFIED"
+                    ? "bg-green-600 text-white border-green-600"
+                    : "bg-white text-green-700 border-green-200 hover:bg-green-50"
+                }`}
+              >
+                Verified
+              </button>
+              <button
+                onClick={() => handleStatusFilter("REJECTED")}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                  statusFilter === "REJECTED"
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-white text-red-700 border-red-200 hover:bg-red-50"
+                }`}
+              >
+                Rejected
+              </button>
+            </div>
           </div>
         </div>
 
