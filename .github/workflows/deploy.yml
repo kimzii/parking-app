@@ -169,33 +169,29 @@ jobs:
             git clean -fd
 
             # Write runtime env for API from GitHub secrets.
-            cat > apps/api/.env <<-EOF
-            DATABASE_URL="${DATABASE_URL}"
-            JWT_SECRET="${JWT_SECRET}"
-            JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}"
-            PORT="${API_PORT}"
-            SMTP_HOST="${SMTP_HOST}"
-            SMTP_PORT="${SMTP_PORT}"
-            SMTP_USER="${SMTP_USER}"
-            SMTP_PASS="${SMTP_PASS}"
-            SMTP_FROM="${SMTP_FROM}"
-            AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
-            AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
-            AWS_REGION="${AWS_REGION}"
-            AWS_S3_BUCKET="${AWS_S3_BUCKET}"
-            EOF
+            echo "DATABASE_URL=\"${DATABASE_URL}\"" > apps/api/.env
+            echo "JWT_SECRET=\"${JWT_SECRET}\"" >> apps/api/.env
+            echo "JWT_REFRESH_SECRET=\"${JWT_REFRESH_SECRET}\"" >> apps/api/.env
+            echo "PORT=\"${API_PORT}\"" >> apps/api/.env
+            echo "SMTP_HOST=\"${SMTP_HOST}\"" >> apps/api/.env
+            echo "SMTP_PORT=\"${SMTP_PORT}\"" >> apps/api/.env
+            echo "SMTP_USER=\"${SMTP_USER}\"" >> apps/api/.env
+            echo "SMTP_PASS=\"${SMTP_PASS}\"" >> apps/api/.env
+            echo "SMTP_FROM=\"${SMTP_FROM}\"" >> apps/api/.env
+            echo "AWS_ACCESS_KEY_ID=\"${AWS_ACCESS_KEY_ID}\"" >> apps/api/.env
+            echo "AWS_SECRET_ACCESS_KEY=\"${AWS_SECRET_ACCESS_KEY}\"" >> apps/api/.env
+            echo "AWS_REGION=\"${AWS_REGION}\"" >> apps/api/.env
+            echo "AWS_S3_BUCKET=\"${AWS_S3_BUCKET}\"" >> apps/api/.env
 
             # Install all workspace dependencies.
             npm ci --prefer-offline --no-audit
 
-            # Prisma: generate client, then migrate
+            # Generate Prisma client and run migrations.
             echo "==> Generating Prisma client"
-            cd apps/api
-            npx prisma generate
+            npx prisma generate --schema apps/api/prisma/schema.prisma
             echo "==> Running migrations"
-            npx prisma migrate deploy
+            npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
             echo "==> Prisma done"
-            cd ../..
 
             # Build API and reload with zero downtime (PM2 cluster reload).
             npm run build --workspace apps/api
