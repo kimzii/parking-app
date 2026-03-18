@@ -224,40 +224,16 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Pull Vercel project settings
-        working-directory: apps/admin
+      - name: Deploy admin to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+            vercel deploy --prod --token="${VERCEL_TOKEN}"
           else
-            vercel pull --yes --environment=preview --token="${VERCEL_TOKEN}"
-          fi
-
-      - name: Build admin app
-        working-directory: apps/admin
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            vercel build --prod --token="${VERCEL_TOKEN}"
-          else
-            vercel build --token="${VERCEL_TOKEN}"
-          fi
-
-      - name: Deploy admin app
-        working-directory: apps/admin
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            vercel deploy --prebuilt --prod --token="${VERCEL_TOKEN}"
-          else
-            # Non-main branches produce preview URLs for staging/testing.
-            vercel deploy --prebuilt --token="${VERCEL_TOKEN}"
+            vercel deploy --token="${VERCEL_TOKEN}"
           fi
 
       # If you do not use Vercel, replace the Vercel build/deploy steps above with:
