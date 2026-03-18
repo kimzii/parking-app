@@ -15,6 +15,7 @@
       }
     },
     "android": {
+      "package": "com.kimzie123.parklink",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBoBwscEd2USQ5RXlGQHk-R6a4X_6heNPM"
