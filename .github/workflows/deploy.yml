@@ -89,7 +89,7 @@ jobs:
           fi
 
           if [[ "${BRANCH}" == "main" ]]; then
-            MOBILE_PROFILE="production"
+            MOBILE_PROFILE="preview"
           else
             MOBILE_PROFILE="preview"
           fi
