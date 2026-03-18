@@ -193,6 +193,7 @@ jobs:
             # 2) apply only committed migrations with migrate deploy
             npx prisma migrate status --schema apps/api/prisma/schema.prisma
             npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+            npx prisma generate --schema apps/api/prisma/schema.prisma
 
             # Build API and reload with zero downtime (PM2 cluster reload).
             npm run build --workspace apps/api
