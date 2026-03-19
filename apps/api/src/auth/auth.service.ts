@@ -89,8 +89,12 @@ export class AuthService {
       },
     });
 
-    // Send verification email
-    await this.emailService.sendVerificationEmail(email, verificationCode);
+    // Send verification email (non-blocking to avoid 504 on SMTP-blocked hosts)
+    this.emailService
+      .sendVerificationEmail(email, verificationCode)
+      .catch((err) => {
+        console.warn('Failed to send verification email:', err.message);
+      });
 
     return {
       message: 'Registration successful. Please verify your email.',
@@ -407,8 +411,12 @@ export class AuthService {
       },
     });
 
-    // Send password reset email
-    await this.emailService.sendPasswordResetEmail(email, verificationCode);
+    // Send password reset email (non-blocking)
+    this.emailService
+      .sendPasswordResetEmail(email, verificationCode)
+      .catch((err) => {
+        console.warn('Failed to send password reset email:', err.message);
+      });
 
     return {
       message: 'If the email exists, a reset code has been sent',
@@ -489,7 +497,11 @@ export class AuthService {
       `[RESEND] Sending verification code to: ${email}, code: ${verificationCode}`,
     );
 
-    await this.emailService.sendVerificationEmail(email, verificationCode);
+    this.emailService
+      .sendVerificationEmail(email, verificationCode)
+      .catch((err) => {
+        console.warn('Failed to resend verification email:', err.message);
+      });
 
     return {
       message: 'If the email exists, a verification code has been sent',
