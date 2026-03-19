@@ -1,21 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
-  private transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: process.env.SMTP_PORT === '587' ? false : true,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  private resend = new Resend(process.env.RESEND_API_KEY);
+  private from = process.env.EMAIL_FROM || 'ParkLink <onboarding@resend.dev>';
 
   async sendVerificationEmail(email: string, code: string) {
-    await this.transporter.sendMail({
-      from: process.env.SMTP_FROM,
+    await this.resend.emails.send({
+      from: this.from,
       to: email,
       subject: 'Verify your email',
       text: `Your verification code is: ${code}`,
@@ -23,8 +16,8 @@ export class EmailService {
   }
 
   async sendPasswordResetEmail(email: string, code: string) {
-    await this.transporter.sendMail({
-      from: process.env.SMTP_FROM,
+    await this.resend.emails.send({
+      from: this.from,
       to: email,
       subject: 'Password Reset Request',
       text: `Your password reset code is: ${code}`,
@@ -36,12 +29,12 @@ export class EmailService {
     firstName: string,
     temporaryPassword: string,
   ) {
-    await this.transporter.sendMail({
-      from: process.env.SMTP_FROM,
+    await this.resend.emails.send({
+      from: this.from,
       to: email,
       subject: 'Your Admin Account Has Been Created',
       html: `
-        <h2>Welcome to Parking App Admin!</h2>
+        <h2>Welcome to ParkLink Admin!</h2>
         <p>Hello ${firstName},</p>
         <p>An administrator account has been created for you. Here are your login credentials:</p>
         <p><strong>Email:</strong> ${email}</p>
@@ -49,7 +42,7 @@ export class EmailService {
         <p><strong>Important:</strong> Please change your password immediately after logging in for security purposes.</p>
         <br/>
         <p>Best regards,</p>
-        <p>Parking App Team</p>
+        <p>ParkLink Team</p>
       `,
     });
   }
