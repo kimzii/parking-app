@@ -169,19 +169,21 @@ jobs:
             git clean -fd
 
             # Write runtime env for API from GitHub secrets.
-            echo "DATABASE_URL=\"${DATABASE_URL}\"" > apps/api/.env
-            echo "JWT_SECRET=\"${JWT_SECRET}\"" >> apps/api/.env
-            echo "JWT_REFRESH_SECRET=\"${JWT_REFRESH_SECRET}\"" >> apps/api/.env
-            echo "PORT=\"${API_PORT}\"" >> apps/api/.env
-            echo "SMTP_HOST=\"${SMTP_HOST}\"" >> apps/api/.env
-            echo "SMTP_PORT=\"${SMTP_PORT}\"" >> apps/api/.env
-            echo "SMTP_USER=\"${SMTP_USER}\"" >> apps/api/.env
-            echo "SMTP_PASS=\"${SMTP_PASS}\"" >> apps/api/.env
-            echo "SMTP_FROM=\"${SMTP_FROM}\"" >> apps/api/.env
-            echo "AWS_ACCESS_KEY_ID=\"${AWS_ACCESS_KEY_ID}\"" >> apps/api/.env
-            echo "AWS_SECRET_ACCESS_KEY=\"${AWS_SECRET_ACCESS_KEY}\"" >> apps/api/.env
-            echo "AWS_REGION=\"${AWS_REGION}\"" >> apps/api/.env
-            echo "AWS_S3_BUCKET=\"${AWS_S3_BUCKET}\"" >> apps/api/.env
+            cat > apps/api/.env <<-ENVEOF
+            DATABASE_URL=${DATABASE_URL}
+            JWT_SECRET=${JWT_SECRET}
+            JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+            PORT=${API_PORT}
+            SMTP_HOST=${SMTP_HOST}
+            SMTP_PORT=${SMTP_PORT}
+            SMTP_USER=${SMTP_USER}
+            SMTP_PASS=${SMTP_PASS}
+            SMTP_FROM=${SMTP_FROM}
+            AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+            AWS_REGION=${AWS_REGION}
+            AWS_S3_BUCKET=${AWS_S3_BUCKET}
+            ENVEOF
 
             # Install all workspace dependencies.
             npm ci --prefer-offline --no-audit
