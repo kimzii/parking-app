@@ -152,7 +152,7 @@ export default function HostReservationsScreen() {
         <View style={styles.driverDetails}>
           <View style={styles.detailRow}>
             <MaterialIcons name="phone" size={14} color="#8E8E93" />
-            <Text style={styles.detailText}>Phone: {driverPhone}</Text>
+            <Text style={styles.detailText} numberOfLines={1}>Phone: {driverPhone}</Text>
           </View>
           <View style={styles.detailRow}>
             <MaterialIcons
@@ -160,17 +160,17 @@ export default function HostReservationsScreen() {
               size={14}
               color="#8E8E93"
             />
-            <Text style={styles.detailText}>
+            <Text style={styles.detailText} numberOfLines={1}>
               Plate Number: {driverPlateNumber}
             </Text>
           </View>
           <View style={styles.detailRow}>
             <MaterialIcons name="directions-car" size={14} color="#8E8E93" />
-            <Text style={styles.detailText}>Vehicle: {vehicleText}</Text>
+            <Text style={styles.detailText} numberOfLines={1}>Vehicle: {vehicleText}</Text>
           </View>
           <View style={styles.detailRow}>
             <MaterialIcons name="local-parking" size={14} color="#8E8E93" />
-            <Text style={styles.detailText}>Booked Spot: {bookedSpot}</Text>
+            <Text style={styles.detailText} numberOfLines={1}>Booked Spot: {bookedSpot}</Text>
           </View>
         </View>
 

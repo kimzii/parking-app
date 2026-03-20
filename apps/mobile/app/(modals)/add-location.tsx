@@ -53,8 +53,22 @@ export default function AddLocationScreen() {
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [is24Hours, setIs24Hours] = useState(false);
-  const [openTime, setOpenTime] = useState("08:00");
-  const [closeTime, setCloseTime] = useState("22:00");
+  const [openHour, setOpenHour] = useState("8");
+  const [openMinute, setOpenMinute] = useState("00");
+  const [openPeriod, setOpenPeriod] = useState<"AM" | "PM">("AM");
+  const [closeHour, setCloseHour] = useState("10");
+  const [closeMinute, setCloseMinute] = useState("00");
+  const [closePeriod, setClosePeriod] = useState<"AM" | "PM">("PM");
+
+  const to24Hour = (hour: string, minute: string, period: "AM" | "PM") => {
+    let h = parseInt(hour, 10);
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return `${h.toString().padStart(2, "0")}:${minute.padStart(2, "0")}`;
+  };
+
+  const openTime = to24Hour(openHour, openMinute, openPeriod);
+  const closeTime = to24Hour(closeHour, closeMinute, closePeriod);
 
   // Convert level number to letter prefix: 1→A, 2→B, ..., 26→Z
   const levelToPrefix = (level: number): string => {
@@ -724,13 +738,29 @@ export default function AddLocationScreen() {
                     <MaterialIcons name="wb-sunny" size={18} color="#11796F" />
                     <TextInput
                       style={styles.timeInput}
-                      placeholder="08:00"
+                      placeholder="8"
                       placeholderTextColor="#C7C7CC"
-                      value={openTime}
-                      onChangeText={setOpenTime}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
+                      value={openHour}
+                      onChangeText={(t) => setOpenHour(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      keyboardType="number-pad"
+                      maxLength={2}
                     />
+                    <Text style={styles.timeColon}>:</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      placeholder="00"
+                      placeholderTextColor="#C7C7CC"
+                      value={openMinute}
+                      onChangeText={(t) => setOpenMinute(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <TouchableOpacity
+                      style={styles.periodToggle}
+                      onPress={() => setOpenPeriod(openPeriod === "AM" ? "PM" : "AM")}
+                    >
+                      <Text style={styles.periodText}>{openPeriod}</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
                 <View style={styles.timeDivider}>
@@ -750,13 +780,29 @@ export default function AddLocationScreen() {
                     />
                     <TextInput
                       style={styles.timeInput}
-                      placeholder="22:00"
+                      placeholder="10"
                       placeholderTextColor="#C7C7CC"
-                      value={closeTime}
-                      onChangeText={setCloseTime}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
+                      value={closeHour}
+                      onChangeText={(t) => setCloseHour(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      keyboardType="number-pad"
+                      maxLength={2}
                     />
+                    <Text style={styles.timeColon}>:</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      placeholder="00"
+                      placeholderTextColor="#C7C7CC"
+                      value={closeMinute}
+                      onChangeText={(t) => setCloseMinute(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <TouchableOpacity
+                      style={styles.periodToggle}
+                      onPress={() => setClosePeriod(closePeriod === "AM" ? "PM" : "AM")}
+                    >
+                      <Text style={styles.periodText}>{closePeriod}</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -1306,11 +1352,28 @@ const styles = StyleSheet.create({
     borderColor: "#E8ECF0",
   },
   timeInput: {
-    flex: 1,
+    width: 32,
     fontSize: 16,
     fontWeight: "700",
     color: "#1A1A2E",
     textAlign: "center",
+  },
+  timeColon: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A2E",
+  },
+  periodToggle: {
+    backgroundColor: "#E8F5F3",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginLeft: 4,
+  },
+  periodText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#11796F",
   },
   timeDivider: {
     paddingTop: 20,

@@ -919,8 +919,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   slotCell: {
-    width: 60,
-    height: 60,
+    width: Math.floor((SCREEN_WIDTH - 72) / 5),
+    height: Math.floor((SCREEN_WIDTH - 72) / 5),
     borderRadius: 14,
     borderWidth: 1.5,
     alignItems: "center",

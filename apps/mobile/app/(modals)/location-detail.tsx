@@ -6,12 +6,15 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface ParkingSpace {
   id: string;
@@ -578,8 +581,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   spaceSlot: {
-    width: 64,
-    height: 64,
+    width: Math.floor((SCREEN_WIDTH - 72) / 5),
+    height: Math.floor((SCREEN_WIDTH - 72) / 5),
     borderRadius: 14,
     borderWidth: 1.5,
     alignItems: "center",
@@ -652,8 +655,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   galleryImageWrapper: {
-    width: 280,
-    height: 180,
+    width: SCREEN_WIDTH * 0.75,
+    height: SCREEN_WIDTH * 0.48,
     borderRadius: 16,
     overflow: "hidden",
   },

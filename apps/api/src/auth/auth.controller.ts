@@ -102,14 +102,29 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Select user role (DRIVER or HOST) after email verification' })
+  @ApiOperation({
+    summary: 'Select user role (DRIVER or HOST) after email verification',
+  })
   @ApiResponse({ status: 200, description: 'Role assigned successfully' })
-  @ApiResponse({ status: 400, description: 'Role already assigned or invalid role' })
+  @ApiResponse({
+    status: 400,
+    description: 'Role already assigned or invalid role',
+  })
   async selectRole(
     @CurrentUser() user: AuthUser,
     @Body() selectRoleDto: SelectRoleDto,
   ) {
     return this.authService.selectRole(user.id, selectRoleDto.role);
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refreshToken(@Body() body: { refreshToken: string }) {
+    return this.authService.refreshToken(body.refreshToken);
   }
 
   @Get('test')

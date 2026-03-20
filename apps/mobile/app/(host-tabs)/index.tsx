@@ -268,7 +268,7 @@ export default function HostHomeScreen() {
             </Text>
             <View style={styles.driverMetaRow}>
               <MaterialIcons name="phone" size={12} color="#8E8E93" />
-              <Text style={styles.driverMetaText}>Phone: {driverPhone}</Text>
+              <Text style={styles.driverMetaText} numberOfLines={1}>Phone: {driverPhone}</Text>
             </View>
             <View style={styles.driverMetaRow}>
               <MaterialIcons
@@ -276,17 +276,17 @@ export default function HostHomeScreen() {
                 size={12}
                 color="#8E8E93"
               />
-              <Text style={styles.driverMetaText}>
+              <Text style={styles.driverMetaText} numberOfLines={1}>
                 Plate Number: {driverPlateNumber}
               </Text>
             </View>
             <View style={styles.driverMetaRow}>
               <MaterialIcons name="directions-car" size={12} color="#8E8E93" />
-              <Text style={styles.driverMetaText}>Vehicle: {vehicleText}</Text>
+              <Text style={styles.driverMetaText} numberOfLines={1}>Vehicle: {vehicleText}</Text>
             </View>
             <View style={styles.driverMetaRow}>
               <MaterialIcons name="local-parking" size={12} color="#8E8E93" />
-              <Text style={styles.driverMetaText}>
+              <Text style={styles.driverMetaText} numberOfLines={1}>
                 Booked Spot: {bookedSpot}
               </Text>
             </View>

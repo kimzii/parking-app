@@ -146,7 +146,7 @@ export default function MyReservationsScreen() {
           <View style={styles.cardMeta}>
             <View style={styles.metaItem}>
               <MaterialIcons name="event-seat" size={14} color="#11796F" />
-              <Text style={styles.metaText}>
+              <Text style={styles.metaText} numberOfLines={1}>
                 Slot {item.parkingSpace.slotNumber}
               </Text>
             </View>
@@ -168,7 +168,7 @@ export default function MyReservationsScreen() {
           </View>
 
           <View style={styles.timeRow}>
-            <Text style={styles.timeText}>
+            <Text style={styles.timeText} numberOfLines={1}>
               {item.status === "PENDING" && item.arrivalDeadline
                 ? `Awaiting host approval until ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
                 : item.status === "ACTIVE" && item.sessionStartedAt
