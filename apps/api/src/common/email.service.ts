@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
-  private resend = new Resend(process.env.RESEND_API_KEY);
-  private from = process.env.EMAIL_FROM || 'ParkLink <onboarding@resend.dev>';
+  private resend: Resend;
+  private from: string;
+
+  constructor(private configService: ConfigService) {
+    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    this.from =
+      this.configService.get<string>('EMAIL_FROM') ||
+      'ParkLink <noreply@kimzie.me>';
+  }
 
   async sendVerificationEmail(email: string, code: string) {
     await this.resend.emails.send({
