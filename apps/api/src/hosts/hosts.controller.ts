@@ -71,7 +71,9 @@ export class HostsController {
   @Post('upload-images')
   @UseGuards(RolesGuard)
   @Roles(RoleName.HOST)
-  @UseInterceptors(FilesInterceptor('files', 5))
+  @UseInterceptors(
+    FilesInterceptor('files', 5, { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
   @ApiOperation({ summary: 'Upload parking location images to S3' })
   @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
   async uploadImages(
