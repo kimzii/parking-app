@@ -61,13 +61,6 @@ export default function ForgotPasswordScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Feather name="arrow-left" size={24} color="#333" />
-        </TouchableOpacity>
-
         <View style={styles.logoContainer}>
           <View style={styles.logoIcon}>
             <Feather name="help-circle" size={32} color="#fff" />
@@ -118,7 +111,6 @@ export default function ForgotPasswordScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFB" },
-  backButton: { position: "absolute" as const, top: 50, left: 20, zIndex: 10, padding: 8 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",

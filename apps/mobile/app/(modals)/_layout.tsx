@@ -27,6 +27,17 @@ export default function StackLayout() {
     }, [router, pathname]),
   );
 
+  const goBack = () => {
+    if (
+      pathname.endsWith("forgot-password") ||
+      pathname.endsWith("reset-password")
+    ) {
+      router.replace("/(auth)/login");
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <Stack
       screenOptions={{
@@ -34,10 +45,10 @@ export default function StackLayout() {
         headerTintColor: "#11796F",
         statusBarTranslucent: false,
         statusBarStyle: "dark",
-        headerTitle: "", // Hide the title
+        headerTitle: "",
         headerLeft: () => (
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={goBack}
             style={{ marginLeft: 4 }}
           >
             <MaterialIcons
