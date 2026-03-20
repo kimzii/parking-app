@@ -40,6 +40,10 @@ export default function SignupScreen() {
       Alert.alert("Error", "Passwords do not match");
       return;
     }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password) || password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters with uppercase, lowercase, number, and special character");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -118,6 +122,26 @@ export default function SignupScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          {password.length > 0 && (
+            <View style={styles.requirements}>
+              <Text style={[styles.reqText, /[A-Z]/.test(password) && styles.reqMet]}>
+                {/[A-Z]/.test(password) ? "\u2713" : "\u2022"} Uppercase letter
+              </Text>
+              <Text style={[styles.reqText, /[a-z]/.test(password) && styles.reqMet]}>
+                {/[a-z]/.test(password) ? "\u2713" : "\u2022"} Lowercase letter
+              </Text>
+              <Text style={[styles.reqText, /[0-9]/.test(password) && styles.reqMet]}>
+                {/[0-9]/.test(password) ? "\u2713" : "\u2022"} Number
+              </Text>
+              <Text style={[styles.reqText, /[^A-Za-z0-9]/.test(password) && styles.reqMet]}>
+                {/[^A-Za-z0-9]/.test(password) ? "\u2713" : "\u2022"} Special character
+              </Text>
+              <Text style={[styles.reqText, password.length >= 8 && styles.reqMet]}>
+                {password.length >= 8 ? "\u2713" : "\u2022"} At least 8 characters
+              </Text>
+            </View>
+          )}
 
           <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.inputContainer}>
@@ -282,5 +306,16 @@ const styles = StyleSheet.create({
     color: "#11796F",
     fontSize: 14,
     fontWeight: "700",
+  },
+  requirements: {
+    marginTop: 8,
+    gap: 2,
+  },
+  reqText: {
+    fontSize: 12,
+    color: "#E53935",
+  },
+  reqMet: {
+    color: "#4CAF50",
   },
 });
