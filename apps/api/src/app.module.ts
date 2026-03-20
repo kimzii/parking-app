@@ -18,7 +18,7 @@ import { ReservationsModule } from './reservations/reservations.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: join(__dirname, '..', '.env'),
+      envFilePath: join(__dirname, '..', '..', '.env'),
     }),
     ThrottlerModule.forRoot([
       {
