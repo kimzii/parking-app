@@ -15,6 +15,7 @@ async function bootstrap() {
       'http://localhost:8081',
       'http://206.189.145.14',
       'https://parklink-one.vercel.app',
+      'https://admin.kimzie.me',
       'https://api.kimzie.me',
     ],
     credentials: true,
