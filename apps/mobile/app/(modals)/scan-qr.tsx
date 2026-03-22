@@ -13,10 +13,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
 import * as reservationsService from "../../src/services/reservations";
 
 type ScanMode = "entry" | "exit";
+
+// Dynamically load expo-camera — falls back gracefully if native module not compiled in APK
+let CameraView: any = null;
+let useCameraPermissions: any = null;
+try {
+  const cam = require("expo-camera");
+  CameraView = cam.CameraView;
+  useCameraPermissions = cam.useCameraPermissions;
+} catch {
+  // Native module not available in this build
+}
 
 function CameraScanner({
   scanned,
@@ -27,7 +37,7 @@ function CameraScanner({
   onBarcodeScanned: (result: { data: string }) => void;
   processing: boolean;
 }) {
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission] = useCameraPermissions?.() ?? [null, () => {}];
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -89,7 +99,7 @@ export default function ScanQRScreen() {
   const [processing, setProcessing] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>("entry");
   const [manualCode, setManualCode] = useState("");
-  const [showManualInput, setShowManualInput] = useState(false);
+  const [showManualInput, setShowManualInput] = useState(!CameraView);
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned || processing) return;
@@ -223,7 +233,7 @@ export default function ScanQRScreen() {
               autoCorrect={false}
             />
             <View style={styles.manualInputButtons}>
-              {(
+              {CameraView && (
                 <TouchableOpacity
                   style={styles.cancelBtn}
                   onPress={() => {
