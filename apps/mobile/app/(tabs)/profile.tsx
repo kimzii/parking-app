@@ -210,7 +210,7 @@ export default function ProfileScreen() {
 
                 {settingsOpen && (
                   <View style={styles.settingsDropdown}>
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => router.push("/(modals)/forgot-password")}
                       activeOpacity={0.7}
@@ -221,7 +221,7 @@ export default function ProfileScreen() {
                         color="#8E8E93"
                       />
                       <Text style={styles.dropdownText}>Forgot Password</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => router.push("/(modals)/change-password")}
@@ -243,8 +243,8 @@ export default function ProfileScreen() {
                 <MenuItem
                   label="My Reservations"
                   icon="confirmation-number"
-                  iconBg="#E8F5F3"
-                  iconColor="#11796F"
+                  iconBg="#F2F2F7"
+                  iconColor="#8E8E93"
                   onPress={() => router.push("/(modals)/my-reservations")}
                 />
                 <MenuItem

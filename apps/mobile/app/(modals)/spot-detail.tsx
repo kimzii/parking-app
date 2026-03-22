@@ -404,19 +404,6 @@ export default function SpotDetailScreen() {
               </Text>
               <Text style={styles.statLabel}>available</Text>
             </View>
-            <View style={styles.statCard}>
-              <MaterialIcons name="schedule" size={22} color="#FF9800" />
-              <Text style={[styles.statValue, { color: "#FF9800", fontSize: spot.is24Hours ? 14 : 12 }]}>
-                {spot.is24Hours
-                  ? "24 Hrs"
-                  : spot.openTime
-                    ? formatTime(spot.openTime)
-                    : "N/A"}
-              </Text>
-              <Text style={styles.statLabel}>
-                {spot.is24Hours ? "open" : "opens"}
-              </Text>
-            </View>
           </View>
 
           {/* Parking Info */}

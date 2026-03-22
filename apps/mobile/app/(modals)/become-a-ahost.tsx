@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     padding: 24,
-    paddingBottom: 16,
+    paddingBottom: 60,
   },
   startButton: {
     backgroundColor: "#11796F",
