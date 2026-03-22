@@ -183,6 +183,27 @@ export default function MyReservationsScreen() {
             </Text>
             <MaterialIcons name="chevron-right" size={20} color="#C7C7CC" />
           </View>
+
+          {item.status === "COMPLETED" && (
+            <TouchableOpacity
+              style={styles.reviewBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                router.push({
+                  pathname: "/(modals)/leave-review",
+                  params: {
+                    reservationId: item.id,
+                    locationTitle: item.parkingLocation.title,
+                    reviewType: "driver",
+                  },
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="star-outline" size={14} color="#FFB300" />
+              <Text style={styles.reviewBtnText}>Leave a Review</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -368,4 +389,21 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   findParkingBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  reviewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 4,
+    alignSelf: "flex-start",
+  },
+  reviewBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFB300",
+  },
 });

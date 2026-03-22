@@ -463,6 +463,183 @@ export class HostsService {
     return { message: 'Parking location deleted successfully' };
   }
 
+  // Toggle parking location (APPROVED <-> DISABLED)
+  async toggleParkingLocation(userId: string, locationId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const location = await this.prisma.parkingLocation.findFirst({
+      where: {
+        id: locationId,
+        hostId: host.id,
+      },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Parking location not found');
+    }
+
+    if (location.status === 'PENDING' || location.status === 'REJECTED') {
+      throw new BadRequestException(
+        'Only approved or disabled locations can be toggled.',
+      );
+    }
+
+    // Check for active reservations before disabling
+    if (location.status === 'APPROVED') {
+      const activeReservations = await this.prisma.reservation.count({
+        where: {
+          parkingSpace: { parkingLocationId: locationId },
+          status: { in: ['PENDING', 'CONFIRMED', 'ACTIVE'] },
+        },
+      });
+
+      if (activeReservations > 0) {
+        throw new BadRequestException(
+          `Cannot disable location with ${activeReservations} active reservation(s). Wait for them to complete or cancel them first.`,
+        );
+      }
+    }
+
+    const newStatus = location.status === 'DISABLED' ? 'APPROVED' : 'DISABLED';
+
+    const updated = await this.prisma.parkingLocation.update({
+      where: { id: locationId },
+      data: { status: newStatus },
+    });
+
+    return updated;
+  }
+
+  // Toggle parking space status (AVAILABLE <-> DISABLED)
+  async toggleParkingSpace(userId: string, spaceId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const space = await this.prisma.parkingSpace.findFirst({
+      where: {
+        id: spaceId,
+        parkingLocation: { hostId: host.id },
+      },
+      include: {
+        reservations: {
+          where: { status: { in: ['PENDING', 'CONFIRMED', 'ACTIVE'] } },
+        },
+      },
+    });
+
+    if (!space) {
+      throw new NotFoundException('Parking space not found');
+    }
+
+    if (space.status === 'OCCUPIED') {
+      throw new BadRequestException(
+        'Cannot disable an occupied space. Wait for the current session to end.',
+      );
+    }
+
+    if (space.reservations.length > 0 && space.status === 'AVAILABLE') {
+      throw new BadRequestException(
+        'Cannot disable a space with active or upcoming reservations.',
+      );
+    }
+
+    const newStatus = space.status === 'DISABLED' ? 'AVAILABLE' : 'DISABLED';
+
+    const updated = await this.prisma.parkingSpace.update({
+      where: { id: spaceId },
+      data: {
+        status: newStatus,
+        isActive: newStatus === 'AVAILABLE',
+      },
+    });
+
+    // Update available slots count on location
+    const availableCount = await this.prisma.parkingSpace.count({
+      where: {
+        parkingLocationId: space.parkingLocationId,
+        status: 'AVAILABLE',
+      },
+    });
+
+    await this.prisma.parkingLocation.update({
+      where: { id: space.parkingLocationId },
+      data: { availableSlots: availableCount },
+    });
+
+    return updated;
+  }
+
+  // Delete a parking space
+  async deleteParkingSpace(userId: string, spaceId: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { userId },
+    });
+
+    if (!host) {
+      throw new NotFoundException('Host profile not found');
+    }
+
+    const space = await this.prisma.parkingSpace.findFirst({
+      where: {
+        id: spaceId,
+        parkingLocation: { hostId: host.id },
+      },
+      include: {
+        reservations: {
+          where: { status: { in: ['PENDING', 'CONFIRMED', 'ACTIVE'] } },
+        },
+      },
+    });
+
+    if (!space) {
+      throw new NotFoundException('Parking space not found');
+    }
+
+    if (space.reservations.length > 0) {
+      throw new BadRequestException(
+        'Cannot delete a space with active or upcoming reservations. Disable it instead.',
+      );
+    }
+
+    await this.prisma.parkingSpace.delete({
+      where: { id: spaceId },
+    });
+
+    // Update slot counts on location
+    const [totalCount, availableCount] = await Promise.all([
+      this.prisma.parkingSpace.count({
+        where: { parkingLocationId: space.parkingLocationId },
+      }),
+      this.prisma.parkingSpace.count({
+        where: {
+          parkingLocationId: space.parkingLocationId,
+          status: 'AVAILABLE',
+        },
+      }),
+    ]);
+
+    await this.prisma.parkingLocation.update({
+      where: { id: space.parkingLocationId },
+      data: {
+        totalSlots: totalCount,
+        availableSlots: availableCount,
+      },
+    });
+
+    return { message: 'Parking space deleted successfully' };
+  }
+
   // Admin: Get all parking locations
   async getAllParkingLocations(queryDto: QueryParkingLocationsDto) {
     const { page = 1, limit = 10, search, status } = queryDto;

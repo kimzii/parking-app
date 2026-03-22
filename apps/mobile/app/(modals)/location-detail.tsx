@@ -4,12 +4,15 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Modal,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { Stack, useLocalSearchParams, useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
@@ -44,7 +47,7 @@ interface LocationDetail {
   latitude: string;
   longitude: string;
   basePricePerHour: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "DISABLED";
   totalSlots: number | null;
   availableSlots: number | null;
   isMultiLevel: boolean;
@@ -78,6 +81,12 @@ const STATUS_CONFIG = {
     bg: "#FFEBEE",
     icon: "cancel" as const,
   },
+  DISABLED: {
+    label: "Disabled",
+    color: "#8E8E93",
+    bg: "#F5F5F5",
+    icon: "block" as const,
+  },
 };
 
 const SLOT_STATUS_CONFIG = {
@@ -91,6 +100,8 @@ export default function LocationDetailScreen() {
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
+  const [spaceActionLoading, setSpaceActionLoading] = useState(false);
 
   const fetchLocation = useCallback(async () => {
     if (!id) return;
@@ -114,6 +125,116 @@ export default function LocationDetailScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchLocation();
+  };
+
+  const handleToggleSpace = async (space: ParkingSpace) => {
+    const action = space.status === "DISABLED" ? "enable" : "disable";
+    Alert.alert(
+      `${action === "enable" ? "Enable" : "Disable"} Space`,
+      `Are you sure you want to ${action} space "${space.name || space.slotNumber}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: action === "enable" ? "Enable" : "Disable",
+          style: action === "disable" ? "destructive" : "default",
+          onPress: async () => {
+            setSpaceActionLoading(true);
+            try {
+              await hostService.toggleSpace(space.id);
+              setSelectedSpace(null);
+              fetchLocation();
+            } catch (err: any) {
+              const msg = err?.response?.data?.message || `Failed to ${action} space.`;
+              Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
+            } finally {
+              setSpaceActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteSpace = async (space: ParkingSpace) => {
+    Alert.alert(
+      "Delete Space",
+      `Are you sure you want to permanently delete space "${space.name || space.slotNumber}"? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setSpaceActionLoading(true);
+            try {
+              await hostService.deleteSpace(space.id);
+              setSelectedSpace(null);
+              fetchLocation();
+            } catch (err: any) {
+              const msg = err?.response?.data?.message || "Failed to delete space.";
+              Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
+            } finally {
+              setSpaceActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleToggleLocation = async () => {
+    if (!location) return;
+    const isDisabling = location.status === "APPROVED";
+    const action = isDisabling ? "disable" : "enable";
+
+    Alert.alert(
+      `${isDisabling ? "Disable" : "Enable"} Location`,
+      isDisabling
+        ? "Disabling this location will hide it from drivers. No new reservations can be made.\n\nAre you sure?"
+        : "Enabling this location will make it visible to drivers again.\n\nAre you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isDisabling ? "Disable" : "Enable",
+          style: isDisabling ? "destructive" : "default",
+          onPress: async () => {
+            try {
+              await hostService.toggleLocation(location.id);
+              fetchLocation();
+            } catch (err: any) {
+              const msg = err?.response?.data?.message || `Failed to ${action} location.`;
+              Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDeleteLocation = async () => {
+    if (!location) return;
+    Alert.alert(
+      "Delete Location",
+      `Are you sure you want to permanently delete "${location.title}"? This will remove all parking spaces and cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await hostService.deleteLocation(location.id);
+              Alert.alert("Deleted", "Location has been deleted.", [
+                { text: "OK", onPress: () => router.back() },
+              ]);
+            } catch (err: any) {
+              const msg = err?.response?.data?.message || "Failed to delete location.";
+              Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (loading) {
@@ -147,6 +268,24 @@ export default function LocationDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
+      <Stack.Screen
+        options={{
+          title: "Location Details",
+          headerRight: () => (
+            <TouchableOpacity
+              style={styles.editHeaderBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/(modals)/edit-location",
+                  params: { id: location.id },
+                })
+              }
+            >
+              <MaterialIcons name="edit" size={22} color="#11796F" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -246,6 +385,16 @@ export default function LocationDetailScreen() {
             )}
           </View>
         </View>
+
+        {/* Disabled Banner */}
+        {location.status === "DISABLED" && (
+          <View style={styles.disabledBanner}>
+            <MaterialIcons name="visibility-off" size={18} color="#8E8E93" />
+            <Text style={styles.disabledBannerText}>
+              This location is hidden from drivers. No new reservations can be made.
+            </Text>
+          </View>
+        )}
 
         {/* Operating Hours */}
         <View style={styles.operatingHoursCard}>
@@ -364,7 +513,7 @@ export default function LocationDetailScreen() {
                             const hasActiveReservation =
                               space.reservations?.length > 0;
                             return (
-                              <View
+                              <TouchableOpacity
                                 key={space.id}
                                 style={[
                                   styles.spaceSlot,
@@ -373,6 +522,8 @@ export default function LocationDetailScreen() {
                                     borderColor: slotConfig.color,
                                   },
                                 ]}
+                                onPress={() => setSelectedSpace(space)}
+                                activeOpacity={0.7}
                               >
                                 <MaterialIcons
                                   name={slotConfig.icon}
@@ -396,7 +547,7 @@ export default function LocationDetailScreen() {
                                     />
                                   </View>
                                 )}
-                              </View>
+                              </TouchableOpacity>
                             );
                           })}
                         </View>
@@ -412,7 +563,7 @@ export default function LocationDetailScreen() {
                   const slotConfig = SLOT_STATUS_CONFIG[space.status];
                   const hasActiveReservation = space.reservations?.length > 0;
                   return (
-                    <View
+                    <TouchableOpacity
                       key={space.id}
                       style={[
                         styles.spaceSlot,
@@ -421,6 +572,8 @@ export default function LocationDetailScreen() {
                           borderColor: slotConfig.color,
                         },
                       ]}
+                      onPress={() => setSelectedSpace(space)}
+                      activeOpacity={0.7}
                     >
                       <MaterialIcons
                         name={slotConfig.icon}
@@ -441,7 +594,7 @@ export default function LocationDetailScreen() {
                           />
                         </View>
                       )}
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -469,7 +622,172 @@ export default function LocationDetailScreen() {
             })}
           </Text>
         </View>
+
+        {/* Disable / Enable Location */}
+        {(location.status === "APPROVED" || location.status === "DISABLED") && (
+          <TouchableOpacity
+            style={[
+              styles.toggleLocationBtn,
+              location.status === "DISABLED"
+                ? styles.toggleLocationBtnEnable
+                : styles.toggleLocationBtnDisable,
+            ]}
+            onPress={handleToggleLocation}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons
+              name={location.status === "DISABLED" ? "visibility" : "visibility-off"}
+              size={20}
+              color="#fff"
+            />
+            <Text style={styles.toggleLocationBtnText}>
+              {location.status === "DISABLED"
+                ? "Enable Location"
+                : "Disable Location"}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Delete Location */}
+        <TouchableOpacity
+          style={styles.deleteLocationBtn}
+          onPress={handleDeleteLocation}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons name="delete-outline" size={20} color="#E53935" />
+          <Text style={styles.deleteLocationBtnText}>Delete Location</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Space Action Modal */}
+      <Modal
+        visible={!!selectedSpace}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedSpace(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedSpace(null)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
+            {selectedSpace && (() => {
+              const config = SLOT_STATUS_CONFIG[selectedSpace.status];
+              const hasReservations = selectedSpace.reservations?.length > 0;
+              return (
+                <>
+                  <View style={styles.modalHandle} />
+
+                  {/* Space info */}
+                  <View style={styles.modalSpaceInfo}>
+                    <View style={[styles.modalSpaceIcon, { backgroundColor: config.bg }]}>
+                      <MaterialIcons name={config.icon} size={28} color={config.color} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalSpaceName}>
+                        Space {selectedSpace.name || selectedSpace.slotNumber}
+                      </Text>
+                      <Text style={[styles.modalSpaceStatus, { color: config.color }]}>
+                        {selectedSpace.status === "AVAILABLE"
+                          ? "Available"
+                          : selectedSpace.status === "OCCUPIED"
+                            ? "Occupied"
+                            : "Disabled"}
+                      </Text>
+                    </View>
+                    {selectedSpace.levelNumber != null && (
+                      <View style={styles.modalFloorBadge}>
+                        <Text style={styles.modalFloorText}>Floor {selectedSpace.levelNumber}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {hasReservations && (
+                    <View style={styles.modalNotice}>
+                      <MaterialIcons name="info-outline" size={18} color="#F57C00" />
+                      <Text style={styles.modalNoticeText}>
+                        This space has active or upcoming reservations.
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Actions */}
+                  <View style={styles.modalActions}>
+                    {/* Toggle disable/enable */}
+                    {selectedSpace.status !== "OCCUPIED" && (
+                      <TouchableOpacity
+                        style={[
+                          styles.modalActionBtn,
+                          selectedSpace.status === "DISABLED"
+                            ? styles.modalActionBtnEnable
+                            : styles.modalActionBtnDisable,
+                        ]}
+                        onPress={() => handleToggleSpace(selectedSpace)}
+                        disabled={spaceActionLoading}
+                        activeOpacity={0.8}
+                      >
+                        {spaceActionLoading ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <MaterialIcons
+                              name={selectedSpace.status === "DISABLED" ? "check-circle" : "block"}
+                              size={20}
+                              color="#fff"
+                            />
+                            <Text style={styles.modalActionBtnText}>
+                              {selectedSpace.status === "DISABLED" ? "Enable Space" : "Disable Space"}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+
+                    {selectedSpace.status === "OCCUPIED" && (
+                      <View style={styles.modalOccupiedNotice}>
+                        <MaterialIcons name="directions-car" size={18} color="#F57C00" />
+                        <Text style={styles.modalOccupiedText}>
+                          This space is currently occupied. Actions are unavailable until the session ends.
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Delete */}
+                    <TouchableOpacity
+                      style={[
+                        styles.modalActionBtn,
+                        styles.modalActionBtnDelete,
+                        (hasReservations || selectedSpace.status === "OCCUPIED") && styles.modalActionBtnDeleteDisabled,
+                      ]}
+                      onPress={() => handleDeleteSpace(selectedSpace)}
+                      disabled={spaceActionLoading || hasReservations || selectedSpace.status === "OCCUPIED"}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons name="delete-outline" size={20} color="#fff" />
+                      <Text style={styles.modalActionBtnText}>Delete Space</Text>
+                    </TouchableOpacity>
+
+                    {(hasReservations || selectedSpace.status === "OCCUPIED") && (
+                      <Text style={styles.modalDeleteHint}>
+                        Spaces with active reservations cannot be deleted. Disable them instead.
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Close */}
+                  <TouchableOpacity
+                    style={styles.modalCloseBtn}
+                    onPress={() => setSelectedSpace(null)}
+                  >
+                    <Text style={styles.modalCloseBtnText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -653,6 +971,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   metaText: { fontSize: 12, color: "#8E8E93" },
+  editHeaderBtn: { marginRight: 8 },
 
   // Image Gallery
   imageGallery: {
@@ -752,5 +1071,192 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#8E8E93",
     textAlign: "center",
+  },
+
+  // Toggle Location
+  toggleLocationBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  toggleLocationBtnEnable: {
+    backgroundColor: "#11796F",
+  },
+  toggleLocationBtnDisable: {
+    backgroundColor: "#8E8E93",
+  },
+  toggleLocationBtnText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  disabledBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  disabledBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#8E8E93",
+    fontWeight: "500" as const,
+    lineHeight: 18,
+  },
+  deleteLocationBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#E53935",
+    backgroundColor: "#fff",
+  },
+  deleteLocationBtnText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#E53935",
+  },
+
+  // Space Action Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end" as const,
+  },
+  modalContent: {
+    backgroundColor: "#F8FAFB",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D0D0D0",
+    alignSelf: "center" as const,
+    marginBottom: 20,
+  },
+  modalSpaceInfo: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    marginBottom: 16,
+  },
+  modalSpaceIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+  },
+  modalSpaceName: {
+    fontSize: 18,
+    fontWeight: "800" as const,
+    color: "#1A1A2E",
+  },
+  modalSpaceStatus: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    marginTop: 2,
+  },
+  modalFloorBadge: {
+    backgroundColor: "#E8F5F3",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  modalFloorText: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: "#11796F",
+  },
+  modalNotice: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    marginBottom: 16,
+  },
+  modalNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#F57C00",
+    fontWeight: "500" as const,
+    lineHeight: 18,
+  },
+  modalActions: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  modalActionBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  modalActionBtnEnable: {
+    backgroundColor: "#11796F",
+  },
+  modalActionBtnDisable: {
+    backgroundColor: "#8E8E93",
+  },
+  modalActionBtnDelete: {
+    backgroundColor: "#E53935",
+  },
+  modalActionBtnDeleteDisabled: {
+    backgroundColor: "#E0A09E",
+  },
+  modalActionBtnText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  modalOccupiedNotice: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 12,
+    padding: 12,
+  },
+  modalOccupiedText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#F57C00",
+    fontWeight: "500" as const,
+    lineHeight: 18,
+  },
+  modalDeleteHint: {
+    fontSize: 12,
+    color: "#8E8E93",
+    textAlign: "center" as const,
+    marginTop: -4,
+  },
+  modalCloseBtn: {
+    alignItems: "center" as const,
+    paddingVertical: 14,
+  },
+  modalCloseBtnText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: "#8E8E93",
   },
 });

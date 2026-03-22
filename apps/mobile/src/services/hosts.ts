@@ -102,4 +102,38 @@ export const hostService = {
     const res = await api.post("/hosts/locations", data);
     return res.data;
   },
+  updateLocation: async (
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      address?: string;
+      latitude?: number;
+      longitude?: number;
+      basePricePerHour?: number;
+      imageUrls?: string[];
+      openTime?: string;
+      closeTime?: string;
+      is24Hours?: boolean;
+    },
+  ) => {
+    const res = await api.put(`/hosts/locations/${id}`, data);
+    return res.data;
+  },
+  toggleLocation: async (locationId: string) => {
+    const res = await api.put(`/hosts/locations/${locationId}/toggle`);
+    return res.data;
+  },
+  toggleSpace: async (spaceId: string) => {
+    const res = await api.put(`/hosts/spaces/${spaceId}/toggle`);
+    return res.data;
+  },
+  deleteSpace: async (spaceId: string) => {
+    const res = await api.delete(`/hosts/spaces/${spaceId}`);
+    return res.data;
+  },
+  deleteLocation: async (locationId: string) => {
+    const res = await api.delete(`/hosts/locations/${locationId}`);
+    return res.data;
+  },
 };

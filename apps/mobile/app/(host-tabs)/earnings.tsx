@@ -252,31 +252,79 @@ export default function EarningsScreen() {
                 <MaterialIcons name="close" size={24} color="#8E8E93" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalBalance}>
-              Available: ₱{balance.toFixed(2)}
-            </Text>
-            <View style={styles.inputRow}>
-              <Text style={styles.currencySymbol}>₱</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="0.00"
-                placeholderTextColor="#C7C7CC"
-                keyboardType="decimal-pad"
-                value={withdrawAmount}
-                onChangeText={setWithdrawAmount}
-                autoFocus
-              />
+
+            {/* Balance Info */}
+            <View style={styles.modalBalanceCard}>
+              <View style={styles.modalBalanceRow}>
+                <View style={styles.modalWalletIcon}>
+                  <MaterialIcons name="account-balance-wallet" size={20} color="#fff" />
+                </View>
+                <Text style={styles.modalBalanceLabel}>Available Balance</Text>
+              </View>
+              <Text style={styles.modalBalanceAmount}>₱ {balance.toFixed(2)}</Text>
             </View>
+
+            {/* Amount Input */}
+            <Text style={styles.modalSectionTitle}>Enter Amount</Text>
+            <View style={styles.modalInputCard}>
+              <View style={styles.inputRow}>
+                <Text style={styles.currencySymbol}>₱</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#C7C7CC"
+                  keyboardType="decimal-pad"
+                  value={withdrawAmount}
+                  onChangeText={setWithdrawAmount}
+                  autoFocus
+                />
+              </View>
+            </View>
+
+            {/* Preset Amounts */}
+            <Text style={styles.modalSectionTitle}>Quick Select</Text>
+            <View style={styles.modalPresetGrid}>
+              {[50, 100, 200, 500, 1000, 2000].map((preset) => {
+                const isSelected = withdrawAmount === preset.toString();
+                return (
+                  <TouchableOpacity
+                    key={preset}
+                    style={[styles.modalPresetBtn, isSelected && styles.modalPresetBtnSelected]}
+                    onPress={() => setWithdrawAmount(preset.toString())}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.modalPresetText, isSelected && styles.modalPresetTextSelected]}>
+                      ₱{preset.toLocaleString()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Notice */}
+            <View style={styles.modalNotice}>
+              <MaterialIcons name="info-outline" size={18} color="#F57C00" />
+              <Text style={styles.modalNoticeText}>
+                This is a simulated withdrawal. No real transfer will be processed.
+              </Text>
+            </View>
+
+            {/* Withdraw Button */}
             <TouchableOpacity
-              style={[styles.modalWithdrawBtn, withdrawing && { opacity: 0.6 }]}
+              style={[styles.modalWithdrawBtn, (!withdrawAmount || withdrawing) && styles.modalWithdrawBtnDisabled]}
               onPress={handleWithdraw}
               activeOpacity={0.8}
-              disabled={withdrawing}
+              disabled={!withdrawAmount || withdrawing}
             >
               {withdrawing ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.modalWithdrawBtnText}>Withdraw</Text>
+                <>
+                  <MaterialIcons name="account-balance" size={22} color="#fff" />
+                  <Text style={styles.modalWithdrawBtnText}>
+                    Withdraw{withdrawAmount ? ` ₱${parseFloat(withdrawAmount).toLocaleString()}` : ""}
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -458,7 +506,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: "#F8FAFB",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -468,50 +516,147 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "800",
     color: "#1A1A2E",
   },
-  modalBalance: {
-    fontSize: 14,
-    color: "#8E8E93",
+  modalBalanceCard: {
+    backgroundColor: "#11796F",
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 20,
+  },
+  modalBalanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  modalWalletIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalBalanceLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
+  },
+  modalBalanceAmount: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: 6,
+    letterSpacing: -0.5,
+  },
+  modalSectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginLeft: 4,
+    marginBottom: 10,
+  },
+  modalInputCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFB",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    gap: 8,
   },
   currencySymbol: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
     color: "#11796F",
-    marginRight: 8,
   },
   amountInput: {
     flex: 1,
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
     color: "#1A1A2E",
     padding: 0,
+  },
+  modalPresetGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 20,
+  },
+  modalPresetBtn: {
+    width: "31%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+  },
+  modalPresetBtnSelected: {
+    backgroundColor: "#E8F5F3",
+    borderColor: "#11796F",
+  },
+  modalPresetText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1A1A2E",
+  },
+  modalPresetTextSelected: {
+    color: "#11796F",
+  },
+  modalNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    marginBottom: 20,
+  },
+  modalNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#F57C00",
+    fontWeight: "500",
+    lineHeight: 18,
   },
   modalWithdrawBtn: {
     backgroundColor: "#11796F",
     borderRadius: 14,
     paddingVertical: 16,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalWithdrawBtnDisabled: {
+    backgroundColor: "#B0BEC5",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   modalWithdrawBtnText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
     color: "#fff",
   },
