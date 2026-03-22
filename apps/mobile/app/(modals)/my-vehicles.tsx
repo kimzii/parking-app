@@ -10,13 +10,13 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { driversService } from "../../src/services/drivers";
 import { userService } from "../../src/services/user";
-import { VehicleSvg } from "../../src/components/VehicleSvg";
 
 type Vehicle = {
   id: string;
@@ -28,12 +28,16 @@ type Vehicle = {
   isActive: boolean;
 };
 
-const VEHICLE_TYPES = ["CAR", "MOTORCYCLE", "SUV"] as const;
+const VEHICLE_TYPES = ["CAR", "MOTORCYCLE"] as const;
 
 const TYPE_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
   CAR: "directions-car",
   MOTORCYCLE: "two-wheeler",
-  SUV: "directions-car",
+};
+
+const TYPE_IMAGES: Record<string, any> = {
+  CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
+  MOTORCYCLE: require("../../assets/images/ParkUp UI/scooter_16804043.png"),
 };
 
 export default function MyVehiclesScreen() {
@@ -189,13 +193,13 @@ export default function MyVehiclesScreen() {
         <View
           style={[
             styles.cardSvgContainer,
-            { backgroundColor: (item.color || "#11796F") + "12" },
+            { backgroundColor: item.color || "#11796F" },
           ]}
         >
-          <VehicleSvg
-            type={item.vehicleType}
-            color={item.color || "#11796F"}
-            size={52}
+          <Image
+            source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
+            style={styles.vehicleImage}
+            resizeMode="contain"
           />
         </View>
         <View style={styles.cardBody}>
@@ -235,10 +239,10 @@ export default function MyVehiclesScreen() {
               </View>
             ) : null}
             <View style={styles.typeTag}>
-              <MaterialIcons
-                name={TYPE_ICONS[item.vehicleType] || "directions-car"}
-                size={14}
-                color="#11796F"
+              <Image
+                source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
+                style={{ width: 14, height: 14, tintColor: "#11796F" }}
+                resizeMode="contain"
               />
               <Text style={styles.typeTagText}>
                 {item.vehicleType || "N/A"}
@@ -335,11 +339,15 @@ export default function MyVehiclesScreen() {
                   disabled={saving}
                   activeOpacity={0.7}
                 >
-                  <MaterialIcons
-                    name={TYPE_ICONS[t] || "directions-car"}
-                    size={18}
-                    color={vehicleType === t ? "#fff" : "#888"}
-                    style={{ marginBottom: 2 }}
+                  <Image
+                    source={TYPE_IMAGES[t] || TYPE_IMAGES.CAR}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      tintColor: vehicleType === t ? "#fff" : "#888",
+                      marginBottom: 2,
+                    }}
+                    resizeMode="contain"
                   />
                   <Text
                     style={[
@@ -600,6 +608,12 @@ const styles = StyleSheet.create({
     width: 88,
     justifyContent: "center",
     alignItems: "center",
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  vehicleImage: {
+    width: 52,
+    height: 52,
   },
   cardBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 14 },
   cardTopRow: {
