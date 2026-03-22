@@ -11,36 +11,95 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, router } from "expo-router";
+import { Stack } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as reservationsService from "../../src/services/reservations";
+
+type ScanMode = "entry" | "exit";
+
+// Dynamically load expo-camera — falls back gracefully if native module not compiled in APK
 let CameraView: any = null;
-let useCameraPermissions: any = () => [null, () => Promise.resolve({ granted: false })];
+let useCameraPermissions: any = null;
 try {
   const cam = require("expo-camera");
   CameraView = cam.CameraView;
   useCameraPermissions = cam.useCameraPermissions;
 } catch {
-  // expo-camera native module not available
+  // Native module not available in this build
 }
-import * as reservationsService from "../../src/services/reservations";
 
-type ScanMode = "entry" | "exit";
-
-export default function ScanQRScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [scanMode, setScanMode] = useState<ScanMode>("entry");
-  const [manualCode, setManualCode] = useState("");
-  const [showManualInput, setShowManualInput] = useState(false);
-  const [lastResult, setLastResult] =
-    useState<reservationsService.ScanResponse | null>(null);
+function CameraScanner({
+  scanned,
+  onBarcodeScanned,
+  processing,
+}: {
+  scanned: boolean;
+  onBarcodeScanned: (result: { data: string }) => void;
+  processing: boolean;
+}) {
+  const [permission, requestPermission] = useCameraPermissions?.() ?? [null, () => {}];
 
   useEffect(() => {
     if (!permission?.granted) {
       requestPermission();
     }
   }, [permission]);
+
+  if (!permission) {
+    return (
+      <View style={styles.cameraContainer}>
+        <ActivityIndicator size="large" color="#11796F" style={{ flex: 1 }} />
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.permissionContainer}>
+        <MaterialIcons name="camera-alt" size={64} color="#C7C7CC" />
+        <Text style={styles.permissionTitle}>Camera Permission Required</Text>
+        <Text style={styles.permissionText}>
+          We need camera access to scan driver QR codes
+        </Text>
+        <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+          <Text style={styles.permissionBtnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.cameraContainer}>
+      <CameraView
+        style={styles.camera}
+        facing="back"
+        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+        onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
+      />
+      <View style={styles.overlay}>
+        <View style={styles.scanFrame}>
+          <View style={[styles.corner, styles.topLeft]} />
+          <View style={[styles.corner, styles.topRight]} />
+          <View style={[styles.corner, styles.bottomLeft]} />
+          <View style={[styles.corner, styles.bottomRight]} />
+        </View>
+      </View>
+      {processing && (
+        <View style={styles.processingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.processingText}>Verifying...</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+export default function ScanQRScreen() {
+  const [scanned, setScanned] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>("entry");
+  const [manualCode, setManualCode] = useState("");
+  const [showManualInput, setShowManualInput] = useState(!CameraView);
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned || processing) return;
@@ -59,11 +118,8 @@ export default function ScanQRScreen() {
         result = await reservationsService.scanExit(code);
       }
 
-      setLastResult(result);
-
-      // Show success
       const title =
-        scanMode === "entry" ? "Entry Verified ✓" : "Exit Verified ✓";
+        scanMode === "entry" ? "Entry Verified \u2713" : "Exit Verified \u2713";
       let message = result.message;
 
       if (result.driver) {
@@ -74,14 +130,15 @@ export default function ScanQRScreen() {
       }
 
       if (scanMode === "exit" && result.additionalCharge) {
-        message += `\n\nAdditional charge: ₱${result.additionalCharge.toFixed(2)}`;
+        message += `\n\nAdditional charge: \u20B1${result.additionalCharge.toFixed(2)}`;
       }
 
       Alert.alert(title, message, [
         { text: "OK", onPress: () => resetScanner() },
       ]);
     } catch (err: any) {
-      const message = err.response?.data?.message || "Failed to verify QR code";
+      const message =
+        err.response?.data?.message || "Failed to verify QR code";
       Alert.alert("Verification Failed", message, [
         { text: "Try Again", onPress: () => resetScanner() },
       ]);
@@ -95,77 +152,13 @@ export default function ScanQRScreen() {
       Alert.alert("Error", "Please enter a QR code");
       return;
     }
-    await processQRCode(manualCode.trim().toUpperCase());
+    await processQRCode(manualCode.trim());
   };
 
   const resetScanner = () => {
     setScanned(false);
     setManualCode("");
-    setLastResult(null);
   };
-
-  if (!CameraView) {
-    return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-        <Stack.Screen options={{ title: "Scan QR Code" }} />
-        <View style={styles.permissionContainer}>
-          <MaterialIcons name="camera-alt" size={64} color="#C7C7CC" />
-          <Text style={styles.permissionTitle}>Camera Not Available</Text>
-          <Text style={styles.permissionText}>
-            Camera module is not installed. Please use a development build to enable scanning.
-          </Text>
-          <TouchableOpacity
-            style={styles.manualEntryLink}
-            onPress={() => setShowManualInput(true)}
-          >
-            <Text style={styles.manualEntryLinkText}>Enter code manually</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!permission) {
-    return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-        <Stack.Screen options={{ title: "Scan QR Code" }} />
-        <ActivityIndicator
-          size="large"
-          color="#11796F"
-          style={{ marginTop: 60 }}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-        <Stack.Screen options={{ title: "Scan QR Code" }} />
-        <View style={styles.permissionContainer}>
-          <MaterialIcons name="camera-alt" size={64} color="#C7C7CC" />
-          <Text style={styles.permissionTitle}>Camera Permission Required</Text>
-          <Text style={styles.permissionText}>
-            We need camera access to scan driver QR codes
-          </Text>
-          <TouchableOpacity
-            style={styles.permissionBtn}
-            onPress={requestPermission}
-          >
-            <Text style={styles.permissionBtnText}>Grant Permission</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.manualEntryLink}
-            onPress={() => setShowManualInput(true)}
-          >
-            <Text style={styles.manualEntryLinkText}>
-              Or enter code manually
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -174,7 +167,10 @@ export default function ScanQRScreen() {
       {/* Mode Toggle */}
       <View style={styles.modeToggle}>
         <TouchableOpacity
-          style={[styles.modeBtn, scanMode === "entry" && styles.modeBtnActive]}
+          style={[
+            styles.modeBtn,
+            scanMode === "entry" && styles.modeBtnActive,
+          ]}
           onPress={() => {
             setScanMode("entry");
             resetScanner();
@@ -195,7 +191,10 @@ export default function ScanQRScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.modeBtn, scanMode === "exit" && styles.modeBtnActive]}
+          style={[
+            styles.modeBtn,
+            scanMode === "exit" && styles.modeBtnActive,
+          ]}
           onPress={() => {
             setScanMode("exit");
             resetScanner();
@@ -234,15 +233,17 @@ export default function ScanQRScreen() {
               autoCorrect={false}
             />
             <View style={styles.manualInputButtons}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => {
-                  setShowManualInput(false);
-                  setManualCode("");
-                }}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
+              {CameraView && (
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => {
+                    setShowManualInput(false);
+                    setManualCode("");
+                  }}
+                >
+                  <Text style={styles.cancelBtnText}>Use Camera</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[
                   styles.submitBtn,
@@ -262,45 +263,15 @@ export default function ScanQRScreen() {
         </KeyboardAvoidingView>
       ) : (
         <>
-          {/* Camera Scanner */}
-          <View style={styles.cameraContainer}>
-            <CameraView
-              style={styles.camera}
-              facing="back"
-              barcodeScannerSettings={{
-                barcodeTypes: ["qr"],
-              }}
-              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-            />
-
-            {/* Overlay */}
-            <View style={styles.overlay}>
-              <View style={styles.scanFrame}>
-                <View style={[styles.corner, styles.topLeft]} />
-                <View style={[styles.corner, styles.topRight]} />
-                <View style={[styles.corner, styles.bottomLeft]} />
-                <View style={[styles.corner, styles.bottomRight]} />
-              </View>
-            </View>
-
-            {/* Processing Indicator */}
-            {processing && (
-              <View style={styles.processingOverlay}>
-                <ActivityIndicator size="large" color="#fff" />
-                <Text style={styles.processingText}>Verifying...</Text>
-              </View>
-            )}
-          </View>
+          <CameraScanner
+            scanned={scanned}
+            onBarcodeScanned={handleBarCodeScanned}
+            processing={processing}
+          />
 
           {/* Instructions */}
           <View style={styles.instructions}>
-            <MaterialIcons
-              name={
-                scanMode === "entry" ? "qr-code-scanner" : "qr-code-scanner"
-              }
-              size={24}
-              color="#11796F"
-            />
+            <MaterialIcons name="qr-code-scanner" size={24} color="#11796F" />
             <Text style={styles.instructionsText}>
               {scanMode === "entry"
                 ? "Scan driver's QR code to check them in"
@@ -359,8 +330,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   permissionBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  manualEntryLink: { marginTop: 16 },
-  manualEntryLinkText: { color: "#11796F", fontSize: 14, fontWeight: "600" },
 
   // Mode Toggle
   modeToggle: {

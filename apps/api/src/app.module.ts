@@ -13,6 +13,7 @@ import { DriversModule } from './drivers/drivers.module';
 import { WalletModule } from './wallet/wallet.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ReservationsModule } from './reservations/reservations.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     WalletModule,
     DashboardModule,
     ReservationsModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [

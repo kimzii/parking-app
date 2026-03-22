@@ -8,34 +8,35 @@ datasource db {
 }
 
 model User {
-  id                  String         @id @default(uuid()) @db.Uuid
-  email                 String      @unique
-  password              String
-  googleId              String?     @unique
+  id       String  @id @default(uuid()) @db.Uuid
+  email    String  @unique
+  password String
+  googleId String? @unique
 
   // Profile fields
-  firstName             String?
-  lastName              String?
-  phoneNumber           String?
-  profilePicture        String?
+  firstName      String?
+  lastName       String?
+  phoneNumber    String?
+  profilePicture String?
 
-  emailVerified         Boolean     @default(false)
-  verificationCode      String?
-  verificationExpiry    DateTime?
-  passwordSetRequired   Boolean     @default(false)
-  loginAttempts         Int         @default(0)
-  lockedUntil           DateTime?
-  lastLoginAt           DateTime?
-  lastLoginIp           String?
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
+  emailVerified       Boolean   @default(false)
+  verificationCode    String?
+  verificationExpiry  DateTime?
+  passwordSetRequired Boolean   @default(false)
+  loginAttempts       Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  lastLoginIp         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  userRoles             UserRole[]
-  wallet                Wallet?
-  driver                Driver?
-  host                  Host?
-  notifications         Notification[]
-  adminLogs             AdminLog[]
+  userRoles     UserRole[]
+  wallet        Wallet?
+  driver        Driver?
+  host          Host?
+  notifications Notification[]
+  adminLogs     AdminLog[]
+  reviews       Review[]
 
   @@map("users")
 }
@@ -49,12 +50,12 @@ model Role {
 }
 
 model UserRole {
-  userId String            @map("user_id") @db.Uuid
-  roleId String            @map("role_id") @db.Uuid
-  status VerificationStatus @default(PENDING)
-  assignedAt DateTime      @default(now()) @map("assigned_at")
-  role   Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String             @map("user_id") @db.Uuid
+  roleId     String             @map("role_id") @db.Uuid
+  status     VerificationStatus @default(PENDING)
+  assignedAt DateTime           @default(now()) @map("assigned_at")
+  role       Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@map("user_roles")
@@ -90,14 +91,14 @@ model WalletTransaction {
 }
 
 model Driver {
-  id                 String             @id @default(uuid()) @db.Uuid
-  userId             String             @unique @map("user_id") @db.Uuid
-  licenseNumber      String?            @map("license_number")
-  licenseImageUrl    String?            @map("license_image_url")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  vehicles           DriverVehicle[]
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reservations       Reservation[]
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @unique @map("user_id") @db.Uuid
+  licenseNumber   String?         @map("license_number")
+  licenseImageUrl String?         @map("license_image_url")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  vehicles        DriverVehicle[]
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservations    Reservation[]
 
   @@map("drivers")
 }
@@ -118,37 +119,37 @@ model DriverVehicle {
 }
 
 model Host {
-  id                 String             @id @default(uuid()) @db.Uuid
-  userId             String             @unique @map("user_id") @db.Uuid
-  createdAt          DateTime           @default(now()) @map("created_at")
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parkingLocations   ParkingLocation[]
+  id               String            @id @default(uuid()) @db.Uuid
+  userId           String            @unique @map("user_id") @db.Uuid
+  createdAt        DateTime          @default(now()) @map("created_at")
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parkingLocations ParkingLocation[]
 
   @@map("hosts")
 }
 
 model ParkingLocation {
-  id                    String                 @id @default(uuid()) @db.Uuid
-  hostId                String                 @map("host_id") @db.Uuid
-  title                 String
-  description           String?
-  address               String
-  latitude              Decimal                @db.Decimal(10, 7)
-  longitude             Decimal                @db.Decimal(10, 7)
-  basePricePerHour      Decimal                @map("base_price_per_hour") @db.Decimal(10, 2)
-  status                LocationStatus         @default(PENDING)
-  totalSlots            Int?                   @map("total_slots")
-  availableSlots        Int?                   @map("available_slots")
-  isMultiLevel          Boolean                @default(false) @map("is_multi_level")
-  numberOfLevels        Int?                   @map("number_of_levels")
-  proofOfResidenceUrl   String?                @map("proof_of_residence_url")
-  openTime              String?                @map("open_time")
-  closeTime             String?                @map("close_time")
-  is24Hours             Boolean                @default(false) @map("is_24_hours")
-  createdAt             DateTime               @default(now()) @map("created_at")
-  images                ParkingLocationImage[]
-  host                  Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
-  parkingSpaces         ParkingSpace[]
+  id                  String                 @id @default(uuid()) @db.Uuid
+  hostId              String                 @map("host_id") @db.Uuid
+  title               String
+  description         String?
+  address             String
+  latitude            Decimal                @db.Decimal(10, 7)
+  longitude           Decimal                @db.Decimal(10, 7)
+  basePricePerHour    Decimal                @map("base_price_per_hour") @db.Decimal(10, 2)
+  status              LocationStatus         @default(PENDING)
+  totalSlots          Int?                   @map("total_slots")
+  availableSlots      Int?                   @map("available_slots")
+  isMultiLevel        Boolean                @default(false) @map("is_multi_level")
+  numberOfLevels      Int?                   @map("number_of_levels")
+  proofOfResidenceUrl String?                @map("proof_of_residence_url")
+  openTime            String?                @map("open_time")
+  closeTime           String?                @map("close_time")
+  is24Hours           Boolean                @default(false) @map("is_24_hours")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  images              ParkingLocationImage[]
+  host                Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  parkingSpaces       ParkingSpace[]
 
   @@map("parking_locations")
 }
@@ -225,12 +226,21 @@ model Payment {
 model Review {
   id            String      @id @default(uuid()) @db.Uuid
   reservationId String      @map("reservation_id") @db.Uuid
+  reviewerId    String      @map("reviewer_id") @db.Uuid
+  reviewType    ReviewType  @map("review_type")
   rating        Int
   comment       String?
   createdAt     DateTime    @default(now()) @map("created_at")
   reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reviewer      User        @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
 
+  @@unique([reservationId, reviewType])
   @@map("reviews")
+}
+
+enum ReviewType {
+  DRIVER_TO_LOCATION
+  HOST_TO_DRIVER
 }
 
 model Notification {

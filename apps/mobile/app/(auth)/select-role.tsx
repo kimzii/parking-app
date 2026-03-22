@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   continueButton: {
     backgroundColor: "#11796F",

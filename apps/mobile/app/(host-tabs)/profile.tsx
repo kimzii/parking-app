@@ -56,9 +56,8 @@ export default function HostProfileScreen() {
     router.replace("/(auth)/login");
   };
 
-  const hasDriverRole = user?.roleStatuses?.some(
-    (rs) => rs.role === "DRIVER",
-  ) ?? false;
+  const hasDriverRole =
+    user?.roleStatuses?.some((rs) => rs.role === "DRIVER") ?? false;
 
   const switchToDriver = async () => {
     await setViewMode("driver");
@@ -86,7 +85,8 @@ export default function HostProfileScreen() {
               {loading
                 ? "Loading..."
                 : user
-                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"
+                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+                    "-"
                   : "-"}
             </Text>
 
@@ -126,7 +126,11 @@ export default function HostProfileScreen() {
                 activeOpacity={0.8}
               >
                 <View style={styles.switchIconBg}>
-                  <MaterialIcons name="directions-car" size={20} color="#11796F" />
+                  <MaterialIcons
+                    name="directions-car"
+                    size={20}
+                    color="#11796F"
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.switchTitle}>Switch to Driver View</Text>
@@ -143,7 +147,11 @@ export default function HostProfileScreen() {
                 activeOpacity={0.8}
               >
                 <View style={styles.switchIconBg}>
-                  <MaterialIcons name="directions-car" size={20} color="#11796F" />
+                  <MaterialIcons
+                    name="directions-car"
+                    size={20}
+                    color="#11796F"
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.switchTitle}>Become a Driver</Text>
@@ -164,13 +172,26 @@ export default function HostProfileScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.menuItemLeft}>
-                    <View style={[styles.menuIconBg, { backgroundColor: "#F2F2F7" }]}>
-                      <MaterialIcons name="settings" size={18} color="#8E8E93" />
+                    <View
+                      style={[
+                        styles.menuIconBg,
+                        { backgroundColor: "#F2F2F7" },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="settings"
+                        size={18}
+                        color="#8E8E93"
+                      />
                     </View>
                     <Text style={styles.menuItemLabel}>Settings</Text>
                   </View>
                   <MaterialIcons
-                    name={settingsOpen ? "keyboard-arrow-up" : "keyboard-arrow-right"}
+                    name={
+                      settingsOpen
+                        ? "keyboard-arrow-up"
+                        : "keyboard-arrow-right"
+                    }
                     size={22}
                     color="#8E8E93"
                   />
@@ -178,14 +199,14 @@ export default function HostProfileScreen() {
 
                 {settingsOpen && (
                   <View style={styles.settingsDropdown}>
-                    <TouchableOpacity
+                    {/* <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => router.push("/(modals)/forgot-password")}
                       activeOpacity={0.7}
                     >
                       <MaterialIcons name="lock-reset" size={18} color="#8E8E93" />
                       <Text style={styles.dropdownText}>Forgot Password</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                     <TouchableOpacity
                       style={styles.dropdownItem}
                       onPress={() => router.push("/(modals)/change-password")}
@@ -197,7 +218,12 @@ export default function HostProfileScreen() {
                   </View>
                 )}
 
-                <MenuItem label="Help & Support" icon="help-outline" iconBg="#E3F2FD" iconColor="#1976D2" />
+                <MenuItem
+                  label="Help & Support"
+                  icon="help-outline"
+                  iconBg="#F2F2F7"
+                  iconColor="#8E8E93"
+                />
               </View>
             </View>
 

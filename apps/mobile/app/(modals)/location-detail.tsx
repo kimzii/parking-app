@@ -16,6 +16,16 @@ import { hostService } from "../../src/services/hosts";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+function formatTime(time: string): string {
+  const [hourStr, minuteStr] = time.split(":");
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr || "00";
+  const period = hour >= 12 ? "PM" : "AM";
+  if (hour === 0) hour = 12;
+  else if (hour > 12) hour -= 12;
+  return `${hour}:${minute.padStart(2, "0")} ${period}`;
+}
+
 interface ParkingSpace {
   id: string;
   slotNumber: number;
@@ -252,7 +262,7 @@ export default function LocationDetailScreen() {
             <View style={styles.hoursDisplay}>
               <View style={styles.timeBlock}>
                 <MaterialIcons name="wb-sunny" size={16} color="#F57C00" />
-                <Text style={styles.timeValue}>{location.openTime}</Text>
+                <Text style={styles.timeValue}>{formatTime(location.openTime!)}</Text>
                 <Text style={styles.timeLabel}>Opens</Text>
               </View>
               <View style={styles.timeSeparator}>
@@ -260,7 +270,7 @@ export default function LocationDetailScreen() {
               </View>
               <View style={styles.timeBlock}>
                 <MaterialIcons name="nights-stay" size={16} color="#5C6BC0" />
-                <Text style={styles.timeValue}>{location.closeTime}</Text>
+                <Text style={styles.timeValue}>{formatTime(location.closeTime!)}</Text>
                 <Text style={styles.timeLabel}>Closes</Text>
               </View>
             </View>
