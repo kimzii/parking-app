@@ -12,7 +12,12 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, useFocusEffect, router } from "expo-router";
+import {
+  Stack,
+  useLocalSearchParams,
+  useFocusEffect,
+  router,
+} from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
@@ -144,7 +149,8 @@ export default function LocationDetailScreen() {
               setSelectedSpace(null);
               fetchLocation();
             } catch (err: any) {
-              const msg = err?.response?.data?.message || `Failed to ${action} space.`;
+              const msg =
+                err?.response?.data?.message || `Failed to ${action} space.`;
               Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
             } finally {
               setSpaceActionLoading(false);
@@ -171,7 +177,8 @@ export default function LocationDetailScreen() {
               setSelectedSpace(null);
               fetchLocation();
             } catch (err: any) {
-              const msg = err?.response?.data?.message || "Failed to delete space.";
+              const msg =
+                err?.response?.data?.message || "Failed to delete space.";
               Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
             } finally {
               setSpaceActionLoading(false);
@@ -202,7 +209,8 @@ export default function LocationDetailScreen() {
               await hostService.toggleLocation(location.id);
               fetchLocation();
             } catch (err: any) {
-              const msg = err?.response?.data?.message || `Failed to ${action} location.`;
+              const msg =
+                err?.response?.data?.message || `Failed to ${action} location.`;
               Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
             }
           },
@@ -228,7 +236,8 @@ export default function LocationDetailScreen() {
                 { text: "OK", onPress: () => router.back() },
               ]);
             } catch (err: any) {
-              const msg = err?.response?.data?.message || "Failed to delete location.";
+              const msg =
+                err?.response?.data?.message || "Failed to delete location.";
               Alert.alert("Error", Array.isArray(msg) ? msg.join(", ") : msg);
             }
           },
@@ -386,16 +395,6 @@ export default function LocationDetailScreen() {
           </View>
         </View>
 
-        {/* Disabled Banner */}
-        {location.status === "DISABLED" && (
-          <View style={styles.disabledBanner}>
-            <MaterialIcons name="visibility-off" size={18} color="#8E8E93" />
-            <Text style={styles.disabledBannerText}>
-              This location is hidden from drivers. No new reservations can be made.
-            </Text>
-          </View>
-        )}
-
         {/* Operating Hours */}
         <View style={styles.operatingHoursCard}>
           <View style={styles.operatingHoursHeader}>
@@ -411,7 +410,9 @@ export default function LocationDetailScreen() {
             <View style={styles.hoursDisplay}>
               <View style={styles.timeBlock}>
                 <MaterialIcons name="wb-sunny" size={16} color="#F57C00" />
-                <Text style={styles.timeValue}>{formatTime(location.openTime!)}</Text>
+                <Text style={styles.timeValue}>
+                  {formatTime(location.openTime!)}
+                </Text>
                 <Text style={styles.timeLabel}>Opens</Text>
               </View>
               <View style={styles.timeSeparator}>
@@ -419,7 +420,9 @@ export default function LocationDetailScreen() {
               </View>
               <View style={styles.timeBlock}>
                 <MaterialIcons name="nights-stay" size={16} color="#5C6BC0" />
-                <Text style={styles.timeValue}>{formatTime(location.closeTime!)}</Text>
+                <Text style={styles.timeValue}>
+                  {formatTime(location.closeTime!)}
+                </Text>
                 <Text style={styles.timeLabel}>Closes</Text>
               </View>
             </View>
@@ -623,6 +626,17 @@ export default function LocationDetailScreen() {
           </Text>
         </View>
 
+        {/* Disabled Banner */}
+        {location.status === "DISABLED" && (
+          <View style={styles.disabledBanner}>
+            <MaterialIcons name="visibility-off" size={18} color="#8E8E93" />
+            <Text style={styles.disabledBannerText}>
+              This location is hidden from drivers. No new reservations can be
+              made.
+            </Text>
+          </View>
+        )}
+
         {/* Disable / Enable Location */}
         {(location.status === "APPROVED" || location.status === "DISABLED") && (
           <TouchableOpacity
@@ -636,7 +650,9 @@ export default function LocationDetailScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons
-              name={location.status === "DISABLED" ? "visibility" : "visibility-off"}
+              name={
+                location.status === "DISABLED" ? "visibility" : "visibility-off"
+              }
               size={20}
               color="#fff"
             />
@@ -672,119 +688,165 @@ export default function LocationDetailScreen() {
           onPress={() => setSelectedSpace(null)}
         >
           <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
-            {selectedSpace && (() => {
-              const config = SLOT_STATUS_CONFIG[selectedSpace.status];
-              const hasReservations = selectedSpace.reservations?.length > 0;
-              return (
-                <>
-                  <View style={styles.modalHandle} />
+            {selectedSpace &&
+              (() => {
+                const config = SLOT_STATUS_CONFIG[selectedSpace.status];
+                const hasReservations = selectedSpace.reservations?.length > 0;
+                return (
+                  <>
+                    <View style={styles.modalHandle} />
 
-                  {/* Space info */}
-                  <View style={styles.modalSpaceInfo}>
-                    <View style={[styles.modalSpaceIcon, { backgroundColor: config.bg }]}>
-                      <MaterialIcons name={config.icon} size={28} color={config.color} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.modalSpaceName}>
-                        Space {selectedSpace.name || selectedSpace.slotNumber}
-                      </Text>
-                      <Text style={[styles.modalSpaceStatus, { color: config.color }]}>
-                        {selectedSpace.status === "AVAILABLE"
-                          ? "Available"
-                          : selectedSpace.status === "OCCUPIED"
-                            ? "Occupied"
-                            : "Disabled"}
-                      </Text>
-                    </View>
-                    {selectedSpace.levelNumber != null && (
-                      <View style={styles.modalFloorBadge}>
-                        <Text style={styles.modalFloorText}>Floor {selectedSpace.levelNumber}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {hasReservations && (
-                    <View style={styles.modalNotice}>
-                      <MaterialIcons name="info-outline" size={18} color="#F57C00" />
-                      <Text style={styles.modalNoticeText}>
-                        This space has active or upcoming reservations.
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Actions */}
-                  <View style={styles.modalActions}>
-                    {/* Toggle disable/enable */}
-                    {selectedSpace.status !== "OCCUPIED" && (
-                      <TouchableOpacity
+                    {/* Space info */}
+                    <View style={styles.modalSpaceInfo}>
+                      <View
                         style={[
-                          styles.modalActionBtn,
-                          selectedSpace.status === "DISABLED"
-                            ? styles.modalActionBtnEnable
-                            : styles.modalActionBtnDisable,
+                          styles.modalSpaceIcon,
+                          { backgroundColor: config.bg },
                         ]}
-                        onPress={() => handleToggleSpace(selectedSpace)}
-                        disabled={spaceActionLoading}
-                        activeOpacity={0.8}
                       >
-                        {spaceActionLoading ? (
-                          <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                          <>
-                            <MaterialIcons
-                              name={selectedSpace.status === "DISABLED" ? "check-circle" : "block"}
-                              size={20}
-                              color="#fff"
-                            />
-                            <Text style={styles.modalActionBtnText}>
-                              {selectedSpace.status === "DISABLED" ? "Enable Space" : "Disable Space"}
-                            </Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
+                        <MaterialIcons
+                          name={config.icon}
+                          size={28}
+                          color={config.color}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.modalSpaceName}>
+                          Space {selectedSpace.name || selectedSpace.slotNumber}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.modalSpaceStatus,
+                            { color: config.color },
+                          ]}
+                        >
+                          {selectedSpace.status === "AVAILABLE"
+                            ? "Available"
+                            : selectedSpace.status === "OCCUPIED"
+                              ? "Occupied"
+                              : "Disabled"}
+                        </Text>
+                      </View>
+                      {selectedSpace.levelNumber != null && (
+                        <View style={styles.modalFloorBadge}>
+                          <Text style={styles.modalFloorText}>
+                            Floor {selectedSpace.levelNumber}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
 
-                    {selectedSpace.status === "OCCUPIED" && (
-                      <View style={styles.modalOccupiedNotice}>
-                        <MaterialIcons name="directions-car" size={18} color="#F57C00" />
-                        <Text style={styles.modalOccupiedText}>
-                          This space is currently occupied. Actions are unavailable until the session ends.
+                    {hasReservations && (
+                      <View style={styles.modalNotice}>
+                        <MaterialIcons
+                          name="info-outline"
+                          size={18}
+                          color="#F57C00"
+                        />
+                        <Text style={styles.modalNoticeText}>
+                          This space has active or upcoming reservations.
                         </Text>
                       </View>
                     )}
 
-                    {/* Delete */}
+                    {/* Actions */}
+                    <View style={styles.modalActions}>
+                      {/* Toggle disable/enable */}
+                      {selectedSpace.status !== "OCCUPIED" && (
+                        <TouchableOpacity
+                          style={[
+                            styles.modalActionBtn,
+                            selectedSpace.status === "DISABLED"
+                              ? styles.modalActionBtnEnable
+                              : styles.modalActionBtnDisable,
+                          ]}
+                          onPress={() => handleToggleSpace(selectedSpace)}
+                          disabled={spaceActionLoading}
+                          activeOpacity={0.8}
+                        >
+                          {spaceActionLoading ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                          ) : (
+                            <>
+                              <MaterialIcons
+                                name={
+                                  selectedSpace.status === "DISABLED"
+                                    ? "check-circle"
+                                    : "block"
+                                }
+                                size={20}
+                                color="#fff"
+                              />
+                              <Text style={styles.modalActionBtnText}>
+                                {selectedSpace.status === "DISABLED"
+                                  ? "Enable Space"
+                                  : "Disable Space"}
+                              </Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      )}
+
+                      {selectedSpace.status === "OCCUPIED" && (
+                        <View style={styles.modalOccupiedNotice}>
+                          <MaterialIcons
+                            name="directions-car"
+                            size={18}
+                            color="#F57C00"
+                          />
+                          <Text style={styles.modalOccupiedText}>
+                            This space is currently occupied. Actions are
+                            unavailable until the session ends.
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Delete */}
+                      <TouchableOpacity
+                        style={[
+                          styles.modalActionBtn,
+                          styles.modalActionBtnDelete,
+                          (hasReservations ||
+                            selectedSpace.status === "OCCUPIED") &&
+                            styles.modalActionBtnDeleteDisabled,
+                        ]}
+                        onPress={() => handleDeleteSpace(selectedSpace)}
+                        disabled={
+                          spaceActionLoading ||
+                          hasReservations ||
+                          selectedSpace.status === "OCCUPIED"
+                        }
+                        activeOpacity={0.8}
+                      >
+                        <MaterialIcons
+                          name="delete-outline"
+                          size={20}
+                          color="#fff"
+                        />
+                        <Text style={styles.modalActionBtnText}>
+                          Delete Space
+                        </Text>
+                      </TouchableOpacity>
+
+                      {(hasReservations ||
+                        selectedSpace.status === "OCCUPIED") && (
+                        <Text style={styles.modalDeleteHint}>
+                          Spaces with active reservations cannot be deleted.
+                          Disable them instead.
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Close */}
                     <TouchableOpacity
-                      style={[
-                        styles.modalActionBtn,
-                        styles.modalActionBtnDelete,
-                        (hasReservations || selectedSpace.status === "OCCUPIED") && styles.modalActionBtnDeleteDisabled,
-                      ]}
-                      onPress={() => handleDeleteSpace(selectedSpace)}
-                      disabled={spaceActionLoading || hasReservations || selectedSpace.status === "OCCUPIED"}
-                      activeOpacity={0.8}
+                      style={styles.modalCloseBtn}
+                      onPress={() => setSelectedSpace(null)}
                     >
-                      <MaterialIcons name="delete-outline" size={20} color="#fff" />
-                      <Text style={styles.modalActionBtnText}>Delete Space</Text>
+                      <Text style={styles.modalCloseBtnText}>Close</Text>
                     </TouchableOpacity>
-
-                    {(hasReservations || selectedSpace.status === "OCCUPIED") && (
-                      <Text style={styles.modalDeleteHint}>
-                        Spaces with active reservations cannot be deleted. Disable them instead.
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Close */}
-                  <TouchableOpacity
-                    style={styles.modalCloseBtn}
-                    onPress={() => setSelectedSpace(null)}
-                  >
-                    <Text style={styles.modalCloseBtnText}>Close</Text>
-                  </TouchableOpacity>
-                </>
-              );
-            })()}
+                  </>
+                );
+              })()}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

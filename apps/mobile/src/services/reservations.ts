@@ -16,6 +16,7 @@ export interface FirstHourFeeResponse {
 
 export interface CreateReservationRequest {
   parkingSpaceId: string;
+  vehicleId?: string;
 }
 
 export interface Reservation {

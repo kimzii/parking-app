@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, router } from "expo-router";
@@ -15,6 +16,20 @@ import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
 import { walletService } from "../../src/services/wallet";
 import { driversService } from "../../src/services/drivers";
+
+const VEHICLE_IMAGES: Record<string, any> = {
+  CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
+  MOTORCYCLE: require("../../assets/images/ParkUp UI/scooter_16804043.png"),
+};
+
+interface Vehicle {
+  id: string;
+  plateNumber?: string;
+  vehicleType?: string;
+  brand?: string;
+  model?: string;
+  color?: string;
+}
 
 interface ParkingSpace {
   id: string;
@@ -43,6 +58,8 @@ export default function BookSpotScreen() {
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [booking, setBooking] = useState(false);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!locationId) return;
@@ -53,6 +70,16 @@ export default function BookSpotScreen() {
       ]);
       setSpot(spotData);
       setWalletBalance(Number(balanceData.balance));
+
+      // Fetch vehicles (silently — if it fails, we handle at booking time)
+      try {
+        const vehicleData = await driversService.getVehicles();
+        const list = Array.isArray(vehicleData) ? vehicleData : [];
+        setVehicles(list);
+        if (list.length === 1) setSelectedVehicle(list[0]);
+      } catch {
+        // Driver may not exist yet — handled during booking
+      }
     } catch (err) {
       console.error("Failed to fetch data:", err);
       Alert.alert("Error", "Failed to load parking spot details");
@@ -70,27 +97,29 @@ export default function BookSpotScreen() {
     firstHourFee > 0 && walletBalance < firstHourFee;
 
   const ensureVehicleRegistered = async (): Promise<boolean> => {
+    if (vehicles.length > 0 && selectedVehicle) {
+      return true;
+    }
+
+    // Try fetching fresh in case vehicles were added after initial load
     try {
-      const vehicles = await driversService.getVehicles();
-      if (Array.isArray(vehicles) && vehicles.length > 0) {
+      const vehicleData = await driversService.getVehicles();
+      const list = Array.isArray(vehicleData) ? vehicleData : [];
+      setVehicles(list);
+      if (list.length === 1) {
+        setSelectedVehicle(list[0]);
         return true;
       }
-
-      Alert.alert(
-        "Vehicle Required",
-        "Please add a vehicle first before booking a parking spot.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Add Vehicle",
-            onPress: () => router.push("/(modals)/my-vehicles"),
-          },
-        ],
-      );
-      return false;
+      if (list.length > 1 && !selectedVehicle) {
+        Alert.alert(
+          "Select a Vehicle",
+          "Please select which vehicle you'll be using for this booking.",
+        );
+        return false;
+      }
+      if (list.length > 0) return true;
     } catch (err: any) {
       const message = err?.response?.data?.message;
-
       if (
         typeof message === "string" &&
         message.toLowerCase().includes("driver profile not found")
@@ -108,13 +137,20 @@ export default function BookSpotScreen() {
         );
         return false;
       }
-
-      Alert.alert(
-        "Unable to Check Vehicles",
-        "Please try again before booking.",
-      );
-      return false;
     }
+
+    Alert.alert(
+      "Vehicle Required",
+      "Please add a vehicle first before booking a parking spot.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Add Vehicle",
+          onPress: () => router.push("/(modals)/my-vehicles"),
+        },
+      ],
+    );
+    return false;
   };
 
   const handleBooking = async () => {
@@ -149,6 +185,7 @@ export default function BookSpotScreen() {
             try {
               const result = await reservationsService.createReservation({
                 parkingSpaceId: selectedSpace.id,
+                ...(selectedVehicle && { vehicleId: selectedVehicle.id }),
               });
 
               Alert.alert("Booking Requested", result.message, [
@@ -294,6 +331,116 @@ export default function BookSpotScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Vehicle Section */}
+        {vehicles.length === 1 && vehicles[0] && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Vehicle</Text>
+            <View style={styles.vehicleCard}>
+              <View style={styles.vehicleIconBg}>
+                <Image
+                  source={
+                    VEHICLE_IMAGES[vehicles[0].vehicleType ?? "CAR"] ||
+                    VEHICLE_IMAGES.CAR
+                  }
+                  style={styles.vehiclePng}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.vehicleName}>
+                  {[vehicles[0].brand, vehicles[0].model]
+                    .filter(Boolean)
+                    .join(" ") || "Vehicle"}
+                </Text>
+                {vehicles[0].plateNumber && (
+                  <Text style={styles.vehiclePlate}>
+                    {vehicles[0].plateNumber}
+                  </Text>
+                )}
+                {vehicles[0].color && (
+                  <Text style={styles.vehicleColor}>{vehicles[0].color}</Text>
+                )}
+              </View>
+              <MaterialIcons name="check-circle" size={22} color="#11796F" />
+            </View>
+          </View>
+        )}
+
+        {vehicles.length >= 2 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Select Vehicle</Text>
+            {vehicles.map((v) => {
+              const isSelected = selectedVehicle?.id === v.id;
+              return (
+                <TouchableOpacity
+                  key={v.id}
+                  style={[
+                    styles.vehicleCard,
+                    isSelected && styles.vehicleCardSelected,
+                  ]}
+                  onPress={() => setSelectedVehicle(v)}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.vehicleIconBg,
+                      isSelected && styles.vehicleIconBgSelected,
+                    ]}
+                  >
+                    <Image
+                      source={
+                        VEHICLE_IMAGES[v.vehicleType ?? "CAR"] ||
+                        VEHICLE_IMAGES.CAR
+                      }
+                      style={[
+                        styles.vehiclePng,
+                        isSelected && styles.vehiclePngSelected,
+                      ]}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.vehicleName,
+                        isSelected && styles.vehicleNameSelected,
+                      ]}
+                    >
+                      {[v.brand, v.model].filter(Boolean).join(" ") ||
+                        "Vehicle"}
+                    </Text>
+                    {v.plateNumber && (
+                      <Text
+                        style={[
+                          styles.vehiclePlate,
+                          isSelected && styles.vehiclePlateSelected,
+                        ]}
+                      >
+                        {v.plateNumber}
+                      </Text>
+                    )}
+                    {v.color && (
+                      <Text
+                        style={[
+                          styles.vehicleColor,
+                          isSelected && styles.vehicleColorSelected,
+                        ]}
+                      >
+                        {v.color}
+                      </Text>
+                    )}
+                  </View>
+                  {isSelected && (
+                    <MaterialIcons
+                      name="check-circle"
+                      size={22}
+                      color="#fff"
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Select Slot */}
         <View style={styles.section}>
@@ -672,4 +819,67 @@ const styles = StyleSheet.create({
   },
   bookBtnDisabled: { backgroundColor: "#9E9E9E" },
   bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+
+  // Vehicle
+  vehicleCard: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: "#E8F5F3",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  vehicleCardSelected: {
+    backgroundColor: "#11796F",
+    borderColor: "#11796F",
+  },
+  vehicleIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#E8F5F3",
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+  },
+  vehicleIconBgSelected: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  vehiclePng: {
+    width: 28,
+    height: 28,
+  },
+  vehiclePngSelected: {},
+  vehicleName: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#1A1A2E",
+  },
+  vehicleNameSelected: {
+    color: "#fff",
+  },
+  vehiclePlate: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: "#8E8E93",
+    marginTop: 2,
+  },
+  vehiclePlateSelected: {
+    color: "rgba(255,255,255,0.85)",
+  },
+  vehicleColor: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 1,
+  },
+  vehicleColorSelected: {
+    color: "rgba(255,255,255,0.7)",
+  },
 });

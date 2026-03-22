@@ -27,6 +27,7 @@ const STATUS_CONFIG = {
   APPROVED: { label: "Approved", color: "#4CAF50", bg: "#E8F5E9" },
   PENDING: { label: "Pending", color: "#F57C00", bg: "#FFF3E0" },
   REJECTED: { label: "Rejected", color: "#E53935", bg: "#FFEBEE" },
+  DISABLED: { label: "Disabled", color: "#8E8E93", bg: "#F5F5F5" },
 };
 
 export default function SpacesScreen() {

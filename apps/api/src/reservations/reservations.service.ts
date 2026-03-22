@@ -238,15 +238,35 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const activeVehicle = await this.prisma.driverVehicle.findFirst({
-      where: {
-        driverId: driver.id,
-        isActive: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // If vehicleId is provided, verify it belongs to this driver
+    let selectedVehicle: Awaited<
+      ReturnType<typeof this.prisma.driverVehicle.findFirst>
+    > = null;
+    if (dto.vehicleId) {
+      selectedVehicle = await this.prisma.driverVehicle.findFirst({
+        where: {
+          id: dto.vehicleId,
+          driverId: driver.id,
+          isActive: true,
+        },
+      });
+      if (!selectedVehicle) {
+        throw new BadRequestException(
+          'Selected vehicle not found or is not active.',
+        );
+      }
+    } else {
+      // Fall back to most recent active vehicle
+      selectedVehicle = await this.prisma.driverVehicle.findFirst({
+        where: {
+          driverId: driver.id,
+          isActive: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
-    if (!activeVehicle) {
+    if (!selectedVehicle) {
       throw new BadRequestException(
         'Please add at least one active vehicle before booking.',
       );
@@ -379,6 +399,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         data: {
           driverId: driver.id,
           parkingSpaceId: dto.parkingSpaceId,
+          vehicleId: selectedVehicle.id,
           status: 'PENDING',
           qrCode,
           qrCodeSecret,
