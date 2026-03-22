@@ -158,20 +158,25 @@ export default function PaymentScreen() {
 
       {/* Balance Card */}
       <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Available Balance</Text>
+        <View style={styles.balanceIconRow}>
+          <View style={styles.walletIconBg}>
+            <MaterialIcons name="account-balance-wallet" size={24} color="#fff" />
+          </View>
+          <Text style={styles.balanceLabel}>Available Balance</Text>
+        </View>
         {loading ? (
           <ActivityIndicator
             size="small"
-            color="#11796F"
-            style={{ marginVertical: 8 }}
+            color="#fff"
+            style={{ marginTop: 8 }}
           />
         ) : (
-          <Text style={styles.balanceAmount}>₱{balance.toFixed(2)}</Text>
+          <Text style={styles.balanceAmount}>₱ {balance.toFixed(2)}</Text>
         )}
         <TouchableOpacity
           style={[
             styles.topUpButton,
-            !isDriverVerified && { backgroundColor: "#B0BEC5" },
+            !isDriverVerified && { backgroundColor: "rgba(255,255,255,0.3)" },
           ]}
           onPress={() =>
             isDriverVerified
@@ -268,43 +273,58 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   balanceCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#11796F",
     borderRadius: 20,
     padding: 24,
-    alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: "#11796F",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 4,
+    elevation: 6,
     marginBottom: 6,
+  },
+  balanceIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+  walletIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   balanceLabel: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "rgba(255,255,255,0.7)",
     fontWeight: "500",
   },
   balanceAmount: {
     fontSize: 36,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#fff",
     letterSpacing: -0.5,
     marginVertical: 8,
   },
   topUpButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    backgroundColor: "#11796F",
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingVertical: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderRadius: 12,
-    marginTop: 4,
+    marginTop: 16,
+    alignSelf: "flex-start",
   },
   topUpButtonText: {
-    color: "#fff",
     fontSize: 15,
     fontWeight: "700",
+    color: "#fff",
   },
   sectionTitle: {
     fontSize: 13,

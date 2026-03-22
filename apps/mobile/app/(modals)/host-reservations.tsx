@@ -250,6 +250,26 @@ export default function HostReservationsScreen() {
             </Text>
           )}
         </View>
+
+        {item.status === "COMPLETED" && (
+          <TouchableOpacity
+            style={styles.reviewBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/(modals)/leave-review",
+                params: {
+                  reservationId: item.id,
+                  locationTitle: item.driver?.name || "Driver",
+                  reviewType: "host",
+                },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="star-outline" size={14} color="#FFB300" />
+            <Text style={styles.reviewBtnText}>Rate Driver</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -478,5 +498,22 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     textAlign: "center",
     marginTop: 8,
+  },
+  reviewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginTop: 12,
+    alignSelf: "flex-start",
+  },
+  reviewBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFB300",
   },
 });
