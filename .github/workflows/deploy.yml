@@ -246,37 +246,39 @@ jobs:
       # - rsync/scp artifacts to your server
       # - restart next server with PM2/systemd on the target host
 
-  build_mobile_android:
-    name: Build Mobile Android (Expo EAS)
-    needs: changes
-    runs-on: ubuntu-latest
-    if: needs.changes.outputs.mobile_changed == 'true'
-    environment: ${{ needs.changes.outputs.deploy_env }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node with npm cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies (workspace)
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Setup Expo and EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Trigger EAS Android build
-        working-directory: apps/mobile
-        env:
-          EAS_NO_VCS: 1
-        run: |
-          PROFILE="${{ needs.changes.outputs.mobile_profile }}"
-          echo "Using EAS profile: ${PROFILE}"
-          eas build --platform android --profile "${PROFILE}" --non-interactive
+  # Mobile build disabled — EAS free tier build limit reached.
+  # Uncomment when builds are available again or upgrade EAS plan.
+  # build_mobile_android:
+  #   name: Build Mobile Android (Expo EAS)
+  #   needs: changes
+  #   runs-on: ubuntu-latest
+  #   if: needs.changes.outputs.mobile_changed == 'true'
+  #   environment: ${{ needs.changes.outputs.deploy_env }}
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node with npm cache
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #         cache: npm
+  #         cache-dependency-path: package-lock.json
+  #
+  #     - name: Install dependencies (workspace)
+  #       run: npm ci --prefer-offline --no-audit
+  #
+  #     - name: Setup Expo and EAS CLI
+  #       uses: expo/expo-github-action@v8
+  #       with:
+  #         eas-version: latest
+  #         token: ${{ secrets.EXPO_TOKEN }}
+  #
+  #     - name: Trigger EAS Android build
+  #       working-directory: apps/mobile
+  #       env:
+  #         EAS_NO_VCS: 1
+  #       run: |
+  #         PROFILE="${{ needs.changes.outputs.mobile_profile }}"
+  #         echo "Using EAS profile: ${PROFILE}"
+  #         eas build --platform android --profile "${PROFILE}" --non-interactive
