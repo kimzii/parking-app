@@ -13,7 +13,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CameraView, useCameraPermissions } from "expo-camera";
+let CameraView: any = null;
+let useCameraPermissions: any = () => [null, () => Promise.resolve({ granted: false })];
+try {
+  const cam = require("expo-camera");
+  CameraView = cam.CameraView;
+  useCameraPermissions = cam.useCameraPermissions;
+} catch {
+  // expo-camera native module not available
+}
 import * as reservationsService from "../../src/services/reservations";
 
 type ScanMode = "entry" | "exit";
@@ -95,6 +103,27 @@ export default function ScanQRScreen() {
     setManualCode("");
     setLastResult(null);
   };
+
+  if (!CameraView) {
+    return (
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+        <Stack.Screen options={{ title: "Scan QR Code" }} />
+        <View style={styles.permissionContainer}>
+          <MaterialIcons name="camera-alt" size={64} color="#C7C7CC" />
+          <Text style={styles.permissionTitle}>Camera Not Available</Text>
+          <Text style={styles.permissionText}>
+            Camera module is not installed. Please use a development build to enable scanning.
+          </Text>
+          <TouchableOpacity
+            style={styles.manualEntryLink}
+            onPress={() => setShowManualInput(true)}
+          >
+            <Text style={styles.manualEntryLinkText}>Enter code manually</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!permission) {
     return (
