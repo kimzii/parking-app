@@ -52,6 +52,9 @@ interface SpotDetail {
   availableSlots: number | null;
   isMultiLevel: boolean;
   numberOfLevels: number | null;
+  openTime: string | null;
+  closeTime: string | null;
+  is24Hours: boolean;
   createdAt: string;
   images: SpotImage[];
   parkingSpaces: ParkingSpace[];
@@ -68,6 +71,16 @@ interface DirectionsInfo {
   distance: string;
   duration: string;
   routeCoords: { latitude: number; longitude: number }[];
+}
+
+function formatTime(time: string): string {
+  const [hourStr, minuteStr] = time.split(":");
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr || "00";
+  const period = hour >= 12 ? "PM" : "AM";
+  if (hour === 0) hour = 12;
+  else if (hour > 12) hour -= 12;
+  return `${hour}:${minute.padStart(2, "0")} ${period}`;
 }
 
 const SLOT_COLORS = {
@@ -391,15 +404,19 @@ export default function SpotDetailScreen() {
               </Text>
               <Text style={styles.statLabel}>available</Text>
             </View>
-            {spot.isMultiLevel && (
-              <View style={styles.statCard}>
-                <MaterialIcons name="layers" size={22} color="#1976D2" />
-                <Text style={[styles.statValue, { color: "#1976D2" }]}>
-                  {spot.numberOfLevels ?? "-"}
-                </Text>
-                <Text style={styles.statLabel}>levels</Text>
-              </View>
-            )}
+            <View style={styles.statCard}>
+              <MaterialIcons name="schedule" size={22} color="#FF9800" />
+              <Text style={[styles.statValue, { color: "#FF9800", fontSize: spot.is24Hours ? 14 : 12 }]}>
+                {spot.is24Hours
+                  ? "24 Hrs"
+                  : spot.openTime
+                    ? formatTime(spot.openTime)
+                    : "N/A"}
+              </Text>
+              <Text style={styles.statLabel}>
+                {spot.is24Hours ? "open" : "opens"}
+              </Text>
+            </View>
           </View>
 
           {/* Parking Info */}
@@ -425,6 +442,17 @@ export default function SpotDetailScreen() {
                   </Text>
                 </View>
               )}
+              <View style={styles.infoRow}>
+                <MaterialIcons name="schedule" size={20} color="#11796F" />
+                <Text style={styles.infoLabel}>Hours</Text>
+                <Text style={styles.infoValue}>
+                  {spot.is24Hours
+                    ? "Open 24 Hours"
+                    : spot.openTime && spot.closeTime
+                      ? `${formatTime(spot.openTime)} - ${formatTime(spot.closeTime)}`
+                      : "Not specified"}
+                </Text>
+              </View>
               <View style={styles.infoRow}>
                 <MaterialIcons name="event-seat" size={20} color="#11796F" />
                 <Text style={styles.infoLabel}>Total Slots</Text>
