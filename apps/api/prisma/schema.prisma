@@ -307,6 +307,7 @@ enum LocationStatus {
   PENDING
   APPROVED
   REJECTED
+  DISABLED
 }
 
 enum SlotStatus {

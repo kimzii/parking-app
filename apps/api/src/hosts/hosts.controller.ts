@@ -304,6 +304,45 @@ export class HostsController {
     return this.hostsService.deleteParkingLocation(req.user.id, locationId);
   }
 
+  // Toggle parking location (enable/disable)
+  @Put('locations/:id/toggle')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.HOST)
+  @ApiOperation({ summary: 'Toggle parking location (approved/disabled)' })
+  @ApiResponse({ status: 200, description: 'Location status toggled' })
+  async toggleLocation(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) locationId: string,
+  ) {
+    return this.hostsService.toggleParkingLocation(req.user.id, locationId);
+  }
+
+  // Toggle parking space (enable/disable)
+  @Put('spaces/:id/toggle')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.HOST)
+  @ApiOperation({ summary: 'Toggle parking space status (available/disabled)' })
+  @ApiResponse({ status: 200, description: 'Space status toggled' })
+  async toggleSpace(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) spaceId: string,
+  ) {
+    return this.hostsService.toggleParkingSpace(req.user.id, spaceId);
+  }
+
+  // Delete parking space
+  @Delete('spaces/:id')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.HOST)
+  @ApiOperation({ summary: 'Delete a parking space' })
+  @ApiResponse({ status: 200, description: 'Space deleted successfully' })
+  async deleteSpace(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) spaceId: string,
+  ) {
+    return this.hostsService.deleteParkingSpace(req.user.id, spaceId);
+  }
+
   // Admin endpoints
   @Get('admin/locations')
   @UseGuards(RolesGuard)
