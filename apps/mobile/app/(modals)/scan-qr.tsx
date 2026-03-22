@@ -13,21 +13,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as reservationsService from "../../src/services/reservations";
 
 type ScanMode = "entry" | "exit";
-
-// Try to load expo-camera at module level — returns null if native module missing
-let CameraViewComponent: any = null;
-let useCameraPermissionsHook: any = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const cam = require("expo-camera");
-  CameraViewComponent = cam.CameraView;
-  useCameraPermissionsHook = cam.useCameraPermissions;
-} catch {
-  // Native module not available in this build
-}
 
 function CameraScanner({
   scanned,
@@ -38,7 +27,7 @@ function CameraScanner({
   onBarcodeScanned: (result: { data: string }) => void;
   processing: boolean;
 }) {
-  const [permission, requestPermission] = useCameraPermissionsHook();
+  const [permission, requestPermission] = useCameraPermissions();
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -71,7 +60,7 @@ function CameraScanner({
 
   return (
     <View style={styles.cameraContainer}>
-      <CameraViewComponent
+      <CameraView
         style={styles.camera}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
@@ -100,9 +89,7 @@ export default function ScanQRScreen() {
   const [processing, setProcessing] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>("entry");
   const [manualCode, setManualCode] = useState("");
-  const [showManualInput, setShowManualInput] = useState(
-    !CameraViewComponent,
-  );
+  const [showManualInput, setShowManualInput] = useState(false);
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned || processing) return;
@@ -155,7 +142,7 @@ export default function ScanQRScreen() {
       Alert.alert("Error", "Please enter a QR code");
       return;
     }
-    await processQRCode(manualCode.trim().toUpperCase());
+    await processQRCode(manualCode.trim());
   };
 
   const resetScanner = () => {
@@ -236,7 +223,7 @@ export default function ScanQRScreen() {
               autoCorrect={false}
             />
             <View style={styles.manualInputButtons}>
-              {CameraViewComponent && (
+              {(
                 <TouchableOpacity
                   style={styles.cancelBtn}
                   onPress={() => {
