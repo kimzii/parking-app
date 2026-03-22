@@ -12,6 +12,11 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as reservationsService from "../../src/services/reservations";
 
+const VEHICLE_IMAGES: Record<string, any> = {
+  CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
+  MOTORCYCLE: require("../../assets/images/ParkUp UI/scooter_16804043.png"),
+};
+
 const STATUS_CONFIG: Record<
   string,
   { color: string; bg: string; label: string; icon: string }
@@ -142,10 +147,13 @@ export default function HostReservationDetailScreen() {
               <>
                 <View style={styles.vehicleHeader}>
                   <View style={styles.vehicleIconBg}>
-                    <MaterialIcons
-                      name="directions-car"
-                      size={24}
-                      color="#11796F"
+                    <Image
+                      source={
+                        VEHICLE_IMAGES[
+                          reservation.driver.vehicle.vehicleType ?? "CAR"
+                        ] || VEHICLE_IMAGES.CAR
+                      }
+                      style={styles.vehiclePng}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -440,6 +448,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F5F3",
     justifyContent: "center",
     alignItems: "center",
+  },
+  vehiclePng: {
+    width: 28,
+    height: 28,
+    tintColor: "#11796F",
   },
   vehicleName: {
     fontSize: 16,

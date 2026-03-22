@@ -186,6 +186,7 @@ model Reservation {
   id                  String             @id @default(uuid()) @db.Uuid
   driverId            String             @map("driver_id") @db.Uuid
   parkingSpaceId      String             @map("parking_space_id") @db.Uuid
+  vehicleId           String?            @map("vehicle_id") @db.Uuid
   status              ReservationStatus  @default(PENDING)
   qrCode              String?            @map("qr_code")
   qrCodeSecret        String?            @map("qr_code_secret")

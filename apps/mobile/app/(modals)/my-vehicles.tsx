@@ -190,12 +190,7 @@ export default function MyVehiclesScreen() {
     const details = [item.brand, item.model].filter(Boolean).join(" ");
     return (
       <View style={styles.card}>
-        <View
-          style={[
-            styles.cardSvgContainer,
-            { backgroundColor: item.color || "#11796F" },
-          ]}
-        >
+        <View style={styles.cardSvgContainer}>
           <Image
             source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
             style={styles.vehicleImage}
@@ -610,6 +605,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopLeftRadius: 16,
     borderBottomLeftRadius: 16,
+    backgroundColor: "#E8F5F3",
   },
   vehicleImage: {
     width: 52,
