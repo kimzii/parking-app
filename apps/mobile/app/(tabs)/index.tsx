@@ -179,7 +179,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Quick Stats */}
-      <View style={styles.statsRow}>
+      {/* <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <View style={[styles.statIcon, { backgroundColor: "#E8F5F3" }]}>
             <MaterialIcons name="local-parking" size={20} color="#11796F" />
@@ -192,11 +192,6 @@ export default function HomeScreen() {
           onPress={() => router.navigate("/(tabs)/map" as any)}
           activeOpacity={0.7}
         >
-          <View style={[styles.statIcon, { backgroundColor: "#E3F2FD" }]}>
-            <MaterialIcons name="map" size={20} color="#1976D2" />
-          </View>
-          <Text style={styles.statValue}>Map</Text>
-          <Text style={styles.statLabel}>View Map</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statCard}
@@ -209,7 +204,7 @@ export default function HomeScreen() {
           <Text style={styles.statValue}>{activeBookings.length}</Text>
           <Text style={styles.statLabel}>Bookings</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       {/* Active Booking Card */}
       {activeBookings.length > 0 && (
@@ -325,7 +320,7 @@ export default function HomeScreen() {
 
       {/* Section Title */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Available Parking Spaces</Text>
+        <Text style={styles.sectionTitle}>Parking Spaces Near You</Text>
         <Text style={styles.sectionCount}>
           {spots.length} spot{spots.length !== 1 ? "s" : ""}
         </Text>
