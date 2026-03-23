@@ -260,6 +260,11 @@ export default function BookSpotScreen() {
   const availableSpaces = spot.parkingSpaces.filter(
     (s) => s.status === "AVAILABLE",
   );
+  const occupiedCount = spot.parkingSpaces.filter(
+    (s) => s.status === "OCCUPIED",
+  ).length;
+
+  const hasLevels = spot.parkingSpaces.some((s) => s.levelNumber != null);
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -291,8 +296,8 @@ export default function BookSpotScreen() {
           )}
           {spot.is24Hours && (
             <View style={styles.hoursRow}>
-              <MaterialIcons name="access-time" size={16} color="#4CAF50" />
-              <Text style={[styles.hoursText, { color: "#4CAF50" }]}>
+              <MaterialIcons name="access-time" size={16} color="#A09A94" />
+              <Text style={[styles.hoursText, { color: "#A09A94" }]}>
                 Open 24 Hours
               </Text>
             </View>
@@ -444,15 +449,94 @@ export default function BookSpotScreen() {
 
         {/* Select Slot */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Select a Parking Slot ({availableSpaces.length} available)
-          </Text>
+          <View style={styles.slotsHeader}>
+            <Text style={styles.sectionTitle}>Select a Parking Slot</Text>
+            <View style={styles.slotsSummaryRow}>
+              <View style={styles.slotsSummaryItem}>
+                <View style={styles.slotsSummaryDotFree} />
+                <Text style={styles.slotsSummaryText}>
+                  {availableSpaces.length} Free
+                </Text>
+              </View>
+              <View style={styles.slotsSummaryItem}>
+                <View style={styles.slotsSummaryDotOccupied} />
+                <Text style={styles.slotsSummaryText}>
+                  {occupiedCount} Occupied
+                </Text>
+              </View>
+            </View>
+          </View>
           {availableSpaces.length === 0 ? (
             <View style={styles.noSlotsCard}>
               <MaterialIcons name="event-busy" size={32} color="#A09A94" />
               <Text style={styles.noSlotsText}>
                 No available slots at this location
               </Text>
+            </View>
+          ) : hasLevels ? (
+            <View style={{ gap: 16 }}>
+              {(() => {
+                const levelMap = new Map<number, ParkingSpace[]>();
+                availableSpaces.forEach((s) => {
+                  const lvl = s.levelNumber ?? 0;
+                  if (!levelMap.has(lvl)) levelMap.set(lvl, []);
+                  levelMap.get(lvl)!.push(s);
+                });
+                const sortedLevels = [...levelMap.keys()].sort((a, b) => a - b);
+                return sortedLevels.map((level) => {
+                  const levelSpaces = levelMap.get(level)!;
+                  return (
+                    <View key={level} style={{ gap: 8 }}>
+                      <Text style={styles.floorLabel}>
+                        Floor {level}
+                      </Text>
+                      <View style={styles.slotsGrid}>
+                        {levelSpaces.map((space) => {
+                          const isSelected = selectedSpace?.id === space.id;
+                          return (
+                            <TouchableOpacity
+                              key={space.id}
+                              style={[
+                                styles.slotCell,
+                                isSelected && styles.slotCellSelected,
+                              ]}
+                              onPress={() => setSelectedSpace(space)}
+                              activeOpacity={0.7}
+                            >
+                              <MaterialIcons
+                                name={
+                                  isSelected ? "check-circle" : "event-seat"
+                                }
+                                size={20}
+                                color={isSelected ? "#fff" : "#D4501E"}
+                              />
+                              <Text
+                                style={[
+                                  styles.slotNumber,
+                                  isSelected && styles.slotNumberSelected,
+                                ]}
+                              >
+                                {space.name || `Slot ${space.slotNumber}`}
+                              </Text>
+                              {space.description && (
+                                <Text
+                                  style={[
+                                    styles.slotDesc,
+                                    isSelected && styles.slotDescSelected,
+                                  ]}
+                                  numberOfLines={2}
+                                >
+                                  {space.description}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                });
+              })()}
             </View>
           ) : (
             <View style={styles.slotsGrid}>
@@ -471,7 +555,7 @@ export default function BookSpotScreen() {
                     <MaterialIcons
                       name={isSelected ? "check-circle" : "event-seat"}
                       size={20}
-                      color={isSelected ? "#fff" : "#4CAF50"}
+                      color={isSelected ? "#fff" : "#D4501E"}
                     />
                     <Text
                       style={[
@@ -490,16 +574,6 @@ export default function BookSpotScreen() {
                         numberOfLines={2}
                       >
                         {space.description}
-                      </Text>
-                    )}
-                    {space.levelNumber && (
-                      <Text
-                        style={[
-                          styles.slotLevel,
-                          isSelected && styles.slotLevelSelected,
-                        ]}
-                      >
-                        Floor {space.levelNumber}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -662,7 +736,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F5F5",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -680,7 +754,7 @@ const styles = StyleSheet.create({
   walletCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F5F5",
     borderRadius: 14,
     padding: 14,
     marginBottom: 20,
@@ -706,6 +780,12 @@ const styles = StyleSheet.create({
     color: "#232230",
     marginBottom: 12,
   },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#A09A94",
+    marginTop: -8,
+    marginBottom: 8,
+  },
 
   // No slots
   noSlotsCard: {
@@ -719,15 +799,48 @@ const styles = StyleSheet.create({
 
   // Slots Grid
   slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  slotsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  slotsSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  slotsSummaryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  slotsSummaryText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#A09A94",
+  },
+  slotsSummaryDotFree: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50",
+  },
+  slotsSummaryDotOccupied: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#D4501E",
+  },
   slotCell: {
     width: 100,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F5F5",
     borderRadius: 12,
     padding: 12,
     alignItems: "center",
     gap: 4,
     borderWidth: 2,
-    borderColor: "#E8F5E9",
+    borderColor: "#F5F5F5",
   },
   slotCellSelected: {
     backgroundColor: "#D4501E",
@@ -736,7 +849,7 @@ const styles = StyleSheet.create({
   slotNumber: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#4CAF50",
+    color: "#232230",
     textAlign: "center",
   },
   slotNumberSelected: { color: "#fff" },
@@ -744,6 +857,12 @@ const styles = StyleSheet.create({
   slotDescSelected: { color: "rgba(255,255,255,0.8)" },
   slotLevel: { fontSize: 10, color: "#A09A94" },
   slotLevelSelected: { color: "rgba(255,255,255,0.8)" },
+  floorLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#232230",
+    marginLeft: 4,
+  },
 
   // Summary Card
   summaryCard: {
@@ -789,7 +908,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F5F5",
     justifyContent: "center",
     alignItems: "center",
   },
