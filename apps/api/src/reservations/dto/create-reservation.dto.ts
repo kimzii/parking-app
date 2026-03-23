@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateReservationDto {
   @IsUUID()
