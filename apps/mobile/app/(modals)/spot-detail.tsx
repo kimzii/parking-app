@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 20,
-    paddingBottom: 140,
+    paddingBottom: 110,
   },
 
   // Title Section

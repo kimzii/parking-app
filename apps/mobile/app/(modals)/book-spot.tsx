@@ -51,6 +51,16 @@ interface SpotDetail {
   parkingSpaces: ParkingSpace[];
 }
 
+function formatTime(time: string): string {
+  const [hourStr, minuteStr] = time.split(":");
+  let hour = parseInt(hourStr, 10);
+  const minute = minuteStr || "00";
+  const period = hour >= 12 ? "PM" : "AM";
+  if (hour === 0) hour = 12;
+  else if (hour > 12) hour -= 12;
+  return `${hour}:${minute.padStart(2, "0")} ${period}`;
+}
+
 export default function BookSpotScreen() {
   const { id: locationId } = useLocalSearchParams<{ id: string }>();
   const [spot, setSpot] = useState<SpotDetail | null>(null);
@@ -290,7 +300,7 @@ export default function BookSpotScreen() {
             <View style={styles.hoursRow}>
               <MaterialIcons name="access-time" size={16} color="#A09A94" />
               <Text style={styles.hoursText}>
-                Hours: {spot.openTime} - {spot.closeTime}
+                Hours: {formatTime(spot.openTime)} - {formatTime(spot.closeTime)}
               </Text>
             </View>
           )}
