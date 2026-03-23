@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
@@ -102,12 +102,18 @@ function minDistanceToRoute(
 }
 
 export default function NavigateToSpotScreen() {
-  const { lat, lng, title, address } = useLocalSearchParams<{
+  const { lat, lng, title, address, vehicleType } = useLocalSearchParams<{
     lat: string;
     lng: string;
     title: string;
     address: string;
+    vehicleType?: string;
   }>();
+
+  const isMoto = /motor|moto|bike|motorcycle/i.test(vehicleType ?? "");
+  const vehicleIcon: keyof typeof MaterialIcons.glyphMap = isMoto
+    ? "two-wheeler"
+    : "directions-car";
 
   const destLat = parseFloat(lat || "0");
   const destLng = parseFloat(lng || "0");
@@ -320,6 +326,7 @@ export default function NavigateToSpotScreen() {
     return "straight";
   };
 
+  const insets = useSafeAreaInsets();
   const currentStep = directions?.steps[currentStepIndex];
   const nextStepInfo =
     directions && currentStepIndex < directions.steps.length - 1
@@ -327,25 +334,64 @@ export default function NavigateToSpotScreen() {
       : null;
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <Stack.Screen
-        options={{
-          title: "Navigation",
-          headerRight: () =>
-            directions ? (
-              <TouchableOpacity
-                onPress={handleRecenter}
-                style={{ marginRight: 8 }}
-              >
-                <MaterialIcons name="my-location" size={24} color="#D4501E" />
-              </TouchableOpacity>
-            ) : null,
-        }}
-      />
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Current step instruction banner (over the map like Google Maps) */}
+      {/* Full-screen map */}
+      <MapView
+        ref={mapRef}
+        style={StyleSheet.absoluteFillObject}
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        initialRegion={{
+          latitude: destLat,
+          longitude: destLng,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        }}
+      >
+        <Marker
+          coordinate={{ latitude: destLat, longitude: destLng }}
+          title={title || "Parking Location"}
+          description={address || ""}
+        >
+          <View style={styles.destMarker}>
+            <MaterialIcons name="local-parking" size={20} color="#fff" />
+          </View>
+        </Marker>
+
+        {/* Custom user location marker */}
+        {userLocation && (
+          <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }} flat>
+            <View style={styles.userMarker}>
+              <MaterialIcons name={vehicleIcon} size={18} color="#fff" />
+            </View>
+          </Marker>
+        )}
+
+        {directions && directions.routeCoords.length > 0 && (
+          <Polyline
+            coordinates={directions.routeCoords}
+            strokeColor="#D4501E"
+            strokeWidth={5}
+          />
+        )}
+      </MapView>
+
+      {/* ── Top overlay row: back + recenter ── */}
+      <View style={[styles.topRow, { top: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <MaterialIcons name="chevron-left" size={32} color="#D4501E" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleRecenter}>
+          <MaterialIcons name="my-location" size={26} color="#D4501E" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Instruction banner (below top row) ── */}
       {directions && currentStep && !error && (
-        <View style={styles.instructionBanner}>
+        <View style={[styles.instructionBanner, { top: insets.top + 58 }]}>
           <View style={styles.instructionIconCircle}>
             <MaterialIcons
               name={getManeuverIcon(currentStep.maneuver)}
@@ -354,9 +400,7 @@ export default function NavigateToSpotScreen() {
             />
           </View>
           <View style={styles.instructionTextContainer}>
-            <Text style={styles.instructionDistance}>
-              {currentStep.distance}
-            </Text>
+            <Text style={styles.instructionDistance}>{currentStep.distance}</Text>
             <Text style={styles.instructionText} numberOfLines={2}>
               {currentStep.instruction}
             </Text>
@@ -364,69 +408,9 @@ export default function NavigateToSpotScreen() {
         </View>
       )}
 
-      {/* Map */}
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-          showsUserLocation
-          showsMyLocationButton={false}
-          initialRegion={{
-            latitude: destLat,
-            longitude: destLng,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-        >
-          {/* Destination marker */}
-          <Marker
-            coordinate={{ latitude: destLat, longitude: destLng }}
-            title={title || "Parking Location"}
-            description={address || ""}
-          >
-            <View style={styles.destMarker}>
-              <MaterialIcons name="local-parking" size={20} color="#fff" />
-            </View>
-          </Marker>
-
-          {/* Route polyline */}
-          {directions && directions.routeCoords.length > 0 && (
-            <Polyline
-              coordinates={directions.routeCoords}
-              strokeColor="#D4501E"
-              strokeWidth={5}
-            />
-          )}
-        </MapView>
-
-        {/* Loading overlay */}
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#D4501E" />
-            <Text style={styles.loadingText}>Calculating route...</Text>
-          </View>
-        )}
-
-        {/* Error overlay */}
-        {error && (
-          <View style={styles.errorOverlay}>
-            <MaterialIcons name="error-outline" size={36} color="#E53935" />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.backBtnText}>Go Back</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Bottom navigation card */}
+      {/* ── Bottom nav card ── */}
       {directions && !error && (
-        <View style={styles.navCard}>
-          {/* Rerouting indicator */}
+        <View style={[styles.navCard, { bottom: Math.max(insets.bottom, 16) + 8 }]}>
           {rerouting && (
             <View style={styles.reroutingBanner}>
               <ActivityIndicator size="small" color="#fff" />
@@ -434,7 +418,6 @@ export default function NavigateToSpotScreen() {
             </View>
           )}
 
-          {/* Summary row */}
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <MaterialIcons name="schedule" size={18} color="#D4501E" />
@@ -447,7 +430,6 @@ export default function NavigateToSpotScreen() {
             </View>
           </View>
 
-          {/* Destination & next step */}
           <View style={styles.destInfo}>
             <MaterialIcons name="local-parking" size={20} color="#D4501E" />
             <View style={styles.destText}>
@@ -462,7 +444,6 @@ export default function NavigateToSpotScreen() {
             </View>
           </View>
 
-          {/* Upcoming step preview */}
           {nextStepInfo && (
             <View style={styles.nextStepContainer}>
               <Text style={styles.nextStepLabel}>Then</Text>
@@ -481,14 +462,58 @@ export default function NavigateToSpotScreen() {
           )}
         </View>
       )}
-    </SafeAreaView>
+
+      {/* ── Loading overlay ── */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#D4501E" />
+          <Text style={styles.loadingText}>Calculating route...</Text>
+        </View>
+      )}
+
+      {/* ── Error overlay ── */}
+      {error && (
+        <View style={styles.errorOverlay}>
+          <MaterialIcons name="error-outline" size={36} color="#E53935" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  mapContainer: { flex: 1, position: "relative" },
-  map: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#000" },
+
+  // Top overlay row
+  topRow: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  // User location marker (vehicle icon)
+  userMarker: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#232230",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
 
   // Destination marker
   destMarker: {
@@ -541,17 +566,20 @@ const styles = StyleSheet.create({
 
   // Bottom navigation card
   navCard: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
+  position: "absolute",
+  left: 16,
+  right: 16,
+  bottom: 24,
+  backgroundColor: "#fff",
+  borderRadius: 20,
+  paddingHorizontal: 18,
+  paddingTop: 16,
+  paddingBottom: 16,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.15,
+  shadowRadius: 16,
+  elevation: 14,
   },
 
   // Rerouting banner
@@ -600,7 +628,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: "#F0FAF9",
+    backgroundColor: "#F5F4F2",
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -609,14 +637,23 @@ const styles = StyleSheet.create({
   destTitle: { fontSize: 15, fontWeight: "700", color: "#232230" },
   destAddress: { fontSize: 12, color: "#A09A94", marginTop: 2 },
 
-  // Top instruction banner (Google Maps style)
+  // Top instruction banner
   instructionBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#D4501E",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 14,
+  position: "absolute",
+  left: 16,
+  right: 16,
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#D4501E",
+  paddingHorizontal: 16,
+  paddingVertical: 14,
+  gap: 14,
+  borderRadius: 18,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.15,
+  shadowRadius: 10,
+  elevation: 10,
   },
   instructionIconCircle: {
     width: 48,

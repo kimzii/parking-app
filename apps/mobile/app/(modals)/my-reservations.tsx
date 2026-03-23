@@ -29,7 +29,7 @@ const STATUS_CONFIG = {
   },
   ACTIVE: {
     color: "#4CAF50",
-    bg: "#E8F5E9",
+    bg: "#F5F4F2",
     label: "Active",
     icon: "directions-car",
   },

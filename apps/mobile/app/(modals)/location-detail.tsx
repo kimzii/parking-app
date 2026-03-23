@@ -71,7 +71,7 @@ const STATUS_CONFIG = {
   APPROVED: {
     label: "Approved",
     color: "#4CAF50",
-    bg: "#E8F5E9",
+    bg: "#F5F4F2",
     icon: "check-circle" as const,
   },
   PENDING: {
@@ -95,7 +95,7 @@ const STATUS_CONFIG = {
 };
 
 const SLOT_STATUS_CONFIG = {
-  AVAILABLE: { color: "#4CAF50", bg: "#E8F5E9", icon: "event-seat" as const },
+  AVAILABLE: { color: "#4CAF50", bg: "#F5F4F2", icon: "event-seat" as const },
   OCCUPIED: { color: "#D4501E", bg: "#FFF0EC", icon: "event-busy" as const },
   DISABLED: { color: "#9E9E9E", bg: "#F5F5F5", icon: "block" as const },
 };

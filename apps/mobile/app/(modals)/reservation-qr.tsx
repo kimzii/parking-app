@@ -27,7 +27,7 @@ const STATUS_CONFIG: Record<
 > = {
   PENDING: { color: "#D4501E", bg: "#FFF0EC", label: "Awaiting Approval" },
   CONFIRMED: { color: "#1976D2", bg: "#E3F2FD", label: "Awaiting Arrival" },
-  ACTIVE: { color: "#4CAF50", bg: "#E8F5E9", label: "Session Active" },
+  ACTIVE: { color: "#4CAF50", bg: "#F5F4F2", label: "Session Active" },
   COMPLETED: { color: "#A09A94", bg: "#F5F5F5", label: "Completed" },
   CANCELLED: { color: "#E53935", bg: "#FFEBEE", label: "Cancelled" },
   EXPIRED: { color: "#D4501E", bg: "#FFF0EC", label: "Expired" },
@@ -168,6 +168,7 @@ export default function ReservationQRScreen() {
         lng: String(reservation.parkingLocation.longitude),
         title: reservation.parkingLocation.title,
         address: reservation.parkingLocation.address,
+        vehicleType: reservation.vehicle?.vehicleType ?? "",
       },
     });
   };
@@ -380,16 +381,19 @@ export default function ReservationQRScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Session Details</Text>
           <View style={styles.timeCard}>
+            {/* Booked at: date + time with clock icon */}
             <View style={styles.timeRow}>
-              <MaterialIcons name="calendar-today" size={20} color="#D4501E" />
-              <Text style={styles.timeLabel}>Booked</Text>
+              <MaterialIcons name="schedule" size={20} color="#D4501E" />
+              <Text style={styles.timeLabel}>Booked at</Text>
               <Text style={styles.timeValue}>
                 {new Date(
                   reservation.createdAt || reservation.arrivalDeadline,
-                ).toLocaleDateString(undefined, {
-                  weekday: "short",
+                ).toLocaleString([], {
                   month: "short",
                   day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
                 })}
               </Text>
             </View>
@@ -577,7 +581,7 @@ const styles = StyleSheet.create({
   sessionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F4F2",
     borderRadius: 14,
     padding: 16,
     gap: 12,
@@ -656,7 +660,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F4F2",
     alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -730,7 +734,7 @@ const styles = StyleSheet.create({
   // Completed Card
   completedCard: {
     alignItems: "center",
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F4F2",
     borderRadius: 14,
     padding: 24,
     gap: 8,

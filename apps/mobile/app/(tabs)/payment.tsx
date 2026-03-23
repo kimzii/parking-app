@@ -25,7 +25,7 @@ const SOURCE_CONFIG: Record<
     label: "Top Up",
     icon: "add-circle",
     color: "#4CAF50",
-    bg: "#E8F5E9",
+    bg: "#F5F4F2",
   },
   RESERVATION_PAYMENT: {
     label: "Booking Payment",

@@ -187,7 +187,7 @@ export default function HomeScreen() {
       <>
         {/* Active Booking Card */}
         {activeBookings.length > 0 && (
-          <View style={{ marginBottom: 20 }}>
+          <View style={{ marginBottom: 2 }}>
             {activeBookings.map((booking) => {
               const isActive = booking.status === "ACTIVE";
               const isPending = booking.status === "PENDING";
@@ -223,15 +223,24 @@ export default function HomeScreen() {
                   <Text style={styles.bookingTitle} numberOfLines={1}>
                     {booking.parkingLocation.title}
                   </Text>
-                  <Text style={styles.bookingAddress} numberOfLines={1}>
-                    {booking.parkingLocation.address}
-                  </Text>
-                  <View style={styles.bookingMeta}>
-                    <Text style={styles.bookingMetaText}>
-                      Slot{" "}
-                      {booking.parkingSpace.name ||
-                        booking.parkingSpace.slotNumber}
+                  <View style={styles.bookingAddressContainer}>
+                    <Text style={styles.bookingAddress} numberOfLines={1}>
+                      {booking.parkingLocation.address}
                     </Text>
+                  </View>
+                  <View style={styles.bookingMeta}>
+                    <View style={styles.bookingMetaLeft}>
+                      <MaterialIcons
+                        name="event-seat"
+                        size={16}
+                        color="#D4501E"
+                      />
+                      <Text style={styles.bookingMetaText}>
+                        Slot{" "}
+                        {booking.parkingSpace.name ||
+                          booking.parkingSpace.slotNumber}
+                      </Text>
+                    </View>
                     <Text style={styles.bookingMetaDot}>·</Text>
                     <Text style={styles.bookingMetaText}>
                       ₱{Number(booking.totalAmount).toFixed(2)}
@@ -549,10 +558,17 @@ const styles = StyleSheet.create({
 
   // Booking card
   bookingCard: {
-    backgroundColor: "#232230",
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 4,
+  backgroundColor: "#F5F4F2", // soft gray like other surfaces
+  borderRadius: 16,
+  padding: 16,
+  marginTop: 4,
+  shadowColor: "#232230",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  elevation: 3,
+  borderWidth: 1,
+  borderColor: "#D4501E", // orange border to stand out
   },
   bookingCardTop: {
     flexDirection: "row",
@@ -574,22 +590,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4501E",
   },
   dotPending: {
-    backgroundColor: "#D1D1CF",
+    backgroundColor: "#FFC9AE",
   },
   bookingStatusText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#D1D1CF",
+    color: "#D4501E",
   },
   bookingTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#232230",
+  },
+  bookingAddressContainer: {
+    marginTop: 3,
   },
   bookingAddress: {
     fontSize: 13,
     color: "#A09A94",
-    marginTop: 3,
   },
   bookingMeta: {
     flexDirection: "row",
@@ -597,13 +615,18 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 10,
   },
+  bookingMetaLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   bookingMetaText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#D1D1CF",
+  color: "#D4501E",
   },
   bookingMetaDot: {
     fontSize: 13,
-    color: "#A09A94",
+  color: "#A09A94",
   },
 });

@@ -24,7 +24,7 @@ interface ParkingLocation {
 }
 
 const STATUS_CONFIG = {
-  APPROVED: { label: "Approved", color: "#4CAF50", bg: "#E8F5E9" },
+  APPROVED: { label: "Approved", color: "#4CAF50", bg: "#F5F4F2" },
   PENDING: { label: "Pending", color: "#D4501E", bg: "#FFF0EC" },
   REJECTED: { label: "Rejected", color: "#E53935", bg: "#FFEBEE" },
   DISABLED: { label: "Disabled", color: "#A09A94", bg: "#F5F5F5" },

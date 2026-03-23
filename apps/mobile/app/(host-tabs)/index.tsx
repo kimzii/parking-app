@@ -34,7 +34,7 @@ const STATUS_CONFIG: Record<
   },
   ACTIVE: {
     color: "#4CAF50",
-    bg: "#E8F5E9",
+    bg: "#F5F4F2",
     label: "Active",
     icon: "directions-car",
   },
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 11, fontWeight: "600" },
   slotBadge: {
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F4F2",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "#F5F4F2",
     justifyContent: "center",
     alignItems: "center",
   },
