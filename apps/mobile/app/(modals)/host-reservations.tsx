@@ -266,7 +266,7 @@ export default function HostReservationsScreen() {
             }
             activeOpacity={0.7}
           >
-            <MaterialIcons name="star-outline" size={14} color="#FFB300" />
+            <MaterialIcons name="star" size={16} color="#FFB300" />
             <Text style={styles.reviewBtnText}>Rate Driver</Text>
           </TouchableOpacity>
         )}
@@ -503,16 +503,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 6,
     backgroundColor: "#FFF8E1",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
     marginTop: 12,
-    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
   },
   reviewBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     color: "#FFB300",
   },

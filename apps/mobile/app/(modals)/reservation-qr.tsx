@@ -496,6 +496,27 @@ export default function ReservationQRScreen() {
           </View>
         )}
 
+        {/* Leave a Review */}
+        {reservation.status === "COMPLETED" && (
+          <TouchableOpacity
+            style={styles.reviewBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/(modals)/leave-review",
+                params: {
+                  reservationId: reservation.id,
+                  locationTitle: reservation.parkingLocation.title,
+                  reviewType: "driver",
+                },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="star" size={20} color="#FFB300" />
+            <Text style={styles.reviewBtnText}>Leave a Review</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Expired Message */}
         {reservation.status === "EXPIRED" && (
           <View style={styles.expiredCard}>
@@ -729,4 +750,23 @@ const styles = StyleSheet.create({
   },
   expiredTitle: { fontSize: 17, fontWeight: "700", color: "#F57C00" },
   expiredText: { fontSize: 14, color: "#666", textAlign: "center" },
+
+  // Review Button
+  reviewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+  },
+  reviewBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFB300",
+  },
 });

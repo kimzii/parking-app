@@ -6,9 +6,10 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as reservationsService from "../../src/services/reservations";
 
@@ -325,6 +326,27 @@ export default function HostReservationDetailScreen() {
               )}
           </View>
         </View>
+
+        {/* Rate Driver */}
+        {reservation.status === "COMPLETED" && (
+          <TouchableOpacity
+            style={styles.reviewBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/(modals)/leave-review",
+                params: {
+                  reservationId: reservation.id,
+                  locationTitle: reservation.driver?.name || "Driver",
+                  reviewType: "host",
+                },
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="star" size={20} color="#FFB300" />
+            <Text style={styles.reviewBtnText}>Rate Driver</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -542,5 +564,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",
+  },
+
+  // Review Button
+  reviewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFF8E1",
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+  },
+  reviewBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFB300",
   },
 });

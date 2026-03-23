@@ -7,6 +7,9 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -56,6 +59,29 @@ export default function PaymentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDriverVerified, setIsDriverVerified] = useState(true);
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpLoading, setTopUpLoading] = useState(false);
+
+  const handleTopUp = async () => {
+    const amount = parseFloat(topUpAmount);
+    if (isNaN(amount) || amount < 1) {
+      Alert.alert("Invalid Amount", "Please enter an amount of at least ₱1.");
+      return;
+    }
+    setTopUpLoading(true);
+    try {
+      await walletService.topUp(amount);
+      setShowTopUp(false);
+      setTopUpAmount("");
+      await fetchData();
+      Alert.alert("Success", `₱${amount.toFixed(2)} has been added to your wallet.`);
+    } catch {
+      Alert.alert("Error", "Top up failed. Please try again.");
+    } finally {
+      setTopUpLoading(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -180,7 +206,7 @@ export default function PaymentScreen() {
           ]}
           onPress={() =>
             isDriverVerified
-              ? router.push("/(modals)/top-up")
+              ? setShowTopUp(true)
               : router.push("/(modals)/driver-verification")
           }
           activeOpacity={0.8}
@@ -240,6 +266,100 @@ export default function PaymentScreen() {
           />
         )}
       </View>
+
+      {/* Top Up Modal */}
+      <Modal
+        visible={showTopUp}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowTopUp(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Top Up Wallet</Text>
+              <TouchableOpacity onPress={() => setShowTopUp(false)}>
+                <MaterialIcons name="close" size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Balance Info */}
+            <View style={styles.modalBalanceCard}>
+              <View style={styles.modalBalanceRow}>
+                <View style={styles.modalWalletIcon}>
+                  <MaterialIcons name="account-balance-wallet" size={20} color="#fff" />
+                </View>
+                <Text style={styles.modalBalanceLabel}>Current Balance</Text>
+              </View>
+              <Text style={styles.modalBalanceAmount}>₱ {balance.toFixed(2)}</Text>
+            </View>
+
+            {/* Amount Input */}
+            <Text style={styles.modalSectionTitle}>Enter Amount</Text>
+            <View style={styles.modalInputCard}>
+              <View style={styles.modalInputRow}>
+                <Text style={styles.modalCurrencySymbol}>₱</Text>
+                <TextInput
+                  style={styles.modalAmountInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#C7C7CC"
+                  keyboardType="decimal-pad"
+                  value={topUpAmount}
+                  onChangeText={setTopUpAmount}
+                  autoFocus
+                />
+              </View>
+            </View>
+
+            {/* Preset Amounts */}
+            <Text style={styles.modalSectionTitle}>Quick Select</Text>
+            <View style={styles.modalPresetGrid}>
+              {[50, 100, 200, 500, 1000, 2000].map((preset) => {
+                const isSelected = topUpAmount === preset.toString();
+                return (
+                  <TouchableOpacity
+                    key={preset}
+                    style={[styles.modalPresetBtn, isSelected && styles.modalPresetBtnSelected]}
+                    onPress={() => setTopUpAmount(preset.toString())}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.modalPresetText, isSelected && styles.modalPresetTextSelected]}>
+                      ₱{preset.toLocaleString()}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Notice */}
+            <View style={styles.modalNotice}>
+              <MaterialIcons name="info-outline" size={18} color="#F57C00" />
+              <Text style={styles.modalNoticeText}>
+                This is a simulated top-up. No real payment will be processed.
+              </Text>
+            </View>
+
+            {/* Top Up Button */}
+            <TouchableOpacity
+              style={[styles.modalActionBtn, (!topUpAmount || topUpLoading) && styles.modalActionBtnDisabled]}
+              onPress={handleTopUp}
+              activeOpacity={0.8}
+              disabled={!topUpAmount || topUpLoading}
+            >
+              {topUpLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <MaterialIcons name="add-circle" size={22} color="#fff" />
+                  <Text style={styles.modalActionBtnText}>
+                    Top Up{topUpAmount ? ` ₱${parseFloat(topUpAmount).toLocaleString()}` : ""}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -421,5 +541,167 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8E8E93",
     marginTop: 2,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end" as const,
+  },
+  modalContent: {
+    backgroundColor: "#F8FAFB",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 60,
+  },
+  modalHeader: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800" as const,
+    color: "#1A1A2E",
+  },
+  modalBalanceCard: {
+    backgroundColor: "#11796F",
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 20,
+  },
+  modalBalanceRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+  },
+  modalWalletIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+  },
+  modalBalanceLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600" as const,
+  },
+  modalBalanceAmount: {
+    fontSize: 28,
+    fontWeight: "800" as const,
+    color: "#fff",
+    marginTop: 6,
+    letterSpacing: -0.5,
+  },
+  modalSectionTitle: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: "#8E8E93",
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+    marginLeft: 4,
+    marginBottom: 10,
+  },
+  modalInputCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  modalInputRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+  },
+  modalCurrencySymbol: {
+    fontSize: 28,
+    fontWeight: "800" as const,
+    color: "#11796F",
+  },
+  modalAmountInput: {
+    flex: 1,
+    fontSize: 28,
+    fontWeight: "800" as const,
+    color: "#1A1A2E",
+    padding: 0,
+  },
+  modalPresetGrid: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 10,
+    marginBottom: 20,
+  },
+  modalPresetBtn: {
+    width: "31%" as any,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center" as const,
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+  },
+  modalPresetBtnSelected: {
+    backgroundColor: "#E8F5F3",
+    borderColor: "#11796F",
+  },
+  modalPresetText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#1A1A2E",
+  },
+  modalPresetTextSelected: {
+    color: "#11796F",
+  },
+  modalNotice: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    marginBottom: 20,
+  },
+  modalNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#F57C00",
+    fontWeight: "500" as const,
+    lineHeight: 18,
+  },
+  modalActionBtn: {
+    backgroundColor: "#11796F",
+    borderRadius: 14,
+    paddingVertical: 16,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    shadowColor: "#11796F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  modalActionBtnDisabled: {
+    backgroundColor: "#B0BEC5",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  modalActionBtnText: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
 });
