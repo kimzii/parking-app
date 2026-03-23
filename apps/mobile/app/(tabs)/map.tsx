@@ -254,7 +254,7 @@ export default function MapScreen() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={handleSearch}>
-              <MaterialIcons name="arrow-forward" size={20} color="#D4501E" />
+              <MaterialIcons name="arrow-forward" size={20} color="#F5470D" />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -264,7 +264,7 @@ export default function MapScreen() {
           {loading ? (
             <ActivityIndicator
               size="large"
-              color="#D4501E"
+              color="#F5470D"
               style={{ flex: 1 }}
             />
           ) : (
@@ -407,9 +407,6 @@ export default function MapScreen() {
               <Text style={styles.viewDetailsBtnText}>
                 {isDriverVerified ? "View Details" : "Verify to View Details"}
               </Text>
-              {isDriverVerified && (
-                <MaterialIcons name="arrow-forward" size={16} color="#fff" />
-              )}
             </TouchableOpacity>
           </View>
         )}

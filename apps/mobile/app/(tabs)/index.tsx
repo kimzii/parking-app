@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   // Spot card
   spotCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 12,
     flexDirection: "row",
     overflow: "hidden",
     shadowColor: "#232230",
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   spotContent: {
     flex: 1,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     justifyContent: "space-between",
   },
   spotTitle: {
