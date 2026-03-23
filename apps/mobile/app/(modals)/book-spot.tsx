@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -235,7 +235,7 @@ export default function BookSpotScreen() {
         <Stack.Screen options={{ title: "Book Parking" }} />
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 60 }}
         />
       </SafeAreaView>
@@ -277,13 +277,13 @@ export default function BookSpotScreen() {
               ₱{Number(spot.basePricePerHour).toFixed(2)}/hour
             </Text>
             <View style={styles.payAsYouGoBadge}>
-              <MaterialIcons name="timer" size={14} color="#11796F" />
+              <MaterialIcons name="timer" size={14} color="#D4501E" />
               <Text style={styles.payAsYouGoText}>Pay-as-you-go</Text>
             </View>
           </View>
           {!spot.is24Hours && spot.openTime && spot.closeTime && (
             <View style={styles.hoursRow}>
-              <MaterialIcons name="access-time" size={16} color="#8E8E93" />
+              <MaterialIcons name="access-time" size={16} color="#A09A94" />
               <Text style={styles.hoursText}>
                 Hours: {spot.openTime} - {spot.closeTime}
               </Text>
@@ -309,7 +309,7 @@ export default function BookSpotScreen() {
           <MaterialIcons
             name="account-balance-wallet"
             size={24}
-            color={hasInsufficientBalance ? "#E53935" : "#11796F"}
+            color={hasInsufficientBalance ? "#E53935" : "#D4501E"}
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.walletLabel}>Wallet Balance</Text>
@@ -361,7 +361,7 @@ export default function BookSpotScreen() {
                   <Text style={styles.vehicleColor}>{vehicles[0].color}</Text>
                 )}
               </View>
-              <MaterialIcons name="check-circle" size={22} color="#11796F" />
+              <MaterialIcons name="check-circle" size={22} color="#D4501E" />
             </View>
           </View>
         )}
@@ -449,7 +449,7 @@ export default function BookSpotScreen() {
           </Text>
           {availableSpaces.length === 0 ? (
             <View style={styles.noSlotsCard}>
-              <MaterialIcons name="event-busy" size={32} color="#8E8E93" />
+              <MaterialIcons name="event-busy" size={32} color="#A09A94" />
               <Text style={styles.noSlotsText}>
                 No available slots at this location
               </Text>
@@ -577,7 +577,7 @@ export default function BookSpotScreen() {
                   <View style={styles.stepCircle}>
                     <Text style={styles.stepNum}>{i + 1}</Text>
                   </View>
-                  <MaterialIcons name={step.icon} size={20} color="#11796F" />
+                  <MaterialIcons name={step.icon} size={20} color="#D4501E" />
                   <Text style={styles.stepText}>{step.text}</Text>
                 </View>
               ))}
@@ -622,7 +622,7 @@ export default function BookSpotScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 100 },
   errorContainer: {
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  errorText: { fontSize: 16, color: "#1A1A2E", fontWeight: "600" },
+  errorText: { fontSize: 16, color: "#232230", fontWeight: "600" },
 
   // Spot Info
   spotInfo: {
@@ -648,16 +648,16 @@ const styles = StyleSheet.create({
   spotTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 4,
   },
-  spotAddress: { fontSize: 14, color: "#8E8E93", marginBottom: 8 },
+  spotAddress: { fontSize: 14, color: "#A09A94", marginBottom: 8 },
   rateRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-  priceText: { fontSize: 16, fontWeight: "700", color: "#11796F" },
+  priceText: { fontSize: 16, fontWeight: "700", color: "#D4501E" },
   payAsYouGoBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -667,14 +667,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  payAsYouGoText: { fontSize: 11, fontWeight: "700", color: "#11796F" },
+  payAsYouGoText: { fontSize: 11, fontWeight: "700", color: "#D4501E" },
   hoursRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginTop: 8,
   },
-  hoursText: { fontSize: 13, color: "#8E8E93" },
+  hoursText: { fontSize: 13, color: "#A09A94" },
 
   // Wallet Card
   walletCard: {
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
   },
   walletCardWarning: { backgroundColor: "#FFEBEE" },
   walletLabel: { fontSize: 12, color: "#666", fontWeight: "600" },
-  walletBalance: { fontSize: 18, fontWeight: "800", color: "#11796F" },
+  walletBalance: { fontSize: 18, fontWeight: "800", color: "#D4501E" },
   walletBalanceWarning: { color: "#E53935" },
   topUpBtn: {
     backgroundColor: "#E53935",
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 12,
   },
 
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  noSlotsText: { fontSize: 14, color: "#8E8E93", textAlign: "center" },
+  noSlotsText: { fontSize: 14, color: "#A09A94", textAlign: "center" },
 
   // Slots Grid
   slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
@@ -730,8 +730,8 @@ const styles = StyleSheet.create({
     borderColor: "#E8F5E9",
   },
   slotCellSelected: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
   slotNumber: {
     fontSize: 13,
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
   slotNumberSelected: { color: "#fff" },
   slotDesc: { fontSize: 10, color: "#666", textAlign: "center" },
   slotDescSelected: { color: "rgba(255,255,255,0.8)" },
-  slotLevel: { fontSize: 10, color: "#8E8E93" },
+  slotLevel: { fontSize: 10, color: "#A09A94" },
   slotLevelSelected: { color: "rgba(255,255,255,0.8)" },
 
   // Summary Card
@@ -761,14 +761,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  summaryLabel: { fontSize: 14, color: "#8E8E93" },
-  summaryValue: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  summaryLabel: { fontSize: 14, color: "#A09A94" },
+  summaryValue: { fontSize: 14, fontWeight: "600", color: "#232230" },
   divider: { height: 1, backgroundColor: "#E0E0E0", marginVertical: 10 },
-  totalLabel: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  totalValue: { fontSize: 18, fontWeight: "800", color: "#11796F" },
+  totalLabel: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  totalValue: { fontSize: 18, fontWeight: "800", color: "#D4501E" },
   summaryNote: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 8,
     fontStyle: "italic",
   },
@@ -793,8 +793,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  stepNum: { fontSize: 11, fontWeight: "700", color: "#11796F" },
-  stepText: { fontSize: 13, color: "#1A1A2E", flex: 1 },
+  stepNum: { fontSize: 11, fontWeight: "700", color: "#D4501E" },
+  stepText: { fontSize: 13, color: "#232230", flex: 1 },
 
   // Footer
   footer: {
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 14,
     paddingVertical: 16,
   },
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 8,
     borderWidth: 2,
-    borderColor: "#E8F5F3",
+    borderColor: "#FFF0EC",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -838,14 +838,14 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   vehicleCardSelected: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
   vehicleIconBg: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center" as const,
     alignItems: "center" as const,
   },
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
   vehicleName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: "#1A1A2E",
+    color: "#232230",
   },
   vehicleNameSelected: {
     color: "#fff",
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   vehiclePlate: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   vehiclePlateSelected: {
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   },
   vehicleColor: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 1,
   },
   vehicleColorSelected: {

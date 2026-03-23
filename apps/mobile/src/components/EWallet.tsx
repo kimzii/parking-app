@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ImageBackground,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
@@ -18,24 +17,10 @@ interface EWalletProps {
 export const EWallet: React.FC<EWalletProps> = ({
   balance,
   onTopUp,
-  onWithdraw,
   locked,
 }) => {
   return (
-    <ImageBackground
-      source={require("../../assets/images/coin.png")}
-      style={styles.container}
-      imageStyle={{
-        position: "absolute",
-        right: 0,
-        top: 20,
-        width: "170%",
-        height: "130%",
-        resizeMode: "contain",
-        borderTopRightRadius: 16,
-        borderBottomRightRadius: 16,
-      }}
-    >
+    <View style={styles.container}>
       <View style={styles.topSection}>
         <View style={styles.labelRow}>
           <MaterialIcons name="account-balance-wallet" size={18} color="rgba(255,255,255,0.7)" />
@@ -45,7 +30,7 @@ export const EWallet: React.FC<EWalletProps> = ({
       </View>
       {locked && (
         <View style={styles.lockedBanner}>
-          <MaterialIcons name="lock" size={14} color="#F57C00" />
+          <MaterialIcons name="lock" size={14} color="#D4501E" />
           <Text style={styles.lockedText}>Verify your account to unlock top-up</Text>
         </View>
       )}
@@ -59,18 +44,18 @@ export const EWallet: React.FC<EWalletProps> = ({
           <Text style={styles.buttonText}>{locked ? "Verify to Top Up" : "Top Up"}</Text>
         </TouchableOpacity>
       </View>
-    </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#038A7A",
+    backgroundColor: "#D4501E",
     borderRadius: 20,
     overflow: "hidden",
-    shadowColor: "#038A7A",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 6,
   },
@@ -120,13 +105,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(245,124,0,0.15)",
+    backgroundColor: "rgba(0,0,0,0.1)",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   lockedText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#F57C00",
+    color: "rgba(255,255,255,0.85)",
   },
 });

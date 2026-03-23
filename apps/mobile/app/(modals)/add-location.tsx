@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -395,7 +395,7 @@ export default function AddLocationScreen() {
         >
           {/* Search Bar */}
           <View style={styles.searchBar}>
-            <MaterialIcons name="search" size={20} color="#8E8E93" />
+            <MaterialIcons name="search" size={20} color="#A09A94" />
             <TextInput
               style={styles.searchInput}
               placeholder="Search for an address..."
@@ -407,7 +407,7 @@ export default function AddLocationScreen() {
             />
             {searchQuery ? (
               <TouchableOpacity onPress={handleSearch}>
-                <MaterialIcons name="arrow-forward" size={20} color="#11796F" />
+                <MaterialIcons name="arrow-forward" size={20} color="#D4501E" />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -441,9 +441,9 @@ export default function AddLocationScreen() {
               activeOpacity={0.8}
             >
               {locating ? (
-                <ActivityIndicator size="small" color="#11796F" />
+                <ActivityIndicator size="small" color="#D4501E" />
               ) : (
-                <MaterialIcons name="my-location" size={22} color="#11796F" />
+                <MaterialIcons name="my-location" size={22} color="#D4501E" />
               )}
             </TouchableOpacity>
             {!marker && (
@@ -458,7 +458,7 @@ export default function AddLocationScreen() {
           {/* Selected Address */}
           {address ? (
             <View style={styles.addressCard}>
-              <MaterialIcons name="location-on" size={18} color="#11796F" />
+              <MaterialIcons name="location-on" size={18} color="#D4501E" />
               <Text style={styles.addressText} numberOfLines={2}>
                 {address}
               </Text>
@@ -527,7 +527,7 @@ export default function AddLocationScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchInfo}>
-                <MaterialIcons name="layers" size={20} color="#11796F" />
+                <MaterialIcons name="layers" size={20} color="#D4501E" />
                 <View>
                   <Text style={styles.switchLabel}>Multi-Level Parking</Text>
                   <Text style={styles.switchHint}>
@@ -539,7 +539,7 @@ export default function AddLocationScreen() {
                 value={isMultiLevel}
                 onValueChange={setIsMultiLevel}
                 trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
-                thumbColor={isMultiLevel ? "#11796F" : "#fff"}
+                thumbColor={isMultiLevel ? "#D4501E" : "#fff"}
               />
             </View>
 
@@ -587,7 +587,7 @@ export default function AddLocationScreen() {
                     <MaterialIcons
                       name="info-outline"
                       size={16}
-                      color="#11796F"
+                      color="#D4501E"
                     />
                     <Text style={styles.computedTotalText}>
                       Total: {multiTotalSlots} slots across {levelSlots.length}{" "}
@@ -605,7 +605,7 @@ export default function AddLocationScreen() {
               <>
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <MaterialIcons name="edit" size={20} color="#11796F" />
+                    <MaterialIcons name="edit" size={20} color="#D4501E" />
                     <View>
                       <Text style={styles.switchLabel}>Custom Names</Text>
                       <Text style={styles.switchHint}>
@@ -622,7 +622,7 @@ export default function AddLocationScreen() {
                       }
                     }}
                     trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
-                    thumbColor={useCustomNames ? "#11796F" : "#fff"}
+                    thumbColor={useCustomNames ? "#D4501E" : "#fff"}
                   />
                 </View>
 
@@ -714,7 +714,7 @@ export default function AddLocationScreen() {
 
             <View style={styles.switchRow}>
               <View style={styles.switchInfo}>
-                <MaterialIcons name="schedule" size={20} color="#11796F" />
+                <MaterialIcons name="schedule" size={20} color="#D4501E" />
                 <View>
                   <Text style={styles.switchLabel}>Open 24 Hours</Text>
                   <Text style={styles.switchHint}>
@@ -726,7 +726,7 @@ export default function AddLocationScreen() {
                 value={is24Hours}
                 onValueChange={setIs24Hours}
                 trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
-                thumbColor={is24Hours ? "#11796F" : "#fff"}
+                thumbColor={is24Hours ? "#D4501E" : "#fff"}
               />
             </View>
 
@@ -735,7 +735,7 @@ export default function AddLocationScreen() {
                 <View style={styles.timeInputGroup}>
                   <Text style={styles.timeLabel}>Opens at</Text>
                   <View style={styles.timeInputWrapper}>
-                    <MaterialIcons name="wb-sunny" size={18} color="#11796F" />
+                    <MaterialIcons name="wb-sunny" size={18} color="#D4501E" />
                     <TextInput
                       style={styles.timeInput}
                       placeholder="8"
@@ -767,7 +767,7 @@ export default function AddLocationScreen() {
                   <MaterialIcons
                     name="arrow-forward"
                     size={20}
-                    color="#8E8E93"
+                    color="#A09A94"
                   />
                 </View>
                 <View style={styles.timeInputGroup}>
@@ -776,7 +776,7 @@ export default function AddLocationScreen() {
                     <MaterialIcons
                       name="nights-stay"
                       size={18}
-                      color="#11796F"
+                      color="#D4501E"
                     />
                     <TextInput
                       style={styles.timeInput}
@@ -810,7 +810,7 @@ export default function AddLocationScreen() {
 
             {is24Hours && (
               <View style={styles.allDayBadge}>
-                <MaterialIcons name="all-inclusive" size={18} color="#11796F" />
+                <MaterialIcons name="all-inclusive" size={18} color="#D4501E" />
                 <Text style={styles.allDayText}>Available 24/7</Text>
               </View>
             )}
@@ -824,17 +824,17 @@ export default function AddLocationScreen() {
             </Text>
             <View style={styles.requiredImagesList}>
               <View style={styles.requiredImageItem}>
-                <MaterialIcons name="door-front" size={16} color="#11796F" />
+                <MaterialIcons name="door-front" size={16} color="#D4501E" />
                 <Text style={styles.requiredImageText}>Entrance view</Text>
               </View>
               <View style={styles.requiredImageItem}>
-                <MaterialIcons name="local-parking" size={16} color="#11796F" />
+                <MaterialIcons name="local-parking" size={16} color="#D4501E" />
                 <Text style={styles.requiredImageText}>
                   Actual parking spot
                 </Text>
               </View>
               <View style={styles.requiredImageItem}>
-                <MaterialIcons name="streetview" size={16} color="#11796F" />
+                <MaterialIcons name="streetview" size={16} color="#D4501E" />
                 <Text style={styles.requiredImageText}>Street view</Text>
               </View>
             </View>
@@ -870,7 +870,7 @@ export default function AddLocationScreen() {
                     <MaterialIcons
                       name="photo-library"
                       size={24}
-                      color="#11796F"
+                      color="#D4501E"
                     />
                     <Text style={styles.addImageText}>Gallery</Text>
                   </TouchableOpacity>
@@ -882,7 +882,7 @@ export default function AddLocationScreen() {
                     <MaterialIcons
                       name="camera-alt"
                       size={24}
-                      color="#11796F"
+                      color="#D4501E"
                     />
                     <Text style={styles.addImageText}>Camera</Text>
                   </TouchableOpacity>
@@ -934,7 +934,7 @@ export default function AddLocationScreen() {
                   <MaterialIcons
                     name="check-circle"
                     size={16}
-                    color="#11796F"
+                    color="#D4501E"
                   />
                   <Text style={styles.proofUploadedText}>
                     Document uploaded
@@ -951,7 +951,7 @@ export default function AddLocationScreen() {
                   <MaterialIcons
                     name="photo-library"
                     size={24}
-                    color="#11796F"
+                    color="#D4501E"
                   />
                   <Text style={styles.addImageText}>Gallery</Text>
                 </TouchableOpacity>
@@ -960,7 +960,7 @@ export default function AddLocationScreen() {
                   onPress={takeProofOfResidencePhoto}
                   activeOpacity={0.7}
                 >
-                  <MaterialIcons name="camera-alt" size={24} color="#11796F" />
+                  <MaterialIcons name="camera-alt" size={24} color="#D4501E" />
                   <Text style={styles.addImageText}>Camera</Text>
                 </TouchableOpacity>
               </View>
@@ -995,7 +995,7 @@ export default function AddLocationScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: { padding: 16, paddingBottom: 8, gap: 14 },
   searchBar: {
     flexDirection: "row",
@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     padding: 0,
   },
   mapContainer: {
@@ -1058,21 +1058,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     borderRadius: 12,
     padding: 12,
   },
   addressText: {
     flex: 1,
     fontSize: 13,
-    color: "#1A1A2E",
+    color: "#232230",
     fontWeight: "500",
   },
   formSection: { gap: 14 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -1081,7 +1081,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginLeft: 4,
   },
   input: {
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     borderWidth: 1,
     borderColor: "#E8ECF0",
   },
@@ -1123,18 +1123,18 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   switchHint: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   computedTotal: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1142,7 +1142,7 @@ const styles = StyleSheet.create({
   computedTotalText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#11796F",
+    color: "#D4501E",
   },
 
   // Level slots
@@ -1162,7 +1162,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1176,16 +1176,16 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   levelSlotInput: {
     width: 70,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     textAlign: "center",
     borderWidth: 1,
     borderColor: "#E8ECF0",
@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
   namesFloorLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
     marginLeft: 4,
   },
   namesGrid: {
@@ -1211,13 +1211,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
     fontSize: 14,
-    color: "#1A1A2E",
+    color: "#232230",
     textAlign: "center",
     borderWidth: 1,
     borderColor: "#E8ECF0",
   },
   namePreview: {
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 12,
     gap: 4,
@@ -1225,18 +1225,18 @@ const styles = StyleSheet.create({
   namePreviewLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   namePreviewText: {
     fontSize: 13,
-    color: "#1A1A2E",
+    color: "#232230",
     fontWeight: "500",
   },
 
   // Images
   photoHint: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginLeft: 4,
     marginTop: -6,
   },
@@ -1289,7 +1289,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#11796F",
+    borderColor: "#D4501E",
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
@@ -1299,7 +1299,7 @@ const styles = StyleSheet.create({
   addImageText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#11796F",
+    color: "#D4501E",
   },
 
   // Required images list
@@ -1313,7 +1313,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -1321,7 +1321,7 @@ const styles = StyleSheet.create({
   requiredImageText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#11796F",
+    color: "#D4501E",
   },
 
   // Time availability
@@ -1337,7 +1337,7 @@ const styles = StyleSheet.create({
   timeLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
     marginLeft: 4,
   },
   timeInputWrapper: {
@@ -1355,16 +1355,16 @@ const styles = StyleSheet.create({
     width: 28,
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     textAlign: "center",
   },
   timeColon: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   periodToggle: {
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1373,7 +1373,7 @@ const styles = StyleSheet.create({
   periodText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
   timeDivider: {
     paddingTop: 20,
@@ -1383,14 +1383,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     borderRadius: 12,
     paddingVertical: 14,
   },
   allDayText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
 
   // Proof of residence
@@ -1422,7 +1422,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
@@ -1430,25 +1430,25 @@ const styles = StyleSheet.create({
   proofUploadedText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#11796F",
+    color: "#D4501E",
   },
 
   bottomBar: {
     padding: 16,
     paddingTop: 10,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
   },
   submitButton: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

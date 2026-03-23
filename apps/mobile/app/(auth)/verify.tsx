@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -112,7 +112,7 @@ export default function VerifyScreen() {
 
         <View style={styles.form}>
           <View style={styles.timerContainer}>
-            <Feather name="clock" size={16} color={expirySeconds > 60 ? "#11796F" : "#E53935"} />
+            <Feather name="clock" size={16} color={expirySeconds > 60 ? "#D4501E" : "#E53935"} />
             <Text style={[styles.timerText, expirySeconds <= 60 && styles.timerExpiring]}>
               Code expires in {minutes}:{seconds.toString().padStart(2, "0")}
             </Text>
@@ -120,7 +120,7 @@ export default function VerifyScreen() {
 
           <Text style={styles.label}>Verification Code</Text>
           <View style={styles.inputContainer}>
-            <Feather name="hash" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="hash" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter code"
@@ -156,7 +156,7 @@ export default function VerifyScreen() {
               activeOpacity={0.8}
             >
               {resending ? (
-                <ActivityIndicator color="#11796F" />
+                <ActivityIndicator color="#D4501E" />
               ) : (
                 <Text style={styles.resendText}>Resend Verification Code</Text>
               )}
@@ -169,16 +169,16 @@ export default function VerifyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 40 },
   logoContainer: { alignItems: "center", marginBottom: 32 },
   logoIcon: {
-    width: 72, height: 72, borderRadius: 22, backgroundColor: "#11796F",
+    width: 72, height: 72, borderRadius: 22, backgroundColor: "#D4501E",
     justifyContent: "center", alignItems: "center",
-    shadowColor: "#11796F", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
+    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
   },
-  title: { fontSize: 28, fontWeight: "800", color: "#1A1A2E", marginTop: 14, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4, textAlign: "center" },
+  title: { fontSize: 28, fontWeight: "800", color: "#232230", marginTop: 14, letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: "#A09A94", marginTop: 4, textAlign: "center" },
   form: {
     backgroundColor: "#fff", borderRadius: 20, padding: 24,
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4,
@@ -187,20 +187,20 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
     backgroundColor: "#F2F2F7", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10, marginBottom: 20,
   },
-  timerText: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  timerText: { fontSize: 14, fontWeight: "600", color: "#232230" },
   timerExpiring: { color: "#E53935" },
-  label: { fontSize: 13, fontWeight: "600", color: "#1A1A2E", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  label: { fontSize: 13, fontWeight: "600", color: "#232230", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
   inputContainer: {
-    flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, backgroundColor: "#F8FAFB",
+    flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, backgroundColor: "#FFFFFF",
   },
   inputIcon: { marginLeft: 14 },
-  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#1A1A2E" },
+  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#232230" },
   button: {
-    backgroundColor: "#11796F", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 20,
-    shadowColor: "#11796F", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
+    backgroundColor: "#D4501E", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 20,
+    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
   },
   buttonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  resendButton: { paddingVertical: 14, borderRadius: 14, alignItems: "center", marginTop: 12, backgroundColor: "#E8F5F3" },
-  resendText: { color: "#11796F", fontSize: 15, fontWeight: "700" },
+  resendButton: { paddingVertical: 14, borderRadius: 14, alignItems: "center", marginTop: 12, backgroundColor: "#FFF0EC" },
+  resendText: { color: "#D4501E", fontSize: 15, fontWeight: "700" },
 });

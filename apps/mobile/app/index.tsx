@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
 import { View, ActivityIndicator } from "react-native";
 import * as SecureStore from "expo-secure-store";
@@ -75,7 +75,7 @@ export default function Index() {
           backgroundColor: "#fff",
         }}
       >
-        <ActivityIndicator size="large" color="#11796F" />
+        <ActivityIndicator size="large" color="#D4501E" />
       </View>
     );
   }

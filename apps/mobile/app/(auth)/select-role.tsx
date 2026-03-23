@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -17,8 +17,8 @@ const ROLES = [
     icon: "directions-car" as const,
     title: "Driver",
     description: "Find and book parking spots near you",
-    color: "#11796F",
-    bgColor: "#E8F5F3",
+    color: "#D4501E",
+    bgColor: "#FFF0EC",
   },
   {
     key: "HOST" as const,
@@ -124,7 +124,7 @@ export default function SelectRoleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     justifyContent: "space-between",
   },
   content: {
@@ -140,10 +140,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -152,13 +152,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 14,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 4,
   },
   cardsContainer: {
@@ -189,12 +189,12 @@ const styles = StyleSheet.create({
   roleTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 6,
   },
   roleDescription: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     lineHeight: 20,
   },
@@ -213,11 +213,11 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
   continueButton: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

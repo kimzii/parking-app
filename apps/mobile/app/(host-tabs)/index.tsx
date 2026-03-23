@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,8 @@ const STATUS_CONFIG: Record<
   { color: string; bg: string; label: string; icon: string }
 > = {
   PENDING: {
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     label: "Pending Approval",
     icon: "hourglass-top",
   },
@@ -39,7 +39,7 @@ const STATUS_CONFIG: Record<
     icon: "directions-car",
   },
   COMPLETED: {
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
     label: "Completed",
     icon: "done-all",
@@ -267,25 +267,25 @@ export default function HostHomeScreen() {
               {item.driver?.name || "Driver"}
             </Text>
             <View style={styles.driverMetaRow}>
-              <MaterialIcons name="phone" size={12} color="#8E8E93" />
+              <MaterialIcons name="phone" size={12} color="#A09A94" />
               <Text style={styles.driverMetaText} numberOfLines={1}>Phone: {driverPhone}</Text>
             </View>
             <View style={styles.driverMetaRow}>
               <MaterialIcons
                 name="confirmation-number"
                 size={12}
-                color="#8E8E93"
+                color="#A09A94"
               />
               <Text style={styles.driverMetaText} numberOfLines={1}>
                 Plate Number: {driverPlateNumber}
               </Text>
             </View>
             <View style={styles.driverMetaRow}>
-              <MaterialIcons name="directions-car" size={12} color="#8E8E93" />
+              <MaterialIcons name="directions-car" size={12} color="#A09A94" />
               <Text style={styles.driverMetaText} numberOfLines={1}>Vehicle: {vehicleText}</Text>
             </View>
             <View style={styles.driverMetaRow}>
-              <MaterialIcons name="local-parking" size={12} color="#8E8E93" />
+              <MaterialIcons name="local-parking" size={12} color="#A09A94" />
               <Text style={styles.driverMetaText} numberOfLines={1}>
                 Booked Spot: {bookedSpot}
               </Text>
@@ -298,7 +298,7 @@ export default function HostHomeScreen() {
         <View style={styles.timeSection}>
           {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <MaterialIcons name="schedule" size={16} color="#A09A94" />
               <Text style={styles.timeText}>
                 Approve in {formatCountdown(pendingRemainingMs ?? 0)}
               </Text>
@@ -306,8 +306,8 @@ export default function HostHomeScreen() {
           )}
           {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="hourglass-empty" size={16} color="#F57C00" />
-              <Text style={[styles.timeText, { color: "#F57C00" }]}>
+              <MaterialIcons name="hourglass-empty" size={16} color="#D4501E" />
+              <Text style={[styles.timeText, { color: "#D4501E" }]}>
                 Decision deadline{" "}
                 {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -319,7 +319,7 @@ export default function HostHomeScreen() {
           )}
           {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <MaterialIcons name="schedule" size={16} color="#A09A94" />
               <Text style={styles.timeText}>
                 Driver arrives by{" "}
                 {new Date(item.arrivalDeadline).toLocaleTimeString([], {
@@ -469,7 +469,7 @@ export default function HostHomeScreen() {
           <Text style={styles.userName}>{userName}</Text>
         </View>
         <View style={styles.hostBadge}>
-          <MaterialIcons name="home-work" size={16} color="#11796F" />
+          <MaterialIcons name="home-work" size={16} color="#D4501E" />
           <Text style={styles.hostBadgeText}>Host</Text>
         </View>
       </View>
@@ -478,7 +478,7 @@ export default function HostHomeScreen() {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#11796F"
+            color="#D4501E"
             style={{ marginTop: 40 }}
           />
         ) : (
@@ -493,7 +493,7 @@ export default function HostHomeScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#11796F"
+                tintColor="#D4501E"
               />
             }
             showsVerticalScrollIndicator={false}
@@ -505,7 +505,7 @@ export default function HostHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -516,20 +516,20 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 15,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "500",
   },
   userName: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   hostBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
@@ -537,11 +537,11 @@ const styles = StyleSheet.create({
   hostBadgeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
   content: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   listContent: {
     padding: 20,
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -560,13 +560,13 @@ const styles = StyleSheet.create({
 
   // Scan QR
   scanBtn: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 16,
     padding: 18,
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -598,10 +598,10 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
   },
   filterBtnActive: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#8E8E93" },
+  filterText: { fontSize: 13, fontWeight: "600", color: "#A09A94" },
   filterTextActive: { color: "#fff" },
 
   // Card
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardHeaderLeft: { flex: 1, gap: 6 },
-  cardLocation: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  cardLocation: { fontSize: 15, fontWeight: "700", color: "#232230" },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  slotText: { fontSize: 12, fontWeight: "700", color: "#11796F" },
+  slotText: { fontSize: 12, fontWeight: "700", color: "#D4501E" },
   divider: { height: 1, backgroundColor: "#F0F0F0", marginBottom: 12 },
 
   // Driver
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: "#E8F5F3",
+    borderColor: "#FFF0EC",
   },
   driverAvatarPlaceholder: {
     width: 36,
@@ -664,17 +664,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#E8F5F3",
+    borderColor: "#FFF0EC",
   },
-  driverName: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverName: { fontSize: 14, fontWeight: "600", color: "#232230" },
   driverMetaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginTop: 2,
   },
-  driverMetaText: { flex: 1, fontSize: 12, color: "#8E8E93" },
-  vehicleInline: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
+  driverMetaText: { flex: 1, fontSize: 12, color: "#A09A94" },
+  vehicleInline: { fontSize: 12, color: "#A09A94", marginTop: 2 },
   callBtn: {
     width: 32,
     height: 32,
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 12,
   },
-  vehicleText: { fontSize: 13, color: "#8E8E93" },
+  vehicleText: { fontSize: 13, color: "#A09A94" },
 
   // Time
   timeSection: { gap: 6, marginBottom: 12 },
@@ -707,8 +707,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
   },
-  amountLabel: { fontSize: 14, color: "#8E8E93" },
-  amountValue: { fontSize: 16, fontWeight: "700", color: "#11796F" },
+  amountLabel: { fontSize: 14, color: "#A09A94" },
+  amountValue: { fontSize: 16, fontWeight: "700", color: "#D4501E" },
   overtimeText: { fontSize: 12, color: "#E53935" },
 
   // Empty State
@@ -721,12 +721,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     marginTop: 8,
   },
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
   confirmBtnText: {
     fontSize: 14,

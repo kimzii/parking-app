@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -76,8 +76,8 @@ const STATUS_CONFIG = {
   },
   PENDING: {
     label: "Pending",
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     icon: "schedule" as const,
   },
   REJECTED: {
@@ -88,7 +88,7 @@ const STATUS_CONFIG = {
   },
   DISABLED: {
     label: "Disabled",
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
     icon: "block" as const,
   },
@@ -96,7 +96,7 @@ const STATUS_CONFIG = {
 
 const SLOT_STATUS_CONFIG = {
   AVAILABLE: { color: "#4CAF50", bg: "#E8F5E9", icon: "event-seat" as const },
-  OCCUPIED: { color: "#F57C00", bg: "#FFF3E0", icon: "event-busy" as const },
+  OCCUPIED: { color: "#D4501E", bg: "#FFF0EC", icon: "event-busy" as const },
   DISABLED: { color: "#9E9E9E", bg: "#F5F5F5", icon: "block" as const },
 };
 
@@ -251,7 +251,7 @@ export default function LocationDetailScreen() {
       <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 60 }}
         />
       </SafeAreaView>
@@ -290,7 +290,7 @@ export default function LocationDetailScreen() {
                 })
               }
             >
-              <MaterialIcons name="edit" size={22} color="#11796F" />
+              <MaterialIcons name="edit" size={22} color="#D4501E" />
             </TouchableOpacity>
           ),
         }}
@@ -302,7 +302,7 @@ export default function LocationDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#11796F"
+            tintColor="#D4501E"
           />
         }
       >
@@ -340,7 +340,7 @@ export default function LocationDetailScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.locationTitle}>{location.title}</Text>
               <View style={styles.addressRow}>
-                <MaterialIcons name="location-on" size={14} color="#8E8E93" />
+                <MaterialIcons name="location-on" size={14} color="#A09A94" />
                 <Text style={styles.addressText} numberOfLines={2}>
                   {location.address}
                 </Text>
@@ -366,7 +366,7 @@ export default function LocationDetailScreen() {
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <MaterialIcons name="payments" size={18} color="#11796F" />
+              <MaterialIcons name="payments" size={18} color="#D4501E" />
               <Text style={styles.infoLabel}>Price</Text>
               <Text style={styles.infoValue}>
                 ₱{Number(location.basePricePerHour).toFixed(2)}/hr
@@ -374,7 +374,7 @@ export default function LocationDetailScreen() {
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoItem}>
-              <MaterialIcons name="event-seat" size={18} color="#11796F" />
+              <MaterialIcons name="event-seat" size={18} color="#D4501E" />
               <Text style={styles.infoLabel}>Total Slots</Text>
               <Text style={styles.infoValue}>
                 {location.totalSlots ?? spaces.length}
@@ -384,7 +384,7 @@ export default function LocationDetailScreen() {
               <>
                 <View style={styles.infoDivider} />
                 <View style={styles.infoItem}>
-                  <MaterialIcons name="layers" size={18} color="#11796F" />
+                  <MaterialIcons name="layers" size={18} color="#D4501E" />
                   <Text style={styles.infoLabel}>Levels</Text>
                   <Text style={styles.infoValue}>
                     {location.numberOfLevels ?? "-"}
@@ -398,25 +398,25 @@ export default function LocationDetailScreen() {
         {/* Operating Hours */}
         <View style={styles.operatingHoursCard}>
           <View style={styles.operatingHoursHeader}>
-            <MaterialIcons name="schedule" size={18} color="#11796F" />
+            <MaterialIcons name="schedule" size={18} color="#D4501E" />
             <Text style={styles.operatingHoursTitle}>Operating Hours</Text>
           </View>
           {location.is24Hours ? (
             <View style={styles.hours24Badge}>
-              <MaterialIcons name="all-inclusive" size={16} color="#11796F" />
+              <MaterialIcons name="all-inclusive" size={16} color="#D4501E" />
               <Text style={styles.hours24Text}>Open 24 Hours</Text>
             </View>
           ) : location.openTime && location.closeTime ? (
             <View style={styles.hoursDisplay}>
               <View style={styles.timeBlock}>
-                <MaterialIcons name="wb-sunny" size={16} color="#F57C00" />
+                <MaterialIcons name="wb-sunny" size={16} color="#D4501E" />
                 <Text style={styles.timeValue}>
                   {formatTime(location.openTime!)}
                 </Text>
                 <Text style={styles.timeLabel}>Opens</Text>
               </View>
               <View style={styles.timeSeparator}>
-                <MaterialIcons name="arrow-forward" size={16} color="#8E8E93" />
+                <MaterialIcons name="arrow-forward" size={16} color="#A09A94" />
               </View>
               <View style={styles.timeBlock}>
                 <MaterialIcons name="nights-stay" size={16} color="#5C6BC0" />
@@ -440,8 +440,8 @@ export default function LocationDetailScreen() {
             </Text>
             <Text style={styles.summaryLabel}>Available</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#F57C00" }]}>
-            <Text style={[styles.summaryCount, { color: "#F57C00" }]}>
+          <View style={[styles.summaryCard, { borderLeftColor: "#D4501E" }]}>
+            <Text style={[styles.summaryCount, { color: "#D4501E" }]}>
               {occupiedCount}
             </Text>
             <Text style={styles.summaryLabel}>Occupied</Text>
@@ -466,7 +466,7 @@ export default function LocationDetailScreen() {
             </View>
             <View style={styles.legendItem}>
               <View
-                style={[styles.legendDot, { backgroundColor: "#F57C00" }]}
+                style={[styles.legendDot, { backgroundColor: "#D4501E" }]}
               />
               <Text style={styles.legendText}>Busy</Text>
             </View>
@@ -503,7 +503,7 @@ export default function LocationDetailScreen() {
                           <MaterialIcons
                             name="layers"
                             size={16}
-                            color="#11796F"
+                            color="#D4501E"
                           />
                           <Text style={styles.floorTitle}>Floor {level}</Text>
                           <Text style={styles.floorCount}>
@@ -605,7 +605,7 @@ export default function LocationDetailScreen() {
           })()
         ) : (
           <View style={styles.noSpaces}>
-            <MaterialIcons name="grid-off" size={40} color="#8E8E93" />
+            <MaterialIcons name="grid-off" size={40} color="#A09A94" />
             <Text style={styles.noSpacesTitle}>No Parking Spaces</Text>
             <Text style={styles.noSpacesText}>
               This location has no individual parking spaces configured.
@@ -615,7 +615,7 @@ export default function LocationDetailScreen() {
 
         {/* Created date */}
         <View style={styles.metaCard}>
-          <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+          <MaterialIcons name="schedule" size={16} color="#A09A94" />
           <Text style={styles.metaText}>
             Created{" "}
             {new Date(location.createdAt).toLocaleDateString("en-US", {
@@ -629,7 +629,7 @@ export default function LocationDetailScreen() {
         {/* Disabled Banner */}
         {location.status === "DISABLED" && (
           <View style={styles.disabledBanner}>
-            <MaterialIcons name="visibility-off" size={18} color="#8E8E93" />
+            <MaterialIcons name="visibility-off" size={18} color="#A09A94" />
             <Text style={styles.disabledBannerText}>
               This location is hidden from drivers. No new reservations can be
               made.
@@ -741,7 +741,7 @@ export default function LocationDetailScreen() {
                         <MaterialIcons
                           name="info-outline"
                           size={18}
-                          color="#F57C00"
+                          color="#D4501E"
                         />
                         <Text style={styles.modalNoticeText}>
                           This space has active or upcoming reservations.
@@ -792,7 +792,7 @@ export default function LocationDetailScreen() {
                           <MaterialIcons
                             name="directions-car"
                             size={18}
-                            color="#F57C00"
+                            color="#D4501E"
                           />
                           <Text style={styles.modalOccupiedText}>
                             This space is currently occupied. Actions are
@@ -855,10 +855,10 @@ export default function LocationDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: { padding: 16, paddingBottom: 40, gap: 16 },
   errorState: { alignItems: "center", paddingTop: 80, gap: 12 },
-  errorTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  errorTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
 
   // Info Card
   infoCard: {
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
   locationTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   addressRow: {
@@ -889,7 +889,7 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 4,
   },
-  addressText: { flex: 1, fontSize: 13, color: "#8E8E93" },
+  addressText: { flex: 1, fontSize: 13, color: "#A09A94" },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -907,21 +907,21 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 8,
   },
   infoItem: { flex: 1, alignItems: "center", gap: 4 },
-  infoLabel: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
-  infoValue: { fontSize: 16, fontWeight: "800", color: "#1A1A2E" },
+  infoLabel: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
+  infoValue: { fontSize: 16, fontWeight: "800", color: "#232230" },
   infoDivider: { width: 1, height: 36, backgroundColor: "#E0E0E0" },
 
   // Section
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
 
   // Summary Row
@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
 
@@ -962,7 +962,7 @@ const styles = StyleSheet.create({
   legendItems: { flexDirection: "row", gap: 12 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
+  legendText: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
 
   // Spaces Grid
   spacesGrid: {
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#F57C00",
+    backgroundColor: "#D4501E",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1004,11 +1004,11 @@ const styles = StyleSheet.create({
   floorTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
   floorCount: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
     marginLeft: "auto",
   },
@@ -1021,8 +1021,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  noSpacesTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  noSpacesText: { fontSize: 13, color: "#8E8E93", textAlign: "center" },
+  noSpacesTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  noSpacesText: { fontSize: 13, color: "#A09A94", textAlign: "center" },
 
   // Meta
   metaCard: {
@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 4,
   },
-  metaText: { fontSize: 12, color: "#8E8E93" },
+  metaText: { fontSize: 12, color: "#A09A94" },
   editHeaderBtn: { marginRight: 8 },
 
   // Image Gallery
@@ -1090,21 +1090,21 @@ const styles = StyleSheet.create({
   operatingHoursTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   hours24Badge: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     borderRadius: 10,
     paddingVertical: 12,
   },
   hours24Text: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
   hoursDisplay: {
     flexDirection: "row",
@@ -1119,19 +1119,19 @@ const styles = StyleSheet.create({
   timeValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   timeLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   timeSeparator: {
     paddingHorizontal: 8,
   },
   noHoursText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
   },
 
@@ -1145,10 +1145,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   toggleLocationBtnEnable: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
   toggleLocationBtnDisable: {
-    backgroundColor: "#8E8E93",
+    backgroundColor: "#A09A94",
   },
   toggleLocationBtnText: {
     fontSize: 15,
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
   disabledBannerText: {
     flex: 1,
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "500" as const,
     lineHeight: 18,
   },
@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   modalContent: {
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -1226,7 +1226,7 @@ const styles = StyleSheet.create({
   modalSpaceName: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: "#1A1A2E",
+    color: "#232230",
   },
   modalSpaceStatus: {
     fontSize: 13,
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   modalFloorBadge: {
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
@@ -1242,7 +1242,7 @@ const styles = StyleSheet.create({
   modalFloorText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: "#11796F",
+    color: "#D4501E",
   },
   modalNotice: {
     flexDirection: "row" as const,
@@ -1258,7 +1258,7 @@ const styles = StyleSheet.create({
   modalNoticeText: {
     flex: 1,
     fontSize: 13,
-    color: "#F57C00",
+    color: "#D4501E",
     fontWeight: "500" as const,
     lineHeight: 18,
   },
@@ -1275,10 +1275,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   modalActionBtnEnable: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
   modalActionBtnDisable: {
-    backgroundColor: "#8E8E93",
+    backgroundColor: "#A09A94",
   },
   modalActionBtnDelete: {
     backgroundColor: "#E53935",
@@ -1295,20 +1295,20 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 10,
-    backgroundColor: "#FFF3E0",
+    backgroundColor: "#FFF0EC",
     borderRadius: 12,
     padding: 12,
   },
   modalOccupiedText: {
     flex: 1,
     fontSize: 13,
-    color: "#F57C00",
+    color: "#D4501E",
     fontWeight: "500" as const,
     lineHeight: 18,
   },
   modalDeleteHint: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center" as const,
     marginTop: -4,
   },
@@ -1319,6 +1319,6 @@ const styles = StyleSheet.create({
   modalCloseBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -208,7 +208,7 @@ export default function MyVehiclesScreen() {
                 onPress={() => openEditForm(item)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <MaterialIcons name="edit" size={18} color="#11796F" />
+                <MaterialIcons name="edit" size={18} color="#D4501E" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteBtn}
@@ -236,7 +236,7 @@ export default function MyVehiclesScreen() {
             <View style={styles.typeTag}>
               <Image
                 source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
-                style={{ width: 14, height: 14, tintColor: "#11796F" }}
+                style={{ width: 14, height: 14, tintColor: "#D4501E" }}
                 resizeMode="contain"
               />
               <Text style={styles.typeTagText}>
@@ -283,7 +283,7 @@ export default function MyVehiclesScreen() {
             <MaterialIcons
               name={!isDriverVerified ? "lock" : showForm ? "close" : "add"}
               size={22}
-              color={!isDriverVerified ? "#fff" : showForm ? "#11796F" : "#fff"}
+              color={!isDriverVerified ? "#fff" : showForm ? "#D4501E" : "#fff"}
             />
           </TouchableOpacity>
         </View>
@@ -294,7 +294,7 @@ export default function MyVehiclesScreen() {
             onPress={() => router.push("/(modals)/driver-verification")}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="verified-user" size={20} color="#F57C00" />
+            <MaterialIcons name="verified-user" size={20} color="#D4501E" />
             <View style={{ flex: 1 }}>
               <Text style={styles.verifyBannerTitle}>
                 Verification required
@@ -303,7 +303,7 @@ export default function MyVehiclesScreen() {
                 Verify your driver account to add and manage vehicles.
               </Text>
             </View>
-            <MaterialIcons name="chevron-right" size={22} color="#F57C00" />
+            <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
           </TouchableOpacity>
         )}
 
@@ -421,12 +421,12 @@ export default function MyVehiclesScreen() {
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#11796F" />
+            <ActivityIndicator size="large" color="#D4501E" />
           </View>
         ) : vehicles.length === 0 ? (
           <View style={styles.centered}>
             <View style={styles.emptyIcon}>
-              <MaterialIcons name="directions-car" size={48} color="#11796F" />
+              <MaterialIcons name="directions-car" size={48} color="#D4501E" />
             </View>
             <Text style={styles.emptyTitle}>No vehicles yet</Text>
             <Text style={styles.emptySubtitle}>
@@ -448,8 +448,8 @@ export default function MyVehiclesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -461,25 +461,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 13, color: "#8E8E93", marginTop: 2 },
+  subtitle: { fontSize: 13, color: "#A09A94", marginTop: 2 },
   addToggle: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     width: 44,
     height: 44,
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
   addToggleActive: {
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -503,13 +503,13 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 16,
   },
   fieldLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
     marginBottom: 8,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -521,8 +521,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontSize: 15,
-    backgroundColor: "#F8FAFB",
-    color: "#1A1A2E",
+    backgroundColor: "#FFFFFF",
+    color: "#232230",
     marginBottom: 12,
   },
   inputRow: { flexDirection: "row", gap: 10 },
@@ -535,23 +535,23 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E8ECF0",
     alignItems: "center",
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
-  typeChipActive: { backgroundColor: "#11796F", borderColor: "#11796F" },
+  typeChipActive: { backgroundColor: "#D4501E", borderColor: "#D4501E" },
   typeChipText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     letterSpacing: 0.3,
   },
   typeChipTextActive: { color: "#fff" },
   submitButton: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 4,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     backgroundColor: "#F2F2F7",
   },
-  cancelFormText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
+  cancelFormText: { color: "#A09A94", fontSize: 15, fontWeight: "600" },
   centered: {
     flex: 1,
     justifyContent: "center",
@@ -579,13 +579,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
   },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A2E" },
-  emptySubtitle: { fontSize: 14, color: "#8E8E93" },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#232230" },
+  emptySubtitle: { fontSize: 14, color: "#A09A94" },
   list: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
   card: {
     flexDirection: "row",
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderTopLeftRadius: 16,
     borderBottomLeftRadius: 16,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
   },
   vehicleImage: {
     width: 52,
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   plateBadge: {
-    backgroundColor: "#1A1A2E",
+    backgroundColor: "#232230",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
   cardDetails: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 6,
   },
   cardBottomRow: {
@@ -685,12 +685,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  typeTagText: { fontSize: 12, fontWeight: "600", color: "#11796F" },
+  typeTagText: { fontSize: 12, fontWeight: "600", color: "#D4501E" },
   verifyBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -701,16 +701,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
     borderWidth: 1.5,
-    borderColor: "#F57C00",
+    borderColor: "#D4501E",
   },
   verifyBannerTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#F57C00",
+    color: "#D4501E",
   },
   verifyBannerText: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
 });

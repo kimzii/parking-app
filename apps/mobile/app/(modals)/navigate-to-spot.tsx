@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -337,7 +337,7 @@ export default function NavigateToSpotScreen() {
                 onPress={handleRecenter}
                 style={{ marginRight: 8 }}
               >
-                <MaterialIcons name="my-location" size={24} color="#11796F" />
+                <MaterialIcons name="my-location" size={24} color="#D4501E" />
               </TouchableOpacity>
             ) : null,
         }}
@@ -394,7 +394,7 @@ export default function NavigateToSpotScreen() {
           {directions && directions.routeCoords.length > 0 && (
             <Polyline
               coordinates={directions.routeCoords}
-              strokeColor="#11796F"
+              strokeColor="#D4501E"
               strokeWidth={5}
             />
           )}
@@ -403,7 +403,7 @@ export default function NavigateToSpotScreen() {
         {/* Loading overlay */}
         {loading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#11796F" />
+            <ActivityIndicator size="large" color="#D4501E" />
             <Text style={styles.loadingText}>Calculating route...</Text>
           </View>
         )}
@@ -437,19 +437,19 @@ export default function NavigateToSpotScreen() {
           {/* Summary row */}
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
-              <MaterialIcons name="schedule" size={18} color="#11796F" />
+              <MaterialIcons name="schedule" size={18} color="#D4501E" />
               <Text style={styles.summaryValue}>{directions.duration}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
-              <MaterialIcons name="straighten" size={18} color="#11796F" />
+              <MaterialIcons name="straighten" size={18} color="#D4501E" />
               <Text style={styles.summaryValue}>{directions.distance}</Text>
             </View>
           </View>
 
           {/* Destination & next step */}
           <View style={styles.destInfo}>
-            <MaterialIcons name="local-parking" size={20} color="#11796F" />
+            <MaterialIcons name="local-parking" size={20} color="#D4501E" />
             <View style={styles.destText}>
               <Text style={styles.destTitle} numberOfLines={1}>
                 {title || "Parking Location"}
@@ -470,7 +470,7 @@ export default function NavigateToSpotScreen() {
                 <MaterialIcons
                   name={getManeuverIcon(nextStepInfo.maneuver)}
                   size={18}
-                  color="#8E8E93"
+                  color="#A09A94"
                 />
                 <Text style={styles.nextStepText} numberOfLines={1}>
                   {nextStepInfo.instruction}
@@ -486,13 +486,13 @@ export default function NavigateToSpotScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   mapContainer: { flex: 1, position: "relative" },
   map: { flex: 1 },
 
   // Destination marker
   destMarker: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  loadingText: { fontSize: 15, color: "#1A1A2E", fontWeight: "600" },
+  loadingText: { fontSize: 15, color: "#232230", fontWeight: "600" },
   errorOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(255,255,255,0.92)",
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     fontWeight: "600",
     textAlign: "center",
   },
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
   backBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#F57C00",
+    backgroundColor: "#D4501E",
     borderRadius: 8,
     paddingVertical: 8,
     marginBottom: 12,
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   summaryDivider: {
     width: 1,
@@ -606,14 +606,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   destText: { flex: 1 },
-  destTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
-  destAddress: { fontSize: 12, color: "#8E8E93", marginTop: 2 },
+  destTitle: { fontSize: 15, fontWeight: "700", color: "#232230" },
+  destAddress: { fontSize: 12, color: "#A09A94", marginTop: 2 },
 
   // Top instruction banner (Google Maps style)
   instructionBanner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 14,
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   nextStepLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     marginBottom: 4,
   },
@@ -664,11 +664,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   nextStepDist: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
 });

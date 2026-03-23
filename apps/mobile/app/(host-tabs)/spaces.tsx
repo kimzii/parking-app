@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -25,9 +25,9 @@ interface ParkingLocation {
 
 const STATUS_CONFIG = {
   APPROVED: { label: "Approved", color: "#4CAF50", bg: "#E8F5E9" },
-  PENDING: { label: "Pending", color: "#F57C00", bg: "#FFF3E0" },
+  PENDING: { label: "Pending", color: "#D4501E", bg: "#FFF0EC" },
   REJECTED: { label: "Rejected", color: "#E53935", bg: "#FFEBEE" },
-  DISABLED: { label: "Disabled", color: "#8E8E93", bg: "#F5F5F5" },
+  DISABLED: { label: "Disabled", color: "#A09A94", bg: "#F5F5F5" },
 };
 
 export default function SpacesScreen() {
@@ -73,7 +73,7 @@ export default function SpacesScreen() {
       >
         <View style={styles.locationHeader}>
           <View style={styles.locationIconBg}>
-            <MaterialIcons name="local-parking" size={22} color="#11796F" />
+            <MaterialIcons name="local-parking" size={22} color="#D4501E" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.locationTitle} numberOfLines={1}>
@@ -92,17 +92,17 @@ export default function SpacesScreen() {
 
         <View style={styles.locationDetails}>
           <View style={styles.detailItem}>
-            <MaterialIcons name="event-seat" size={16} color="#8E8E93" />
+            <MaterialIcons name="event-seat" size={16} color="#A09A94" />
             <Text style={styles.detailText}>{item.totalSlots ?? 0} slots</Text>
           </View>
           <View style={styles.detailItem}>
-            <MaterialIcons name="payments" size={16} color="#8E8E93" />
+            <MaterialIcons name="payments" size={16} color="#A09A94" />
             <Text style={styles.detailText}>
               ₱{Number(item.basePricePerHour).toFixed(2)}/hr
             </Text>
           </View>
           <View style={styles.detailItem}>
-            <MaterialIcons name="chevron-right" size={18} color="#8E8E93" />
+            <MaterialIcons name="chevron-right" size={18} color="#A09A94" />
           </View>
         </View>
       </TouchableOpacity>
@@ -112,7 +112,7 @@ export default function SpacesScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconBg}>
-        <MaterialIcons name="add-location-alt" size={48} color="#11796F" />
+        <MaterialIcons name="add-location-alt" size={48} color="#D4501E" />
       </View>
       <Text style={styles.emptyTitle}>No Parking Spaces Yet</Text>
       <Text style={styles.emptyText}>
@@ -135,7 +135,7 @@ export default function SpacesScreen() {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#11796F"
+            color="#D4501E"
             style={{ marginTop: 40 }}
           />
         ) : (
@@ -150,7 +150,7 @@ export default function SpacesScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#11796F"
+                tintColor="#D4501E"
               />
             }
           />
@@ -170,7 +170,7 @@ export default function SpacesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     paddingHorizontal: 24,
     paddingTop: 12,
@@ -179,18 +179,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "500",
     marginTop: 4,
   },
   content: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   listContent: {
     padding: 20,
@@ -217,18 +217,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
   },
   locationTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   locationAddress: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   statusBadge: {
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "500",
   },
   emptyState: {
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 32,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -272,12 +272,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     lineHeight: 20,
   },
@@ -288,10 +288,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

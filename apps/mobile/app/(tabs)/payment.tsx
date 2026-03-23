@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -27,14 +27,14 @@ const SOURCE_CONFIG: Record<
   RESERVATION_PAYMENT: {
     label: "Booking Payment",
     icon: "local-parking",
-    color: "#11796F",
-    bg: "#E8F5F3",
+    color: "#D4501E",
+    bg: "#FFF0EC",
   },
   REFUND: {
     label: "Refund",
     icon: "replay",
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
   },
   HOST_PAYOUT: {
     label: "Withdrawal",
@@ -45,7 +45,7 @@ const SOURCE_CONFIG: Record<
   ADMIN_ADJUSTMENT: {
     label: "Adjustment",
     icon: "tune",
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
   },
 };
@@ -143,7 +143,7 @@ export default function PaymentScreen() {
           onPress={() => router.push("/(modals)/driver-verification")}
           activeOpacity={0.8}
         >
-          <MaterialIcons name="lock" size={20} color="#F57C00" />
+          <MaterialIcons name="lock" size={20} color="#D4501E" />
           <View style={{ flex: 1 }}>
             <Text style={styles.verifyBannerTitle}>
               Verify to unlock payments
@@ -152,7 +152,7 @@ export default function PaymentScreen() {
               Top-up, withdraw, and transactions require driver verification.
             </Text>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#F57C00" />
+          <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
         </TouchableOpacity>
       )}
 
@@ -198,7 +198,7 @@ export default function PaymentScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconBg}>
-        <MaterialIcons name="receipt-long" size={36} color="#11796F" />
+        <MaterialIcons name="receipt-long" size={36} color="#D4501E" />
       </View>
       <Text style={styles.emptyTitle}>No transactions yet</Text>
       <Text style={styles.emptySubtitle}>
@@ -218,7 +218,7 @@ export default function PaymentScreen() {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#11796F"
+            color="#D4501E"
             style={{ marginTop: 40 }}
           />
         ) : (
@@ -234,7 +234,7 @@ export default function PaymentScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#11796F"
+                tintColor="#D4501E"
               />
             }
           />
@@ -245,7 +245,7 @@ export default function PaymentScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     paddingHorizontal: 24,
     paddingTop: 12,
@@ -254,18 +254,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "500",
     marginTop: 4,
   },
   content: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
     padding: 20,
@@ -273,10 +273,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   balanceCard: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 20,
     padding: 24,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -359,11 +359,11 @@ const styles = StyleSheet.create({
   txnLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   txnDate: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   txnAmount: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
@@ -393,12 +393,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
   },
   verifyBanner: {
@@ -410,16 +410,16 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 6,
     borderWidth: 1.5,
-    borderColor: "#F57C00",
+    borderColor: "#D4501E",
   },
   verifyBannerTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#F57C00",
+    color: "#D4501E",
   },
   verifyBannerText: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
 });
