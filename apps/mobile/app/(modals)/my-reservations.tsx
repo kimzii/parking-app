@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,8 +16,8 @@ import * as reservationsService from "../../src/services/reservations";
 
 const STATUS_CONFIG = {
   PENDING: {
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     label: "Pending Approval",
     icon: "hourglass-top",
   },
@@ -34,7 +34,7 @@ const STATUS_CONFIG = {
     icon: "directions-car",
   },
   COMPLETED: {
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
     label: "Completed",
     icon: "check-circle",
@@ -239,7 +239,7 @@ export default function MyReservationsScreen() {
       {loading ? (
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 40 }}
         />
       ) : (
@@ -253,7 +253,7 @@ export default function MyReservationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#11796F"
+              tintColor="#D4501E"
             />
           }
           showsVerticalScrollIndicator={false}
@@ -264,7 +264,7 @@ export default function MyReservationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
 
   // Filters
   filters: {
@@ -282,10 +282,10 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
   },
   filterBtnActive: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#8E8E93" },
+  filterText: { fontSize: 13, fontWeight: "600", color: "#A09A94" },
   filterTextActive: { color: "#fff" },
 
   // List
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
-  cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: "#232230" },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusText: { fontSize: 11, fontWeight: "600" },
-  cardAddress: { fontSize: 12, color: "#8E8E93" },
+  cardAddress: { fontSize: 12, color: "#A09A94" },
   cardMeta: { flexDirection: "row", gap: 12, marginTop: 4 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { fontSize: 12, color: "#666", fontWeight: "500" },
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 4,
   },
-  timeText: { fontSize: 13, fontWeight: "600", color: "#1A1A2E" },
+  timeText: { fontSize: 13, fontWeight: "600", color: "#232230" },
 
   // Empty State
   emptyState: {
@@ -353,17 +353,17 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     marginTop: 8,
   },
   findParkingBtn: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,

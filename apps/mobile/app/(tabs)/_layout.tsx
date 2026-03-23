@@ -25,8 +25,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#11796F",
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarActiveTintColor: "#D4501E",
+        tabBarInactiveTintColor: "#A09A94",
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#fff",
@@ -77,13 +77,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarLabel: "Settings",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="settings" color={color} size={size} />
+          ),
+        }}
+      />
+      {/* Profile is accessed via the home screen header button, not the tab bar */}
+      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarLabel: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" color={color} size={size} />
-          ),
+          href: null,
         }}
       />
     </Tabs>

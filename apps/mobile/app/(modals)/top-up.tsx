@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -135,7 +135,7 @@ export default function TopUpScreen() {
 
           {/* Simulation Notice */}
           <View style={styles.noticeCard}>
-            <MaterialIcons name="info-outline" size={18} color="#F57C00" />
+            <MaterialIcons name="info-outline" size={18} color="#D4501E" />
             <Text style={styles.noticeText}>
               This is a simulated top-up. No real payment will be processed.
             </Text>
@@ -170,7 +170,7 @@ export default function TopUpScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
     padding: 20,
@@ -178,10 +178,10 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   balanceCard: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 20,
     padding: 24,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -241,13 +241,13 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#11796F",
+    color: "#D4501E",
   },
   amountInput: {
     flex: 1,
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     padding: 0,
   },
   presetGrid: {
@@ -270,16 +270,16 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   presetButtonSelected: {
-    backgroundColor: "#E8F5F3",
-    borderColor: "#11796F",
+    backgroundColor: "#FFF0EC",
+    borderColor: "#D4501E",
   },
   presetText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   presetTextSelected: {
-    color: "#11796F",
+    color: "#D4501E",
   },
   noticeCard: {
     flexDirection: "row",
@@ -294,26 +294,26 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     fontSize: 13,
-    color: "#F57C00",
+    color: "#D4501E",
     fontWeight: "500",
     lineHeight: 18,
   },
   bottomBar: {
     padding: 20,
     paddingTop: 12,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
   },
   topUpButton: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

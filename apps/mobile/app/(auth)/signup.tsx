@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -86,7 +86,7 @@ export default function SignupScreen() {
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputContainer}>
-            <Feather name="mail" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="mail" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your email"
@@ -101,7 +101,7 @@ export default function SignupScreen() {
 
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputContainer}>
-            <Feather name="lock" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="lock" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your password"
@@ -118,7 +118,7 @@ export default function SignupScreen() {
               <Feather
                 name={showPassword ? "eye-off" : "eye"}
                 size={18}
-                color="#8E8E93"
+                color="#A09A94"
               />
             </TouchableOpacity>
           </View>
@@ -145,7 +145,7 @@ export default function SignupScreen() {
 
           <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.inputContainer}>
-            <Feather name="lock" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="lock" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Confirm your password"
@@ -162,7 +162,7 @@ export default function SignupScreen() {
               <Feather
                 name={showConfirmPassword ? "eye-off" : "eye"}
                 size={18}
-                color="#8E8E93"
+                color="#A09A94"
               />
             </TouchableOpacity>
           </View>
@@ -195,7 +195,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
     flexGrow: 1,
@@ -211,10 +211,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -223,13 +223,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 14,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 4,
   },
   form: {
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 8,
     marginTop: 14,
     textTransform: "uppercase",
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E8ECF0",
     borderRadius: 12,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   inputIcon: {
     marginLeft: 14,
@@ -267,18 +267,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
   },
   eyeButton: {
     padding: 14,
   },
   button: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 24,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -299,11 +299,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   loginText: {
-    color: "#8E8E93",
+    color: "#A09A94",
     fontSize: 14,
   },
   loginLink: {
-    color: "#11796F",
+    color: "#D4501E",
     fontSize: 14,
     fontWeight: "700",
   },

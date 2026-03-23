@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -23,8 +23,8 @@ const STATUS_CONFIG: Record<
   { color: string; bg: string; label: string; icon: string }
 > = {
   PENDING: {
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     label: "Pending Approval",
     icon: "hourglass-top",
   },
@@ -41,7 +41,7 @@ const STATUS_CONFIG: Record<
     icon: "directions-car",
   },
   COMPLETED: {
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
     label: "Completed",
     icon: "done-all",
@@ -86,7 +86,7 @@ export default function HostReservationDetailScreen() {
         <Stack.Screen options={{ title: "Reservation" }} />
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 40 }}
         />
       </SafeAreaView>
@@ -188,7 +188,7 @@ export default function HostReservationDetailScreen() {
                 <MaterialIcons
                   name="directions-car"
                   size={18}
-                  color="#8E8E93"
+                  color="#A09A94"
                 />
                 <Text style={styles.infoText}>No active vehicle provided</Text>
               </View>
@@ -201,7 +201,7 @@ export default function HostReservationDetailScreen() {
           <Text style={styles.sectionLabel}>Parking Details</Text>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <MaterialIcons name="location-on" size={20} color="#11796F" />
+              <MaterialIcons name="location-on" size={20} color="#D4501E" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoTitle}>
                   {reservation.parkingLocation.title}
@@ -224,9 +224,9 @@ export default function HostReservationDetailScreen() {
                   <MaterialIcons
                     name="hourglass-empty"
                     size={18}
-                    color="#F57C00"
+                    color="#D4501E"
                   />
-                  <Text style={[styles.infoText, { color: "#F57C00" }]}>
+                  <Text style={[styles.infoText, { color: "#D4501E" }]}>
                     Approval deadline{" "}
                     {new Date(reservation.arrivalDeadline).toLocaleTimeString(
                       [],
@@ -242,7 +242,7 @@ export default function HostReservationDetailScreen() {
             {reservation.status === "CONFIRMED" &&
               reservation.arrivalDeadline && (
                 <View style={styles.infoRow}>
-                  <MaterialIcons name="schedule" size={18} color="#8E8E93" />
+                  <MaterialIcons name="schedule" size={18} color="#A09A94" />
                   <Text style={styles.infoText}>
                     Arrive by{" "}
                     {new Date(reservation.arrivalDeadline).toLocaleTimeString(
@@ -353,7 +353,7 @@ export default function HostReservationDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     borderRadius: 44,
     marginBottom: 14,
     borderWidth: 3,
-    borderColor: "#E8F5F3",
+    borderColor: "#FFF0EC",
   },
   driverImagePlaceholder: {
     width: 88,
@@ -382,17 +382,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 14,
     borderWidth: 3,
-    borderColor: "#E8F5F3",
+    borderColor: "#FFF0EC",
   },
   driverDisplayName: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 4,
   },
   driverPhone: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginBottom: 2,
   },
   statusChip: {
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -439,17 +439,17 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   infoSubtext: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   infoText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   timeDivider: {
     height: 1,
@@ -467,23 +467,23 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
   },
   vehiclePng: {
     width: 28,
     height: 28,
-    tintColor: "#11796F",
+    tintColor: "#D4501E",
   },
   vehicleName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   vehicleSubtext: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   plateRow: {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   plateText: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: 1,
   },
 
@@ -516,12 +516,12 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 15,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   amountValue: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#11796F",
+    color: "#D4501E",
   },
   overtimeText: {
     fontSize: 12,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
   confirmBtnText: {
     fontSize: 16,

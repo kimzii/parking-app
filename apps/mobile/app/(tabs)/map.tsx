@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+﻿import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -242,7 +242,7 @@ export default function MapScreen() {
       <View style={styles.container}>
         {/* Search Bar */}
         <View style={styles.searchBar}>
-          <MaterialIcons name="search" size={20} color="#8E8E93" />
+          <MaterialIcons name="search" size={20} color="#A09A94" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search for parking..."
@@ -254,7 +254,7 @@ export default function MapScreen() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={handleSearch}>
-              <MaterialIcons name="arrow-forward" size={20} color="#11796F" />
+              <MaterialIcons name="arrow-forward" size={20} color="#D4501E" />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -264,7 +264,7 @@ export default function MapScreen() {
           {loading ? (
             <ActivityIndicator
               size="large"
-              color="#11796F"
+              color="#D4501E"
               style={{ flex: 1 }}
             />
           ) : (
@@ -333,18 +333,18 @@ export default function MapScreen() {
             activeOpacity={0.8}
           >
             {locating ? (
-              <ActivityIndicator size="small" color="#11796F" />
+              <ActivityIndicator size="small" color="#D4501E" />
             ) : (
-              <MaterialIcons name="my-location" size={22} color="#11796F" />
+              <MaterialIcons name="my-location" size={22} color="#D4501E" />
             )}
           </TouchableOpacity>
 
           {/* Spot count badge */}
           <View style={styles.spotCountBadge}>
-            <MaterialIcons name="local-parking" size={14} color="#11796F" />
+            <MaterialIcons name="local-parking" size={14} color="#D4501E" />
             <Text style={styles.spotCountText}>
               {spots.length} spot{spots.length !== 1 ? "s" : ""} within{" "}
-              {RADIUS_KM}km
+              {RADIUS_KM}{" "}km
             </Text>
           </View>
         </View>
@@ -354,7 +354,7 @@ export default function MapScreen() {
           <View style={styles.spotCard}>
             <View style={styles.spotCardHeader}>
               <View style={styles.spotIconBg}>
-                <MaterialIcons name="local-parking" size={22} color="#11796F" />
+                <MaterialIcons name="local-parking" size={22} color="#D4501E" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.spotTitle} numberOfLines={1}>
@@ -365,18 +365,18 @@ export default function MapScreen() {
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedSpot(null)}>
-                <MaterialIcons name="close" size={20} color="#8E8E93" />
+                <MaterialIcons name="close" size={20} color="#A09A94" />
               </TouchableOpacity>
             </View>
             <View style={styles.spotCardDetails}>
               <View style={styles.spotDetailItem}>
-                <MaterialIcons name="payments" size={16} color="#11796F" />
+                <MaterialIcons name="payments" size={16} color="#D4501E" />
                 <Text style={styles.spotDetailText}>
                   ₱{Number(selectedSpot.basePricePerHour).toFixed(2)}/hr
                 </Text>
               </View>
               <View style={styles.spotDetailItem}>
-                <MaterialIcons name="event-seat" size={16} color="#11796F" />
+                <MaterialIcons name="event-seat" size={16} color="#D4501E" />
                 <Text style={styles.spotDetailText}>
                   {selectedSpot.availableSlots ?? selectedSpot.totalSlots ?? 0}{" "}
                   slots
@@ -421,11 +421,11 @@ export default function MapScreen() {
             onPress={() => router.push("/(modals)/driver-verification")}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="lock" size={18} color="#F57C00" />
+            <MaterialIcons name="lock" size={18} color="#D4501E" />
             <Text style={styles.verifyOverlayText}>
               Verify your account to book parking spots
             </Text>
-            <MaterialIcons name="chevron-right" size={20} color="#F57C00" />
+            <MaterialIcons name="chevron-right" size={20} color="#D4501E" />
           </TouchableOpacity>
         )}
 
@@ -433,7 +433,7 @@ export default function MapScreen() {
         {!loading && spots.length === 0 && !selectedSpot && (
           <View style={styles.emptyOverlay}>
             <View style={styles.emptyCard}>
-              <MaterialIcons name="location-off" size={32} color="#11796F" />
+              <MaterialIcons name="location-off" size={32} color="#D4501E" />
               <Text style={styles.emptyTitle}>No parking spots yet</Text>
               <Text style={styles.emptySubtitle}>
                 No approved parking locations available in this area
@@ -447,7 +447,7 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   container: { flex: 1 },
   searchBar: {
     flexDirection: "row",
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     padding: 0,
   },
   mapContainer: {
@@ -515,18 +515,16 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   spotCountText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   markerContainer: { alignItems: "center" },
   markerBubble: {
     backgroundColor: "#11796F",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -542,7 +540,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 6,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderTopColor: "#11796F",
+    borderTopColor: "#D4501E",
   },
   spotCard: {
     position: "absolute",
@@ -568,12 +566,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
   },
-  spotTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  spotAddress: { fontSize: 13, color: "#8E8E93", marginTop: 2 },
+  spotTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  spotAddress: { fontSize: 13, color: "#A09A94", marginTop: 2 },
   spotCardDetails: {
     flexDirection: "row",
     gap: 20,
@@ -584,13 +582,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  spotDetailText: { fontSize: 14, color: "#11796F", fontWeight: "700" },
+  spotDetailText: { fontSize: 14, color: "#D4501E", fontWeight: "700" },
   viewDetailsBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 12,
     paddingVertical: 12,
     marginTop: 4,
@@ -618,8 +616,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
   },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  emptySubtitle: { fontSize: 13, color: "#8E8E93", textAlign: "center" },
+  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  emptySubtitle: { fontSize: 13, color: "#A09A94", textAlign: "center" },
   viewDetailsBtnLocked: {
     backgroundColor: "#B0BEC5",
   },
@@ -631,11 +629,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFF8E1",
+    backgroundColor: "#FFF0EC",
     borderRadius: 14,
     padding: 14,
     borderWidth: 1.5,
-    borderColor: "#F57C00",
+    borderColor: "#D4501E",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -646,6 +644,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "700",
-    color: "#F57C00",
+    color: "#D4501E",
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+﻿import React, { useState, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -96,14 +97,28 @@ export default function HomeScreen() {
     fetchSpots();
   };
 
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  })();
+
+  const quickActions = [
+    { label: "Bookings", icon: "confirmation-number" as const, route: "/(modals)/my-reservations" as const },
+    { label: "Vehicles", icon: "directions-car" as const, route: "/(modals)/my-vehicles" as const },
+    { label: "Top Up", icon: "account-balance-wallet" as const, route: "/(modals)/top-up" as const },
+  ];
+
   const renderSpot = ({ item }: { item: ParkingSpot }) => {
     const slots = item.availableSlots ?? item.totalSlots ?? 0;
-    const slotsColor = slots > 0 ? "#4CAF50" : "#E53935";
+    const hasSlots = slots > 0;
+    const firstImage = item.images?.[0]?.imageUrl;
 
     return (
       <TouchableOpacity
         style={styles.spotCard}
-        activeOpacity={0.7}
+        activeOpacity={0.75}
         onPress={() =>
           router.push({
             pathname: "/(modals)/spot-detail",
@@ -111,35 +126,44 @@ export default function HomeScreen() {
           } as any)
         }
       >
-        <View style={styles.spotHeader}>
-          <View style={styles.spotIconBg}>
-            <MaterialIcons name="local-parking" size={22} color="#11796F" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.spotTitle} numberOfLines={1}>
-              {item.title}
+        <View style={styles.spotImageContainer}>
+          {firstImage ? (
+            <Image
+              source={{ uri: firstImage }}
+              style={styles.spotImage}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={styles.spotImagePlaceholder}>
+              <MaterialIcons name="local-parking" size={28} color="#D5CEC4" />
+            </View>
+          )}
+        </View>
+        <View style={styles.spotContent}>
+          <Text style={styles.spotTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View style={styles.addressRow}>
+            <MaterialIcons name="location-on" size={13} color="#A09A94" />
+            <Text style={styles.spotAddress} numberOfLines={1}>
+              {item.address}
             </Text>
-            <View style={styles.addressRow}>
-              <MaterialIcons name="location-on" size={14} color="#8E8E93" />
-              <Text style={styles.spotAddress} numberOfLines={1}>
-                {item.address}
+          </View>
+          <View style={styles.spotChips}>
+            <View style={styles.priceChip}>
+              <Text style={styles.priceText}>
+                ₱{Number(item.basePricePerHour).toFixed(0)}/hr
               </Text>
             </View>
-          </View>
-        </View>
-
-        <View style={styles.spotDetails}>
-          <View style={styles.detailChip}>
-            <MaterialIcons name="payments" size={16} color="#11796F" />
-            <Text style={styles.detailChipText}>
-              ₱{Number(item.basePricePerHour).toFixed(2)}/hr
-            </Text>
-          </View>
-          <View style={styles.detailChip}>
-            <MaterialIcons name="event-seat" size={16} color={slotsColor} />
-            <Text style={[styles.detailChipText, { color: slotsColor }]}>
-              {slots} slot{slots !== 1 ? "s" : ""} available
-            </Text>
+            <View
+              style={[styles.slotsChip, !hasSlots && styles.slotsChipFull]}
+            >
+              <Text
+                style={[styles.slotsText, !hasSlots && styles.slotsTextFull]}
+              >
+                {hasSlots ? `${slots} slot${slots !== 1 ? "s" : ""}` : "Full"}
+              </Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -149,204 +173,145 @@ export default function HomeScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconBg}>
-        <MaterialIcons name="location-off" size={48} color="#11796F" />
+        <MaterialIcons name="location-off" size={40} color="#D5CEC4" />
       </View>
-      <Text style={styles.emptyTitle}>No Parking Spaces Available</Text>
+      <Text style={styles.emptyTitle}>No Parking Spaces Found</Text>
       <Text style={styles.emptyText}>
-        There are no approved parking locations yet. Check back later!
+        Try adjusting your search or check back later.
       </Text>
     </View>
   );
 
-  const renderListHeader = () => (
-    <>
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <MaterialIcons name="search" size={20} color="#8E8E93" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search parking spaces..."
-          placeholderTextColor="#C7C7CC"
-          value={searchQuery}
-          onChangeText={handleSearch}
-          returnKeyType="search"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={clearSearch}>
-            <MaterialIcons name="close" size={20} color="#8E8E93" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Quick Stats */}
-      {/* <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <View style={[styles.statIcon, { backgroundColor: "#E8F5F3" }]}>
-            <MaterialIcons name="local-parking" size={20} color="#11796F" />
-          </View>
-          <Text style={styles.statValue}>{spots.length}</Text>
-          <Text style={styles.statLabel}>Available</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.statCard}
-          onPress={() => router.navigate("/(tabs)/map" as any)}
-          activeOpacity={0.7}
-        >
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.statCard}
-          onPress={() => router.push("/(modals)/my-reservations" as any)}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.statIcon, { backgroundColor: "#FFF3E0" }]}>
-            <MaterialIcons name="history" size={20} color="#F57C00" />
-          </View>
-          <Text style={styles.statValue}>{activeBookings.length}</Text>
-          <Text style={styles.statLabel}>Bookings</Text>
-        </TouchableOpacity>
-      </View> */}
-
-      {/* Active Booking Card */}
-      {activeBookings.length > 0 && (
-        <View style={{ marginBottom: 16 }}>
-          <Text style={styles.sectionTitle}>Current Booking</Text>
-          {activeBookings.map((booking) => {
-            const isActive = booking.status === "ACTIVE";
-            const isPending = booking.status === "PENDING";
-            const statusColor = isActive
-              ? "#4CAF50"
-              : isPending
-                ? "#F57C00"
-                : "#1976D2";
-            const statusBg = isActive
-              ? "#E8F5E9"
-              : isPending
-                ? "#FFF3E0"
-                : "#E3F2FD";
-            const statusLabel = isActive
-              ? "Active - Parked"
-              : isPending
-                ? "Pending Host Approval"
-                : "Confirmed";
-            return (
-              <TouchableOpacity
-                key={booking.id}
-                style={styles.bookingCard}
-                activeOpacity={0.7}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(modals)/reservation-qr",
-                    params: { id: booking.id },
-                  } as any)
-                }
-              >
-                <View style={styles.bookingHeader}>
-                  <View
-                    style={[
-                      styles.bookingStatusBadge,
-                      { backgroundColor: statusBg },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name={
-                        isActive
-                          ? "directions-car"
-                          : isPending
-                            ? "hourglass-top"
-                            : "confirmation-number"
-                      }
-                      size={14}
-                      color={statusColor}
-                    />
-                    <Text
-                      style={[styles.bookingStatusText, { color: statusColor }]}
-                    >
-                      {statusLabel}
-                    </Text>
+  const listHeader = useMemo(
+    () => (
+      <>
+        {/* Active Booking Card */}
+        {activeBookings.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            {activeBookings.map((booking) => {
+              const isActive = booking.status === "ACTIVE";
+              const isPending = booking.status === "PENDING";
+              const statusLabel = isActive
+                ? "Active · Parked"
+                : isPending
+                  ? "Pending Approval"
+                  : "Confirmed";
+              return (
+                <TouchableOpacity
+                  key={booking.id}
+                  style={styles.bookingCard}
+                  activeOpacity={0.75}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(modals)/reservation-qr",
+                      params: { id: booking.id },
+                    } as any)
+                  }
+                >
+                  <View style={styles.bookingCardTop}>
+                    <View style={styles.bookingStatusRow}>
+                      <View
+                        style={[
+                          styles.dot,
+                          isPending ? styles.dotPending : styles.dotActive,
+                        ]}
+                      />
+                      <Text style={styles.bookingStatusText}>{statusLabel}</Text>
+                    </View>
+                    <MaterialIcons name="qr-code-2" size={20} color="#D4501E" />
                   </View>
-                  <MaterialIcons name="qr-code-2" size={22} color="#11796F" />
-                </View>
-                <Text style={styles.bookingTitle} numberOfLines={1}>
-                  {booking.parkingLocation.title}
-                </Text>
-                <Text style={styles.bookingAddress} numberOfLines={1}>
-                  {booking.parkingLocation.address}
-                </Text>
-                <View style={styles.bookingDetails}>
-                  <View style={styles.bookingDetailItem}>
-                    <MaterialIcons
-                      name="event-seat"
-                      size={14}
-                      color="#11796F"
-                    />
-                    <Text style={styles.bookingDetailText}>
+                  <Text style={styles.bookingTitle} numberOfLines={1}>
+                    {booking.parkingLocation.title}
+                  </Text>
+                  <Text style={styles.bookingAddress} numberOfLines={1}>
+                    {booking.parkingLocation.address}
+                  </Text>
+                  <View style={styles.bookingMeta}>
+                    <Text style={styles.bookingMetaText}>
                       Slot{" "}
                       {booking.parkingSpace.name ||
                         booking.parkingSpace.slotNumber}
                     </Text>
-                  </View>
-                  <View style={styles.bookingDetailItem}>
-                    <MaterialIcons name="schedule" size={14} color="#8E8E93" />
-                    <Text style={styles.bookingDetailText}>
-                      {isPending && booking.arrivalDeadline
-                        ? `Host decision by ${new Date(booking.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                        : isActive && booking.sessionStartedAt
-                          ? `Started ${new Date(booking.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                          : booking.arrivalDeadline
-                            ? `Arrive by ${new Date(booking.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                            : "Pay-as-you-go"}
-                    </Text>
-                  </View>
-                  <View style={styles.bookingDetailItem}>
-                    <MaterialIcons name="payments" size={14} color="#11796F" />
-                    <Text style={styles.bookingDetailText}>
+                    <Text style={styles.bookingMetaDot}>·</Text>
+                    <Text style={styles.bookingMetaText}>
                       ₱{Number(booking.totalAmount).toFixed(2)}
                     </Text>
                   </View>
-                </View>
-                <View style={styles.bookingViewQr}>
-                  <Text style={styles.bookingViewQrText}>View QR Code</Text>
-                  <MaterialIcons
-                    name="chevron-right"
-                    size={18}
-                    color="#11796F"
-                  />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Section Title */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Parking Spaces Near You</Text>
+          <Text style={styles.sectionCount}>
+            {spots.length} spot{spots.length !== 1 ? "s" : ""}
+          </Text>
         </View>
-      )}
 
-      {/* Section Title */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Parking Spaces Near You</Text>
-        <Text style={styles.sectionCount}>
-          {spots.length} spot{spots.length !== 1 ? "s" : ""}
-        </Text>
-      </View>
-
-      {/* Loading indicator when initially fetching */}
-      {loading && (
-        <ActivityIndicator
-          size="large"
-          color="#11796F"
-          style={{ marginTop: 40 }}
-        />
-      )}
-    </>
+        {loading && (
+          <ActivityIndicator
+            size="large"
+            color="#D4501E"
+            style={{ marginTop: 40 }}
+          />
+        )}
+      </>
+    ),
+    [activeBookings, spots.length, loading],
   );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome to</Text>
-          <Text style={styles.appName}>ParkLink</Text>
+      {/* Top Bar — lives outside FlatList to keep keyboard stable */}
+      <View style={styles.topBar}>
+        {/* Greeting row */}
+        <View style={styles.greetingRow}>
+          <Text style={styles.greetingText}>{greeting}</Text>
+          <TouchableOpacity
+            style={styles.profileBtn}
+            onPress={() => router.navigate("/(tabs)/profile" as any)}
+            activeOpacity={0.75}
+          >
+            <MaterialIcons name="person-outline" size={22} color="#232230" />
+          </TouchableOpacity>
         </View>
-        <View style={styles.logoIcon}>
-          <MaterialIcons name="local-parking" size={24} color="#fff" />
+
+        {/* Search bar */}
+        <View style={styles.searchBar}>
+          <MaterialIcons name="search" size={20} color="#A09A94" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search parking spaces..."
+            placeholderTextColor="#C7C7CC"
+            value={searchQuery}
+            onChangeText={handleSearch}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch}>
+              <MaterialIcons name="close" size={18} color="#A09A94" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          {quickActions.map((action) => (
+            <TouchableOpacity
+              key={action.label}
+              style={styles.quickActionBtn}
+              onPress={() => router.push(action.route as any)}
+              activeOpacity={0.75}
+            >
+              <View style={styles.quickActionIcon}>
+                <MaterialIcons name={action.icon} size={20} color="#D4501E" />
+              </View>
+              <Text style={styles.quickActionLabel}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -354,7 +319,7 @@ export default function HomeScreen() {
         data={loading ? [] : spots}
         keyExtractor={(item) => item.id}
         renderItem={renderSpot}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={loading ? null : renderEmpty}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -362,7 +327,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#11796F"
+            tintColor="#D4501E"
           />
         }
       />
@@ -371,141 +336,143 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
-  header: {
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+
+  // Top bar
+  topBar: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  greetingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
   },
-  greeting: { fontSize: 14, color: "#8E8E93" },
-  appName: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1A1A2E",
-    letterSpacing: -0.5,
+  greetingText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#232230",
+    letterSpacing: -0.3,
   },
-  logoIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#11796F",
+  profileBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F5F4F2",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#F5F4F2",
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
+    paddingVertical: 11,
     gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     padding: 0,
   },
-  statsRow: {
+  quickActions: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
+    gap: 10,
   },
-  statCard: {
+  quickActionBtn: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingVertical: 16,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    gap: 6,
+    backgroundColor: "#F5F4F2",
+    borderRadius: 14,
+    paddingVertical: 12,
   },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  quickActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1A1A2E",
-  },
-  statLabel: {
+  quickActionLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#8E8E93",
-    marginTop: 2,
+    color: "#232230",
   },
+
+  // List
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+    gap: 10,
+  },
+
+  // Section header
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 6,
   },
   sectionTitle: {
-    fontSize: 18,
+    paddingTop: 12,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
+    letterSpacing: -0.3,
   },
   sectionCount: {
+    paddingTop: 12,
     fontSize: 13,
-    fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
+    fontWeight: "500",
   },
-  listContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 100,
-    gap: 12,
-  },
+
+  // Spot card
   spotCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 12,
-  },
-  spotHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    overflow: "hidden",
+    shadowColor: "#232230",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
   },
-  spotIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#E8F5F3",
+  spotImageContainer: {
+    width: 90,
+    height: 90,
+  },
+  spotImage: {
+    width: 90,
+    height: 90,
+  },
+  spotImagePlaceholder: {
+    width: 90,
+    height: 90,
+    backgroundColor: "#F5F4F2",
     justifyContent: "center",
     alignItems: "center",
   },
+  spotContent: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    justifyContent: "space-between",
+  },
   spotTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   addressRow: {
     flexDirection: "row",
@@ -514,108 +481,129 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   spotAddress: {
-    fontSize: 13,
-    color: "#8E8E93",
+    fontSize: 12,
+    color: "#A09A94",
     flex: 1,
   },
-  spotDetails: {
+  spotChips: {
     flexDirection: "row",
-    gap: 12,
-    paddingLeft: 56,
+    gap: 6,
+    marginTop: 8,
   },
-  detailChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#F8FAFB",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  priceChip: {
+    backgroundColor: "#FFF0EC",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
   },
-  detailChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1A1A2E",
+  priceText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#D4501E",
   },
+  slotsChip: {
+    backgroundColor: "#F5F4F2",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  slotsChipFull: {
+    backgroundColor: "#F5F4F2",
+  },
+  slotsText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#232230",
+  },
+  slotsTextFull: {
+    color: "#A09A94",
+  },
+
+  // Empty state
   emptyState: {
     alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 40,
   },
   emptyIconBg: {
-    width: 96,
-    height: 96,
-    borderRadius: 32,
-    backgroundColor: "#E8F5F3",
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    backgroundColor: "#F5F4F2",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
-    marginBottom: 8,
+    color: "#232230",
+    marginBottom: 6,
   },
   emptyText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     lineHeight: 20,
   },
 
-  // Booking Card
+  // Booking card
   bookingCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#232230",
     borderRadius: 16,
     padding: 16,
-    marginTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-    borderLeftWidth: 4,
-    borderLeftColor: "#11796F",
+    marginTop: 4,
   },
-  bookingHeader: {
+  bookingCardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
   },
-  bookingStatusBadge: {
+  bookingStatusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    gap: 6,
   },
-  bookingStatusText: { fontSize: 12, fontWeight: "700" },
-  bookingTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  bookingAddress: { fontSize: 13, color: "#8E8E93", marginTop: 2 },
-  bookingDetails: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 12,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  bookingDetailItem: {
+  dotActive: {
+    backgroundColor: "#D4501E",
+  },
+  dotPending: {
+    backgroundColor: "#D1D1CF",
+  },
+  bookingStatusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#D1D1CF",
+  },
+  bookingTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  bookingAddress: {
+    fontSize: 13,
+    color: "#A09A94",
+    marginTop: 3,
+  },
+  bookingMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
+    marginTop: 10,
   },
-  bookingDetailText: { fontSize: 13, fontWeight: "600", color: "#1A1A2E" },
-  bookingViewQr: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
+  bookingMetaText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#D1D1CF",
   },
-  bookingViewQrText: { fontSize: 14, fontWeight: "700", color: "#11796F" },
+  bookingMetaDot: {
+    fontSize: 13,
+    color: "#A09A94",
+  },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -85,7 +85,7 @@ function formatTime(time: string): string {
 
 const SLOT_COLORS = {
   AVAILABLE: { bg: "#E8F5E9", color: "#4CAF50" },
-  OCCUPIED: { bg: "#FFF3E0", color: "#F57C00" },
+  OCCUPIED: { bg: "#FFF0EC", color: "#D4501E" },
   DISABLED: { bg: "#F5F5F5", color: "#9E9E9E" },
 };
 
@@ -278,7 +278,7 @@ export default function SpotDetailScreen() {
       <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 60 }}
         />
       </SafeAreaView>
@@ -317,7 +317,7 @@ export default function SpotDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#11796F"
+            tintColor="#D4501E"
           />
         }
       >
@@ -371,18 +371,18 @@ export default function SpotDetailScreen() {
               onPress={openGoogleMaps}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="location-on" size={16} color="#11796F" />
+              <MaterialIcons name="location-on" size={16} color="#D4501E" />
               <Text style={styles.address} numberOfLines={2}>
                 {spot.address}
               </Text>
-              <MaterialIcons name="directions" size={18} color="#11796F" />
+              <MaterialIcons name="directions" size={18} color="#D4501E" />
             </TouchableOpacity>
           </View>
 
           {/* Quick Stats */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <MaterialIcons name="payments" size={22} color="#11796F" />
+              <MaterialIcons name="payments" size={22} color="#D4501E" />
               <Text style={styles.statValue}>
                 P{Number(spot.basePricePerHour).toFixed(2)}
               </Text>
@@ -411,7 +411,7 @@ export default function SpotDetailScreen() {
             <Text style={styles.sectionTitle}>Parking Info</Text>
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
-                <MaterialIcons name="local-parking" size={20} color="#11796F" />
+                <MaterialIcons name="local-parking" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Type</Text>
                 <Text style={styles.infoValue}>
                   {spot.isMultiLevel
@@ -430,7 +430,7 @@ export default function SpotDetailScreen() {
                 </View>
               )}
               <View style={styles.infoRow}>
-                <MaterialIcons name="schedule" size={20} color="#11796F" />
+                <MaterialIcons name="schedule" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Hours</Text>
                 <Text style={styles.infoValue}>
                   {spot.is24Hours
@@ -441,7 +441,7 @@ export default function SpotDetailScreen() {
                 </Text>
               </View>
               <View style={styles.infoRow}>
-                <MaterialIcons name="event-seat" size={20} color="#11796F" />
+                <MaterialIcons name="event-seat" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Total Slots</Text>
                 <Text style={styles.infoValue}>{total}</Text>
               </View>
@@ -506,7 +506,7 @@ export default function SpotDetailScreen() {
                   </View>
                   <View style={styles.legendItem}>
                     <View
-                      style={[styles.legendDot, { backgroundColor: "#F57C00" }]}
+                      style={[styles.legendDot, { backgroundColor: "#D4501E" }]}
                     />
                     <Text style={styles.legendText}>{occupied} Busy</Text>
                   </View>
@@ -539,7 +539,7 @@ export default function SpotDetailScreen() {
                               <MaterialIcons
                                 name="layers"
                                 size={16}
-                                color="#11796F"
+                                color="#D4501E"
                               />
                               <Text style={styles.floorTitle}>
                                 Floor {level}
@@ -664,9 +664,9 @@ export default function SpotDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   errorState: { alignItems: "center", paddingTop: 80, gap: 12 },
-  errorTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  errorTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
 
   // Image Carousel
   carouselImage: {
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  noImageText: { fontSize: 14, color: "#8E8E93" },
+  noImageText: { fontSize: 14, color: "#A09A94" },
 
   // Content
   content: {
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   addressRow: {
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   address: {
     flex: 1,
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
 
   // Stats Row
@@ -749,12 +749,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   statLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
 
   // Section
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   descriptionText: {
     fontSize: 14,
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
   },
   directionsLoadingText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   dirInfoItem: {
     flex: 1,
@@ -809,11 +809,11 @@ const styles = StyleSheet.create({
   dirInfoValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   dirInfoLabel: {
     fontSize: 11,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
   },
   dirInfoDivider: {
@@ -823,14 +823,14 @@ const styles = StyleSheet.create({
   },
   dirNaText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   openMapsBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -870,8 +870,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
   },
-  hostLabel: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
-  hostName: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  hostLabel: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
+  hostName: { fontSize: 15, fontWeight: "700", color: "#232230" },
 
   // Parking Info
   infoCard: {
@@ -893,13 +893,13 @@ const styles = StyleSheet.create({
   infoLabel: {
     flex: 1,
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
   },
   infoValue: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
 
   // Slots
@@ -911,7 +911,7 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: "row", gap: 12 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
+  legendText: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
   floorHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -920,11 +920,11 @@ const styles = StyleSheet.create({
   floorTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
   floorCount: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
     marginLeft: "auto",
   },
@@ -968,13 +968,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   footerPrice: { gap: 2 },
-  footerPriceLabel: { fontSize: 12, color: "#8E8E93", fontWeight: "600" },
-  footerPriceValue: { fontSize: 20, fontWeight: "800", color: "#1A1A2E" },
+  footerPriceLabel: { fontSize: 12, color: "#A09A94", fontWeight: "600" },
+  footerPriceValue: { fontSize: 20, fontWeight: "800", color: "#232230" },
   bookBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,

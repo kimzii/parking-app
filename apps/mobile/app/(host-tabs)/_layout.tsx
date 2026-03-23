@@ -1,4 +1,4 @@
-import { Tabs, useRouter, useFocusEffect } from "expo-router";
+﻿import { Tabs, useRouter, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useCallback } from "react";
 import * as SecureStore from "expo-secure-store";
@@ -25,8 +25,8 @@ export default function HostTabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#11796F",
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarActiveTintColor: "#D4501E",
+        tabBarInactiveTintColor: "#A09A94",
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#fff",

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -29,14 +29,14 @@ const SOURCE_CONFIG: Record<
   RESERVATION_PAYMENT: {
     label: "Booking Payment",
     icon: "local-parking",
-    color: "#11796F",
-    bg: "#E8F5F3",
+    color: "#D4501E",
+    bg: "#FFF0EC",
   },
   REFUND: {
     label: "Refund",
     icon: "replay",
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
   },
   HOST_PAYOUT: {
     label: "Withdrawal",
@@ -47,7 +47,7 @@ const SOURCE_CONFIG: Record<
   ADMIN_ADJUSTMENT: {
     label: "Adjustment",
     icon: "tune",
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
   },
 };
@@ -194,7 +194,7 @@ export default function EarningsScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconBg}>
-        <MaterialIcons name="receipt-long" size={36} color="#11796F" />
+        <MaterialIcons name="receipt-long" size={36} color="#D4501E" />
       </View>
       <Text style={styles.emptyTitle}>No transactions yet</Text>
       <Text style={styles.emptySubtitle}>
@@ -214,7 +214,7 @@ export default function EarningsScreen() {
         {loading ? (
           <ActivityIndicator
             size="large"
-            color="#11796F"
+            color="#D4501E"
             style={{ marginTop: 40 }}
           />
         ) : (
@@ -230,7 +230,7 @@ export default function EarningsScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#11796F"
+                tintColor="#D4501E"
               />
             }
           />
@@ -249,7 +249,7 @@ export default function EarningsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Withdraw Funds</Text>
               <TouchableOpacity onPress={() => setShowWithdraw(false)}>
-                <MaterialIcons name="close" size={24} color="#8E8E93" />
+                <MaterialIcons name="close" size={24} color="#A09A94" />
               </TouchableOpacity>
             </View>
 
@@ -303,7 +303,7 @@ export default function EarningsScreen() {
 
             {/* Notice */}
             <View style={styles.modalNotice}>
-              <MaterialIcons name="info-outline" size={18} color="#F57C00" />
+              <MaterialIcons name="info-outline" size={18} color="#D4501E" />
               <Text style={styles.modalNoticeText}>
                 This is a simulated withdrawal. No real transfer will be processed.
               </Text>
@@ -335,7 +335,7 @@ export default function EarningsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     paddingHorizontal: 24,
     paddingTop: 12,
@@ -344,18 +344,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "500",
     marginTop: 4,
   },
   content: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   listContent: {
     padding: 20,
@@ -365,11 +365,11 @@ const styles = StyleSheet.create({
 
   // Balance Card
   balanceCard: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 20,
     padding: 24,
     marginBottom: 6,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -454,11 +454,11 @@ const styles = StyleSheet.create({
   txnLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   txnDate: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   txnAmount: {
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
@@ -490,12 +490,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
   },
 
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -521,10 +521,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   modalBalanceCard: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 16,
     padding: 18,
     marginBottom: 20,
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -582,13 +582,13 @@ const styles = StyleSheet.create({
   currencySymbol: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#11796F",
+    color: "#D4501E",
   },
   amountInput: {
     flex: 1,
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     padding: 0,
   },
   modalPresetGrid: {
@@ -607,16 +607,16 @@ const styles = StyleSheet.create({
     borderColor: "#E8ECF0",
   },
   modalPresetBtnSelected: {
-    backgroundColor: "#E8F5F3",
-    borderColor: "#11796F",
+    backgroundColor: "#FFF0EC",
+    borderColor: "#D4501E",
   },
   modalPresetText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   modalPresetTextSelected: {
-    color: "#11796F",
+    color: "#D4501E",
   },
   modalNotice: {
     flexDirection: "row",
@@ -632,19 +632,19 @@ const styles = StyleSheet.create({
   modalNoticeText: {
     flex: 1,
     fontSize: 13,
-    color: "#F57C00",
+    color: "#D4501E",
     fontWeight: "500",
     lineHeight: 18,
   },
   modalWithdrawBtn: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

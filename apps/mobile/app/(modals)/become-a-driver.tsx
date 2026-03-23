@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -77,7 +77,7 @@ export default function BecomeADriverModal() {
         {/* Hero */}
         <View style={styles.heroSection}>
           <View style={styles.heroIconBg}>
-            <MaterialIcons name="directions-car" size={56} color="#11796F" />
+            <MaterialIcons name="directions-car" size={56} color="#D4501E" />
           </View>
           <Text style={styles.heroTitle}>Become a Driver</Text>
           <Text style={styles.heroSubtitle}>
@@ -90,7 +90,7 @@ export default function BecomeADriverModal() {
           {BENEFITS.map((benefit) => (
             <View key={benefit.title} style={styles.benefitItem}>
               <View style={styles.benefitIconBg}>
-                <MaterialIcons name={benefit.icon} size={22} color="#11796F" />
+                <MaterialIcons name={benefit.icon} size={22} color="#D4501E" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.benefitTitle}>{benefit.title}</Text>
@@ -126,7 +126,7 @@ export default function BecomeADriverModal() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   container: {
     flex: 1,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     width: 104,
     height: 104,
     borderRadius: 32,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -149,13 +149,13 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.5,
     marginBottom: 10,
   },
   heroSubtitle: {
     fontSize: 15,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     lineHeight: 22,
   },
@@ -180,19 +180,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
   },
   benefitTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 4,
   },
   benefitText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     lineHeight: 18,
   },
   bottomSection: {
@@ -200,14 +200,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   startButton: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

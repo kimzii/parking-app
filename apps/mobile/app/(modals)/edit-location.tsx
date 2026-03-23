@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+﻿import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -273,7 +273,7 @@ export default function EditLocationScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Edit Location" }} />
-        <ActivityIndicator size="large" color="#11796F" style={{ marginTop: 60 }} />
+        <ActivityIndicator size="large" color="#D4501E" style={{ marginTop: 60 }} />
       </SafeAreaView>
     );
   }
@@ -295,7 +295,7 @@ export default function EditLocationScreen() {
           {/* Re-approval Warning */}
           {originalStatus === "APPROVED" && (
             <View style={styles.warningBanner}>
-              <MaterialIcons name="info" size={20} color="#F57C00" />
+              <MaterialIcons name="info" size={20} color="#D4501E" />
               <Text style={styles.warningText}>
                 Editing this location will require admin re-approval before it becomes visible to drivers again.
               </Text>
@@ -361,7 +361,7 @@ export default function EditLocationScreen() {
             </View>
             {address ? (
               <View style={styles.addressRow}>
-                <MaterialIcons name="location-on" size={16} color="#11796F" />
+                <MaterialIcons name="location-on" size={16} color="#D4501E" />
                 <Text style={styles.addressText} numberOfLines={2}>
                   {address}
                 </Text>
@@ -379,7 +379,7 @@ export default function EditLocationScreen() {
                 value={is24Hours}
                 onValueChange={setIs24Hours}
                 trackColor={{ false: "#E0E0E0", true: "#A8D5D1" }}
-                thumbColor={is24Hours ? "#11796F" : "#fff"}
+                thumbColor={is24Hours ? "#D4501E" : "#fff"}
               />
             </View>
 
@@ -512,11 +512,11 @@ export default function EditLocationScreen() {
             {totalImages < 5 && (
               <View style={styles.imageActions}>
                 <TouchableOpacity style={styles.imageActionBtn} onPress={pickImages}>
-                  <MaterialIcons name="photo-library" size={20} color="#11796F" />
+                  <MaterialIcons name="photo-library" size={20} color="#D4501E" />
                   <Text style={styles.imageActionText}>Gallery</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.imageActionBtn} onPress={takePhoto}>
-                  <MaterialIcons name="camera-alt" size={20} color="#11796F" />
+                  <MaterialIcons name="camera-alt" size={20} color="#D4501E" />
                   <Text style={styles.imageActionText}>Camera</Text>
                 </TouchableOpacity>
               </View>
@@ -548,7 +548,7 @@ export default function EditLocationScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
     padding: 16,
     paddingBottom: 60,
@@ -564,12 +564,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     borderWidth: 1.5,
-    borderColor: "#F57C00",
+    borderColor: "#D4501E",
   },
   warningText: {
     flex: 1,
     fontSize: 13,
-    color: "#F57C00",
+    color: "#D4501E",
     fontWeight: "500",
     lineHeight: 18,
   },
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 4,
     marginLeft: 4,
   },
@@ -598,14 +598,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   input: {
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
     borderWidth: 1,
     borderColor: "#E8ECF0",
   },
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   hoursContainer: {
     gap: 16,
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   timeGroupLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   timeRow: {
     flexDirection: "row",
@@ -668,19 +668,19 @@ const styles = StyleSheet.create({
   timeInput: {
     width: 48,
     height: 44,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#E8ECF0",
     textAlign: "center",
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   timeSep: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   periodBtn: {
     paddingHorizontal: 12,
@@ -691,13 +691,13 @@ const styles = StyleSheet.create({
     borderColor: "#E8ECF0",
   },
   periodBtnActive: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
   periodText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   periodTextActive: {
     color: "#fff",
@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   imageActionText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#11796F",
+    color: "#D4501E",
   },
 
   // Save Button
@@ -778,11 +778,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
     marginTop: 8,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

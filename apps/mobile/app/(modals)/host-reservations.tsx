@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,8 @@ import * as reservationsService from "../../src/services/reservations";
 
 const STATUS_CONFIG = {
   PENDING: {
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     label: "Pending Approval",
     icon: "hourglass-top",
   },
@@ -33,7 +33,7 @@ const STATUS_CONFIG = {
     icon: "directions-car",
   },
   COMPLETED: {
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
     label: "Completed",
     icon: "check-circle",
@@ -145,31 +145,31 @@ export default function HostReservationsScreen() {
 
         {/* Driver Info */}
         <View style={styles.driverRow}>
-          <MaterialIcons name="person" size={18} color="#11796F" />
+          <MaterialIcons name="person" size={18} color="#D4501E" />
           <Text style={styles.driverName}>{item.driver?.name || "Driver"}</Text>
         </View>
 
         <View style={styles.driverDetails}>
           <View style={styles.detailRow}>
-            <MaterialIcons name="phone" size={14} color="#8E8E93" />
+            <MaterialIcons name="phone" size={14} color="#A09A94" />
             <Text style={styles.detailText} numberOfLines={1}>Phone: {driverPhone}</Text>
           </View>
           <View style={styles.detailRow}>
             <MaterialIcons
               name="confirmation-number"
               size={14}
-              color="#8E8E93"
+              color="#A09A94"
             />
             <Text style={styles.detailText} numberOfLines={1}>
               Plate Number: {driverPlateNumber}
             </Text>
           </View>
           <View style={styles.detailRow}>
-            <MaterialIcons name="directions-car" size={14} color="#8E8E93" />
+            <MaterialIcons name="directions-car" size={14} color="#A09A94" />
             <Text style={styles.detailText} numberOfLines={1}>Vehicle: {vehicleText}</Text>
           </View>
           <View style={styles.detailRow}>
-            <MaterialIcons name="local-parking" size={14} color="#8E8E93" />
+            <MaterialIcons name="local-parking" size={14} color="#A09A94" />
             <Text style={styles.detailText} numberOfLines={1}>Booked Spot: {bookedSpot}</Text>
           </View>
         </View>
@@ -178,8 +178,8 @@ export default function HostReservationsScreen() {
         <View style={styles.timeSection}>
           {item.status === "PENDING" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="hourglass-empty" size={16} color="#F57C00" />
-              <Text style={[styles.timeText, { color: "#F57C00" }]}>
+              <MaterialIcons name="hourglass-empty" size={16} color="#D4501E" />
+              <Text style={[styles.timeText, { color: "#D4501E" }]}>
                 Decision by{" "}
                 {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -191,7 +191,7 @@ export default function HostReservationsScreen() {
           )}
           {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="schedule" size={16} color="#8E8E93" />
+              <MaterialIcons name="schedule" size={16} color="#A09A94" />
               <Text style={styles.timeText}>
                 Arrive by{" "}
                 {new Date(item.arrivalDeadline).toLocaleTimeString([], {
@@ -294,7 +294,7 @@ export default function HostReservationsScreen() {
               style={styles.scanHeaderBtn}
               onPress={() => router.push("/(modals)/scan-qr")}
             >
-              <MaterialIcons name="qr-code-scanner" size={24} color="#11796F" />
+              <MaterialIcons name="qr-code-scanner" size={24} color="#D4501E" />
             </TouchableOpacity>
           ),
         }}
@@ -329,7 +329,7 @@ export default function HostReservationsScreen() {
       {loading ? (
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 40 }}
         />
       ) : (
@@ -343,7 +343,7 @@ export default function HostReservationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#11796F"
+              tintColor="#D4501E"
             />
           }
           showsVerticalScrollIndicator={false}
@@ -354,7 +354,7 @@ export default function HostReservationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scanHeaderBtn: { marginRight: 8 },
 
   // Filters
@@ -373,10 +373,10 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
   },
   filterBtnActive: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#8E8E93" },
+  filterText: { fontSize: 13, fontWeight: "600", color: "#A09A94" },
   filterTextActive: { color: "#fff" },
 
   // List
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardHeaderLeft: { flex: 1, gap: 6 },
-  cardLocation: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  cardLocation: { fontSize: 15, fontWeight: "700", color: "#232230" },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  slotText: { fontSize: 12, fontWeight: "700", color: "#11796F" },
+  slotText: { fontSize: 12, fontWeight: "700", color: "#D4501E" },
   divider: { height: 1, backgroundColor: "#F0F0F0", marginBottom: 12 },
 
   // Driver
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 6,
   },
-  driverName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  driverName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#232230" },
   driverDetails: {
     gap: 4,
     marginBottom: 12,
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   detailText: {
     flex: 1,
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   callBtn: {
     width: 32,
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 12,
   },
-  vehicleText: { fontSize: 13, color: "#8E8E93" },
+  vehicleText: { fontSize: 13, color: "#A09A94" },
 
   // Time
   timeSection: { gap: 6, marginBottom: 12 },
@@ -475,8 +475,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
   },
-  amountLabel: { fontSize: 14, color: "#8E8E93" },
-  amountValue: { fontSize: 16, fontWeight: "700", color: "#11796F" },
+  amountLabel: { fontSize: 14, color: "#A09A94" },
+  amountValue: { fontSize: 16, fontWeight: "700", color: "#D4501E" },
   overtimeText: { fontSize: 12, color: "#E53935" },
 
   // Empty State
@@ -490,12 +490,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     marginTop: 8,
   },

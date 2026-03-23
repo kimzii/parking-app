@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+﻿import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -25,12 +25,12 @@ const STATUS_CONFIG: Record<
   string,
   { color: string; bg: string; label: string }
 > = {
-  PENDING: { color: "#F57C00", bg: "#FFF3E0", label: "Awaiting Approval" },
+  PENDING: { color: "#D4501E", bg: "#FFF0EC", label: "Awaiting Approval" },
   CONFIRMED: { color: "#1976D2", bg: "#E3F2FD", label: "Awaiting Arrival" },
   ACTIVE: { color: "#4CAF50", bg: "#E8F5E9", label: "Session Active" },
-  COMPLETED: { color: "#8E8E93", bg: "#F5F5F5", label: "Completed" },
+  COMPLETED: { color: "#A09A94", bg: "#F5F5F5", label: "Completed" },
   CANCELLED: { color: "#E53935", bg: "#FFEBEE", label: "Cancelled" },
-  EXPIRED: { color: "#F57C00", bg: "#FFF3E0", label: "Expired" },
+  EXPIRED: { color: "#D4501E", bg: "#FFF0EC", label: "Expired" },
 };
 
 function formatCountdown(ms: number): string {
@@ -178,7 +178,7 @@ export default function ReservationQRScreen() {
         <Stack.Screen options={{ title: "Reservation" }} />
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 60 }}
         />
       </SafeAreaView>
@@ -223,7 +223,7 @@ export default function ReservationQRScreen() {
           title: "Reservation",
           headerRight: () => (
             <TouchableOpacity onPress={handleShare} style={{ marginRight: 8 }}>
-              <MaterialIcons name="share" size={24} color="#11796F" />
+              <MaterialIcons name="share" size={24} color="#D4501E" />
             </TouchableOpacity>
           ),
         }}
@@ -235,7 +235,7 @@ export default function ReservationQRScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#11796F"
+            tintColor="#D4501E"
           />
         }
       >
@@ -274,7 +274,7 @@ export default function ReservationQRScreen() {
             <MaterialIcons
               name="timer"
               size={28}
-              color={arrivalRemaining <= 0 ? "#E53935" : "#F57C00"}
+              color={arrivalRemaining <= 0 ? "#E53935" : "#D4501E"}
             />
             <View style={{ flex: 1 }}>
               <Text style={styles.countdownLabel}>
@@ -333,7 +333,7 @@ export default function ReservationQRScreen() {
               <QRCode
                 value={reservation.qrCode}
                 size={200}
-                color="#1A1A2E"
+                color="#232230"
                 backgroundColor="#fff"
               />
             </View>
@@ -358,7 +358,7 @@ export default function ReservationQRScreen() {
                 {reservation.parkingLocation.address}
               </Text>
               <View style={styles.slotBadge}>
-                <MaterialIcons name="event-seat" size={14} color="#11796F" />
+                <MaterialIcons name="event-seat" size={14} color="#D4501E" />
                 <Text style={styles.slotText}>
                   {reservation.parkingSpace.name ||
                     `Slot ${reservation.parkingSpace.slotNumber}`}
@@ -381,7 +381,7 @@ export default function ReservationQRScreen() {
           <Text style={styles.sectionTitle}>Session Details</Text>
           <View style={styles.timeCard}>
             <View style={styles.timeRow}>
-              <MaterialIcons name="calendar-today" size={20} color="#11796F" />
+              <MaterialIcons name="calendar-today" size={20} color="#D4501E" />
               <Text style={styles.timeLabel}>Booked</Text>
               <Text style={styles.timeValue}>
                 {new Date(
@@ -421,7 +421,7 @@ export default function ReservationQRScreen() {
             )}
             {sessionStart && (
               <View style={styles.timeRow}>
-                <MaterialIcons name="timelapse" size={20} color="#11796F" />
+                <MaterialIcons name="timelapse" size={20} color="#D4501E" />
                 <Text style={styles.timeLabel}>Duration</Text>
                 <Text style={styles.timeValue}>
                   {formatDuration(sessionDuration)}
@@ -520,7 +520,7 @@ export default function ReservationQRScreen() {
         {/* Expired Message */}
         {reservation.status === "EXPIRED" && (
           <View style={styles.expiredCard}>
-            <MaterialIcons name="timer-off" size={32} color="#F57C00" />
+            <MaterialIcons name="timer-off" size={32} color="#D4501E" />
             <Text style={styles.expiredTitle}>Reservation Expired</Text>
             <Text style={styles.expiredText}>
               You did not arrive within the 60-minute window.
@@ -533,7 +533,7 @@ export default function ReservationQRScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
   errorContainer: {
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  errorText: { fontSize: 16, color: "#1A1A2E", fontWeight: "600" },
+  errorText: { fontSize: 16, color: "#232230", fontWeight: "600" },
 
   // Status Badge
   statusBadge: {
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   countdownCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF3E0",
+    backgroundColor: "#FFF0EC",
     borderRadius: 14,
     padding: 16,
     gap: 12,
@@ -570,8 +570,8 @@ const styles = StyleSheet.create({
   countdownCardWarning: { backgroundColor: "#FFEBEE" },
   countdownCardExpired: { backgroundColor: "#FFCDD2" },
   countdownLabel: { fontSize: 12, color: "#666", fontWeight: "600" },
-  countdownValue: { fontSize: 22, fontWeight: "800", color: "#F57C00" },
-  countdownHint: { fontSize: 11, color: "#8E8E93" },
+  countdownValue: { fontSize: 22, fontWeight: "800", color: "#D4501E" },
+  countdownHint: { fontSize: 11, color: "#A09A94" },
 
   // Session Timer Card
   sessionCard: {
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   },
   sessionLabel: { fontSize: 12, color: "#666", fontWeight: "600" },
   sessionValue: { fontSize: 22, fontWeight: "800", color: "#4CAF50" },
-  sessionStartText: { fontSize: 11, color: "#8E8E93" },
+  sessionStartText: { fontSize: 11, color: "#A09A94" },
 
   // QR Card
   qrCard: {
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
   qrTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 20,
   },
   qrContainer: {
@@ -611,19 +611,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "#11796F",
+    borderColor: "#D4501E",
   },
   qrCodeText: {
     marginTop: 16,
     fontSize: 18,
     fontWeight: "800",
-    color: "#11796F",
+    color: "#D4501E",
     letterSpacing: 2,
   },
   qrHint: {
     marginTop: 12,
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
   },
 
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 10,
   },
 
@@ -650,8 +650,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   locationInfo: { flex: 1, gap: 4 },
-  locationTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  locationAddress: { fontSize: 13, color: "#8E8E93" },
+  locationTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  locationAddress: { fontSize: 13, color: "#A09A94" },
   slotBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -663,12 +663,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: 6,
   },
-  slotText: { fontSize: 12, fontWeight: "700", color: "#11796F" },
+  slotText: { fontSize: 12, fontWeight: "700", color: "#D4501E" },
   directionsBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -686,8 +686,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  timeLabel: { flex: 1, fontSize: 14, color: "#8E8E93", fontWeight: "600" },
-  timeValue: { fontSize: 14, fontWeight: "700", color: "#1A1A2E" },
+  timeLabel: { flex: 1, fontSize: 14, color: "#A09A94", fontWeight: "600" },
+  timeValue: { fontSize: 14, fontWeight: "700", color: "#232230" },
 
   // Payment Card
   paymentCard: {
@@ -702,17 +702,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   paymentRow: { flexDirection: "row", justifyContent: "space-between" },
-  paymentLabel: { fontSize: 14, color: "#8E8E93" },
-  paymentValue: { fontSize: 14, fontWeight: "600", color: "#1A1A2E" },
+  paymentLabel: { fontSize: 14, color: "#A09A94" },
+  paymentValue: { fontSize: 14, fontWeight: "600", color: "#232230" },
   paymentNote: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontStyle: "italic",
     marginTop: 4,
   },
   divider: { height: 1, backgroundColor: "#E0E0E0", marginVertical: 6 },
-  totalLabel: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
-  totalValue: { fontSize: 18, fontWeight: "800", color: "#11796F" },
+  totalLabel: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  totalValue: { fontSize: 18, fontWeight: "800", color: "#D4501E" },
 
   // Cancel Button
   cancelBtn: {
@@ -742,13 +742,13 @@ const styles = StyleSheet.create({
   // Expired Card
   expiredCard: {
     alignItems: "center",
-    backgroundColor: "#FFF3E0",
+    backgroundColor: "#FFF0EC",
     borderRadius: 14,
     padding: 24,
     gap: 8,
     marginTop: 10,
   },
-  expiredTitle: { fontSize: 17, fontWeight: "700", color: "#F57C00" },
+  expiredTitle: { fontSize: 17, fontWeight: "700", color: "#D4501E" },
   expiredText: { fontSize: 14, color: "#666", textAlign: "center" },
 
   // Review Button

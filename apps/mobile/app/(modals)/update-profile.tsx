@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -89,7 +89,7 @@ export default function UpdateProfileScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#11796F" />
+        <ActivityIndicator size="large" color="#D4501E" />
       </View>
     );
   }
@@ -125,7 +125,7 @@ export default function UpdateProfileScreen() {
         <View style={styles.form}>
           <Text style={styles.label}>First Name</Text>
           <View style={styles.inputContainer}>
-            <Feather name="user" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="First Name"
@@ -140,7 +140,7 @@ export default function UpdateProfileScreen() {
 
           <Text style={styles.label}>Last Name</Text>
           <View style={styles.inputContainer}>
-            <Feather name="user" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Last Name"
@@ -172,12 +172,12 @@ export default function UpdateProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF" },
   scrollContent: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 40 },
   logoContainer: { alignItems: "center", marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: "800", color: "#1A1A2E", letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4 },
+  title: { fontSize: 28, fontWeight: "800", color: "#232230", letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: "#A09A94", marginTop: 4 },
   avatarContainer: { alignSelf: "center", marginBottom: 24 },
   avatar: {
     width: 110, height: 110, borderRadius: 34, backgroundColor: "#E8ECF0",
@@ -190,29 +190,29 @@ const styles = StyleSheet.create({
   },
   cameraIcon: {
     position: "absolute", bottom: 2, right: 2,
-    backgroundColor: "#11796F", width: 34, height: 34, borderRadius: 12,
+    backgroundColor: "#D4501E", width: 34, height: 34, borderRadius: 12,
     justifyContent: "center", alignItems: "center",
     borderWidth: 3, borderColor: "#fff",
-    shadowColor: "#11796F", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4,
+    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4,
   },
   form: {
     backgroundColor: "#fff", borderRadius: 20, padding: 24,
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4,
   },
-  label: { fontSize: 13, fontWeight: "600", color: "#1A1A2E", marginBottom: 8, marginTop: 14, textTransform: "uppercase", letterSpacing: 0.5 },
+  label: { fontSize: 13, fontWeight: "600", color: "#232230", marginBottom: 8, marginTop: 14, textTransform: "uppercase", letterSpacing: 0.5 },
   inputContainer: {
-    flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, backgroundColor: "#F8FAFB",
+    flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, backgroundColor: "#FFFFFF",
   },
   inputIcon: { marginLeft: 14 },
-  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#1A1A2E" },
+  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#232230" },
   button: {
-    backgroundColor: "#11796F", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 24,
-    shadowColor: "#11796F", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
+    backgroundColor: "#D4501E", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 24,
+    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
   },
   buttonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   cancelButton: {
     paddingVertical: 14, borderRadius: 14, alignItems: "center", marginTop: 10, backgroundColor: "#F2F2F7",
   },
-  cancelText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
+  cancelText: { color: "#A09A94", fontSize: 15, fontWeight: "600" },
 });
