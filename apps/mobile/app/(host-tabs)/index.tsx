@@ -15,6 +15,7 @@ import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { userService } from "../../src/services/user";
 import * as reservationsService from "../../src/services/reservations";
+import { getUnreadCount } from "../../src/services/notifications";
 
 const STATUS_CONFIG: Record<
   string,
@@ -83,6 +84,7 @@ export default function HostHomeScreen() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -107,7 +109,12 @@ export default function HostHomeScreen() {
       const fetchData = async () => {
         setLoading(true);
         try {
-          const profile = await userService.getProfile();
+          const [profile] = await Promise.all([
+            userService.getProfile(),
+            getUnreadCount()
+              .then((c) => setUnreadCount(c))
+              .catch(() => {}),
+          ]);
           setUserName(
             `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() ||
               "Host",
@@ -468,9 +475,24 @@ export default function HostHomeScreen() {
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{userName}</Text>
         </View>
-        <View style={styles.hostBadge}>
-          <MaterialIcons name="home-work" size={16} color="#D4501E" />
-          <Text style={styles.hostBadgeText}>Host</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => router.push("/(modals)/notifications" as any)}
+            activeOpacity={0.75}
+          >
+            <MaterialIcons name="notifications-none" size={24} color="#232230" />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <View style={styles.hostBadge}>
+            <MaterialIcons name="home-work" size={16} color="#D4501E" />
+            <Text style={styles.hostBadgeText}>Host</Text>
+          </View>
         </View>
       </View>
 
@@ -768,6 +790,23 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     fontSize: 14,
     fontWeight: "700",
+    color: "#fff",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#E53935",
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
     color: "#fff",
   },
 });
