@@ -16,7 +16,7 @@ import * as SecureStore from "expo-secure-store";
 import { authService } from "../../src/services/auth";
 import { userService } from "../../src/services/user";
 import Feather from "@expo/vector-icons/Feather";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -87,10 +87,11 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
-            <MaterialIcons name="local-parking" size={40} color="#fff" />
-          </View>
-          <Text style={styles.title}>ParkLink</Text>
+          <Image
+            source={require("../../assets/images/icon.png")}
+            style={styles.logoImage}
+            contentFit="contain"
+          />
           <Text style={styles.subtitle}>Find & Book Parking Easily</Text>
         </View>
 
@@ -184,18 +185,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
   },
-  logoIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: "#D4501E",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#D4501E",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+  logoImage: {
+    width: 160,
+    height: 160,
+    marginBottom: 8,
   },
   title: {
     fontSize: 30,
