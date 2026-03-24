@@ -26,9 +26,9 @@ const STATUS_CONFIG: Record<
   string,
   { color: string; bg: string; label: string }
 > = {
-  PENDING: { color: "#D4501E", bg: "#FFF0EC", label: "Awaiting Approval" },
+  PENDING: { color: "#A09A94", bg: "#FFF0EC", label: "Awaiting Approval" },
   CONFIRMED: { color: "#1976D2", bg: "#E3F2FD", label: "Awaiting Arrival" },
-  ACTIVE: { color: "#4CAF50", bg: "#F5F4F2", label: "Session Active" },
+  ACTIVE: { color: "#D4501E", bg: "#F5F4F2", label: "Session Active" },
   COMPLETED: { color: "#A09A94", bg: "#F5F5F5", label: "Completed" },
   CANCELLED: { color: "#E53935", bg: "#FFEBEE", label: "Cancelled" },
   EXPIRED: { color: "#D4501E", bg: "#FFF0EC", label: "Expired" },
@@ -330,7 +330,7 @@ export default function ReservationQRScreen() {
         {/* Session Timer (ACTIVE) */}
         {reservation.status === "ACTIVE" && sessionStart && (
           <View style={styles.sessionCard}>
-            <MaterialIcons name="timer" size={28} color="#4CAF50" />
+            <MaterialIcons name="timer" size={28} color="#D4501E" />
             <View style={{ flex: 1 }}>
               <Text style={styles.sessionLabel}>Session Duration</Text>
               <Text style={styles.sessionValue}>
@@ -421,9 +421,9 @@ export default function ReservationQRScreen() {
             </View>
             {sessionStart && (
               <View style={styles.timeRow}>
-                <MaterialIcons name="login" size={20} color="#4CAF50" />
+                <MaterialIcons name="login" size={20} color="#D4501E" />
                 <Text style={styles.timeLabel}>Checked In</Text>
-                <Text style={[styles.timeValue, { color: "#4CAF50" }]}>
+                <Text style={[styles.timeValue, { color: "#D4501E" }]}>
                   {sessionStart.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -434,9 +434,9 @@ export default function ReservationQRScreen() {
             )}
             {sessionEnd && (
               <View style={styles.timeRow}>
-                <MaterialIcons name="logout" size={20} color="#1976D2" />
+                <MaterialIcons name="logout" size={20} color="#A09A94" />
                 <Text style={styles.timeLabel}>Checked Out</Text>
-                <Text style={[styles.timeValue, { color: "#1976D2" }]}>
+                <Text style={[styles.timeValue, { color: "#A09A94" }]}>
                   {sessionEnd.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -449,7 +449,7 @@ export default function ReservationQRScreen() {
               <View style={styles.timeRow}>
                 <MaterialIcons name="timelapse" size={20} color="#D4501E" />
                 <Text style={styles.timeLabel}>Duration</Text>
-                <Text style={styles.timeValue}>
+                <Text style={[styles.timeValue, { color: "#D4501E" }]}>
                   {formatDuration(sessionDuration)}
                 </Text>
               </View>
@@ -514,7 +514,7 @@ export default function ReservationQRScreen() {
         {/* Completed Message */}
         {reservation.status === "COMPLETED" && (
           <View style={styles.completedCard}>
-            <MaterialIcons name="check-circle" size={32} color="#4CAF50" />
+            <MaterialIcons name="check-circle" size={32} color="#D4501E" />
             <Text style={styles.completedTitle}>Parking Session Complete</Text>
             <Text style={styles.completedText}>
               Thank you for using ParkLink!
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sessionLabel: { fontSize: 12, color: "#666", fontWeight: "600" },
-  sessionValue: { fontSize: 22, fontWeight: "800", color: "#4CAF50" },
+  sessionValue: { fontSize: 22, fontWeight: "800", color: "#D4501E" },
   sessionStartText: { fontSize: 11, color: "#A09A94" },
 
   // QR Card
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
-  completedTitle: { fontSize: 17, fontWeight: "700", color: "#4CAF50" },
+  completedTitle: { fontSize: 17, fontWeight: "700", color: "#D4501E" },
   completedText: { fontSize: 14, color: "#666" },
 
   // Expired Card
