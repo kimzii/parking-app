@@ -49,7 +49,7 @@ export class AuthService {
       this.jwtService.signAsync(payload),
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-key',
-        expiresIn: '7d',
+        expiresIn: '30d',
       }),
     ]);
 
@@ -151,7 +151,7 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
 
     return {
       message: 'Email verified successfully',
@@ -308,7 +308,7 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
 
     console.log('✅ Login successful');
 
@@ -361,13 +361,8 @@ export class AuthService {
         },
       });
 
-      // Check if user has any verified roles
-      const hasVerifiedRole = user?.userRoles.some(
-        (ur) => ur.status === 'VERIFIED' || ur.role.name === 'ADMIN',
-      );
-
-      if (!user || !hasVerifiedRole) {
-        console.log('User not found or no verified roles:', user?.id);
+      if (!user) {
+        console.log('User not found:', payload.sub);
         throw new UnauthorizedException('Invalid token');
       }
 
