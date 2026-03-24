@@ -34,10 +34,10 @@ const STATUS_CONFIG: Record<
   icon: "directions-car",
   },
   ACTIVE: {
-  color: "#D4501E",
-  bg: "#FFF0EC",
-  label: "Active",
-  icon: "directions-car",
+    color: "#4CAF50",
+    bg: "#F0FBF1",
+    label: "Active",
+    icon: "directions-car",
   },
   COMPLETED: {
   color: "#A09A94",

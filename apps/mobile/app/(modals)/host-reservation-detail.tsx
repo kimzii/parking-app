@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, router } from "expo-router";
@@ -35,10 +36,10 @@ const STATUS_CONFIG: Record<
   icon: "directions-car",
   },
   ACTIVE: {
-  color: "#D4501E",
-  bg: "#FFF0EC",
-  label: "Active",
-  icon: "directions-car",
+    color: "#4CAF50",
+    bg: "#F0FBF1",
+    label: "Active",
+    icon: "directions-car",
   },
   COMPLETED: {
     color: "#A09A94",
@@ -60,10 +61,22 @@ const STATUS_CONFIG: Record<
   },
 };
 
+function formatDuration(startedAt: string, endedAt?: string | null): string {
+  const start = new Date(startedAt);
+  const end = endedAt ? new Date(endedAt) : new Date();
+  const totalMins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+
 export default function HostReservationDetailScreen() {
   const params = useLocalSearchParams<{ reservation: string }>();
   const [reservation, setReservation] =
     useState<reservationsService.HostReservation | null>(null);
+  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
 
   useEffect(() => {
     if (params.reservation) {
@@ -76,6 +89,49 @@ export default function HostReservationDetailScreen() {
       }
     }
   }, [params.reservation]);
+
+  const handleApprove = () => {
+    if (!reservation) return;
+    Alert.alert("Approve Booking", "Approve this booking request?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Approve",
+        onPress: async () => {
+          setActionLoading("approve");
+          try {
+            await reservationsService.approveReservation(reservation.id);
+            setReservation((r) => r ? { ...r, status: "CONFIRMED" } : r);
+          } catch (err: any) {
+            Alert.alert("Failed", err.response?.data?.message || "Could not approve reservation.");
+          } finally {
+            setActionLoading(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleReject = () => {
+    if (!reservation) return;
+    Alert.alert("Reject Booking", "Reject this request? The driver will be refunded.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reject",
+        style: "destructive",
+        onPress: async () => {
+          setActionLoading("reject");
+          try {
+            await reservationsService.rejectReservation(reservation.id);
+            setReservation((r) => r ? { ...r, status: "CANCELLED" } : r);
+          } catch (err: any) {
+            Alert.alert("Failed", err.response?.data?.message || "Could not reject reservation.");
+          } finally {
+            setActionLoading(null);
+          }
+        },
+      },
+    ]);
+  };
 
   if (!reservation) {
     return (
@@ -108,11 +164,7 @@ export default function HostReservationDetailScreen() {
         {reservation.status === "ACTIVE" && !reservation.sessionEndedAt && (
           <View style={styles.sessionChipRowStandalone}>
             <View style={styles.sessionChip}>
-              <MaterialIcons
-                name="directions-car"
-                size={14}
-                color="#D4501E"
-              />
+              <MaterialIcons name="directions-car" size={14} color="#4CAF50" />
               <Text style={styles.sessionChipText}>Session Active</Text>
             </View>
           </View>
@@ -281,24 +333,12 @@ export default function HostReservationDetailScreen() {
 
             <View style={styles.sessionRow}>
               <View style={styles.sessionRowLeft}>
-                <MaterialIcons
-                  name="timer"
-                  size={18}
-                  color="#D4501E"
-                />
+                <MaterialIcons name="timer" size={18} color="#D4501E" />
                 <Text style={styles.sessionLabel}>Duration</Text>
               </View>
               <Text style={[styles.sessionValue, styles.sessionValueHighlight]}>
                 {reservation.sessionStartedAt
-                  ? (() => {
-                      const start = new Date(reservation.sessionStartedAt);
-                      const end = reservation.sessionEndedAt
-                        ? new Date(reservation.sessionEndedAt)
-                        : new Date();
-                      const diffMs = Math.max(0, end.getTime() - start.getTime());
-                      const mins = Math.round(diffMs / 60000);
-                      return `${mins}m`;
-                    })()
+                  ? formatDuration(reservation.sessionStartedAt, reservation.sessionEndedAt)
                   : "-"}
               </Text>
             </View>
@@ -335,6 +375,42 @@ export default function HostReservationDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Approve / Reject — PENDING only */}
+        {reservation.status === "PENDING" && (
+          <View style={styles.actionBtns}>
+            <TouchableOpacity
+              style={styles.rejectBtn}
+              onPress={handleReject}
+              activeOpacity={0.7}
+              disabled={actionLoading !== null}
+            >
+              {actionLoading === "reject" ? (
+                <ActivityIndicator size="small" color="#E53935" />
+              ) : (
+                <>
+                  <MaterialIcons name="close" size={18} color="#E53935" />
+                  <Text style={styles.rejectBtnText}>Reject</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.confirmBtn}
+              onPress={handleApprove}
+              activeOpacity={0.7}
+              disabled={actionLoading !== null}
+            >
+              {actionLoading === "approve" ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <MaterialIcons name="check" size={18} color="#fff" />
+                  <Text style={styles.confirmBtnText}>Approve</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Rate Driver */}
         {reservation.status === "COMPLETED" && (
@@ -377,13 +453,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-    marginBottom: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 16,
   },
   driverMainRow: {
     flexDirection: "row",
@@ -454,12 +530,12 @@ const styles = StyleSheet.create({
   sessionChipText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#D4501E",
+    color: "#4CAF50",
   },
 
   // Section
   section: {
-  marginBottom: 14,
+    marginBottom: 16,
   },
   sectionLabel: {
     fontSize: 13,
@@ -472,14 +548,14 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     backgroundColor: "#fff",
-    borderRadius: 14,
-  paddingHorizontal: 16,
-  paddingVertical: 14,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   infoRow: {
     flexDirection: "row",
@@ -685,7 +761,7 @@ const styles = StyleSheet.create({
   },
   sessionLabel: {
     fontSize: 13,
-    color: "#77716B",
+    color: "#A09A94",
   },
   sessionValue: {
     fontSize: 13,

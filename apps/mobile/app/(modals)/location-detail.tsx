@@ -21,6 +21,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
+import * as reservationsService from "../../src/services/reservations";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -70,8 +71,8 @@ interface LocationDetail {
 const STATUS_CONFIG = {
   APPROVED: {
     label: "Approved",
-    color: "#4CAF50",
-    bg: "#F5F4F2",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     icon: "check-circle" as const,
   },
   PENDING: {
@@ -95,9 +96,9 @@ const STATUS_CONFIG = {
 };
 
 const SLOT_STATUS_CONFIG = {
-  AVAILABLE: { color: "#4CAF50", bg: "#F5F4F2", icon: "event-seat" as const },
-  OCCUPIED: { color: "#D4501E", bg: "#FFF0EC", icon: "event-busy" as const },
-  DISABLED: { color: "#9E9E9E", bg: "#F5F5F5", icon: "block" as const },
+  AVAILABLE: { color: "#D4501E", bg: "#FFF0EC", border: "#FFD5C8", icon: "event-seat" as const },
+  OCCUPIED: { color: "#A09A94", bg: "#F5F5F5", border: "#E0E0E0", icon: "event-seat" as const },
+  DISABLED: { color: "#C5C5C5", bg: "#F5F5F5", border: "#E0E0E0", icon: "block" as const },
 };
 
 export default function LocationDetailScreen() {
@@ -105,8 +106,10 @@ export default function LocationDetailScreen() {
   const [location, setLocation] = useState<LocationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
   const [spaceActionLoading, setSpaceActionLoading] = useState(false);
+  const [viewingBooking, setViewingBooking] = useState(false);
 
   const fetchLocation = useCallback(async () => {
     if (!id) return;
@@ -246,6 +249,28 @@ export default function LocationDetailScreen() {
     );
   };
 
+  const handleViewBooking = async (space: ParkingSpace) => {
+    if (!location) return;
+    setViewingBooking(true);
+    try {
+      const reservations = await reservationsService.getHostReservations(location.id, "ACTIVE");
+      const activeRes = reservations.find((r) => r.parkingSpace.id === space.id);
+      if (activeRes) {
+        setSelectedSpace(null);
+        router.push({
+          pathname: "/(modals)/host-reservation-detail",
+          params: { reservation: JSON.stringify(activeRes) },
+        } as any);
+      } else {
+        Alert.alert("Not Found", "No active booking found for this space.");
+      }
+    } catch {
+      Alert.alert("Error", "Failed to fetch booking details.");
+    } finally {
+      setViewingBooking(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
@@ -306,180 +331,137 @@ export default function LocationDetailScreen() {
           />
         }
       >
-        {/* Image Gallery */}
-        {location.images && location.images.length > 0 && (
-          <View style={styles.imageGallery}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.imageScrollContent}
-            >
-              {location.images
-                .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
-                .map((img, index) => (
-                  <View key={img.id} style={styles.galleryImageWrapper}>
+        {/* Image Carousel */}
+        <View style={styles.imageGallery}>
+          {location.images && location.images.length > 0 ? (
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(
+                    e.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+                  );
+                  setActiveImage(idx);
+                }}
+              >
+                {location.images
+                  .sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+                  .map((img) => (
                     <Image
+                      key={img.id}
                       source={{ uri: img.imageUrl }}
-                      style={styles.galleryImage}
+                      style={styles.carouselImage}
                       contentFit="cover"
                     />
-                    {img.isPrimary && (
-                      <View style={styles.primaryImageBadge}>
-                        <Text style={styles.primaryImageText}>Primary</Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Location Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.titleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.locationTitle}>{location.title}</Text>
-              <View style={styles.addressRow}>
-                <MaterialIcons name="location-on" size={14} color="#A09A94" />
-                <Text style={styles.addressText} numberOfLines={2}>
-                  {location.address}
-                </Text>
-              </View>
-            </View>
-            <View
-              style={[styles.statusBadge, { backgroundColor: locStatus.bg }]}
-            >
-              <MaterialIcons
-                name={locStatus.icon}
-                size={14}
-                color={locStatus.color}
-              />
-              <Text style={[styles.statusText, { color: locStatus.color }]}>
-                {locStatus.label}
-              </Text>
-            </View>
-          </View>
-
-          {location.description ? (
-            <Text style={styles.description}>{location.description}</Text>
-          ) : null}
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <MaterialIcons name="payments" size={18} color="#D4501E" />
-              <Text style={styles.infoLabel}>Price</Text>
-              <Text style={styles.infoValue}>
-                ₱{Number(location.basePricePerHour).toFixed(2)}/hr
-              </Text>
-            </View>
-            <View style={styles.infoDivider} />
-            <View style={styles.infoItem}>
-              <MaterialIcons name="event-seat" size={18} color="#D4501E" />
-              <Text style={styles.infoLabel}>Total Slots</Text>
-              <Text style={styles.infoValue}>
-                {location.totalSlots ?? spaces.length}
-              </Text>
-            </View>
-            {location.isMultiLevel && (
-              <>
-                <View style={styles.infoDivider} />
-                <View style={styles.infoItem}>
-                  <MaterialIcons name="layers" size={18} color="#D4501E" />
-                  <Text style={styles.infoLabel}>Levels</Text>
-                  <Text style={styles.infoValue}>
-                    {location.numberOfLevels ?? "-"}
-                  </Text>
+                  ))}
+              </ScrollView>
+              {location.images.length > 1 && (
+                <View style={styles.dotsRow}>
+                  {location.images.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[styles.dot, i === activeImage && styles.dotActive]}
+                    />
+                  ))}
                 </View>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Operating Hours */}
-        <View style={styles.operatingHoursCard}>
-          <View style={styles.operatingHoursHeader}>
-            <MaterialIcons name="schedule" size={18} color="#D4501E" />
-            <Text style={styles.operatingHoursTitle}>Operating Hours</Text>
-          </View>
-          {location.is24Hours ? (
-            <View style={styles.hours24Badge}>
-              <MaterialIcons name="all-inclusive" size={16} color="#D4501E" />
-              <Text style={styles.hours24Text}>Open 24 Hours</Text>
-            </View>
-          ) : location.openTime && location.closeTime ? (
-            <View style={styles.hoursDisplay}>
-              <View style={styles.timeBlock}>
-                <MaterialIcons name="wb-sunny" size={16} color="#D4501E" />
-                <Text style={styles.timeValue}>
-                  {formatTime(location.openTime!)}
-                </Text>
-                <Text style={styles.timeLabel}>Opens</Text>
-              </View>
-              <View style={styles.timeSeparator}>
-                <MaterialIcons name="arrow-forward" size={16} color="#A09A94" />
-              </View>
-              <View style={styles.timeBlock}>
-                <MaterialIcons name="nights-stay" size={16} color="#5C6BC0" />
-                <Text style={styles.timeValue}>
-                  {formatTime(location.closeTime!)}
-                </Text>
-                <Text style={styles.timeLabel}>Closes</Text>
-              </View>
-            </View>
+              )}
+            </>
           ) : (
-            <Text style={styles.noHoursText}>Hours not specified</Text>
+            <View style={styles.noImagePlaceholder}>
+              <MaterialIcons name="image" size={48} color="#C7C7CC" />
+              <Text style={styles.noImageText}>No photos available</Text>
+            </View>
           )}
         </View>
 
+        {/* Badge + title + address — grouped tightly */}
+        <View style={styles.locationHeader}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: locStatus.bg, alignSelf: "flex-start" }]}
+          >
+            <MaterialIcons name={locStatus.icon} size={14} color={locStatus.color} />
+            <Text style={[styles.statusText, { color: locStatus.color }]}>{locStatus.label}</Text>
+          </View>
+          <Text style={styles.locationTitle}>{location.title}</Text>
+          <View style={styles.addressRow}>
+            <MaterialIcons name="location-on" size={14} color="#A09A94" />
+            <Text style={styles.addressText}>{location.address}</Text>
+          </View>
+        </View>
+
+        {/* Single details card: price + slots + levels + hours */}
+        <View style={styles.detailsCard}>
+          <View style={styles.detailRow}>
+            <MaterialIcons name="payments" size={16} color="#D4501E" />
+            <Text style={styles.detailLabel}>Price</Text>
+            <Text style={styles.detailValue}>₱{Number(location.basePricePerHour).toFixed(2)}/hr</Text>
+          </View>
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialIcons name="event-seat" size={16} color="#D4501E" />
+            <Text style={styles.detailLabel}>Total Slots</Text>
+            <Text style={styles.detailValue}>{location.totalSlots ?? spaces.length}</Text>
+          </View>
+          {location.isMultiLevel && (
+            <>
+              <View style={styles.detailDivider} />
+              <View style={styles.detailRow}>
+                <MaterialIcons name="layers" size={16} color="#D4501E" />
+                <Text style={styles.detailLabel}>Levels</Text>
+                <Text style={styles.detailValue}>{location.numberOfLevels ?? "-"}</Text>
+              </View>
+            </>
+          )}
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialIcons name="schedule" size={16} color="#D4501E" />
+            <Text style={styles.detailLabel}>Hours</Text>
+            <Text style={styles.detailValue}>
+              {location.is24Hours
+                ? "Open 24 Hours"
+                : location.openTime && location.closeTime
+                  ? `${formatTime(location.openTime)} – ${formatTime(location.closeTime)}`
+                  : "Not specified"}
+            </Text>
+          </View>
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialIcons name="calendar-today" size={16} color="#D4501E" />
+            <Text style={styles.detailLabel}>Created</Text>
+            <Text style={styles.detailValue}>
+              {new Date(location.createdAt).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </Text>
+          </View>
+        </View>
+
         {/* Spaces Summary */}
-        <Text style={styles.sectionTitle}>Parking Spaces Overview</Text>
-        <View style={styles.summaryRow}>
-          <View style={[styles.summaryCard, { borderLeftColor: "#4CAF50" }]}>
-            <Text style={[styles.summaryCount, { color: "#4CAF50" }]}>
-              {availableCount}
-            </Text>
-            <Text style={styles.summaryLabel}>Available</Text>
+        <View style={styles.overviewRow}>
+          <View style={styles.overviewItem}>
+            <Text style={[styles.overviewCount, { color: "#4CAF50" }]}>{availableCount}</Text>
+            <Text style={styles.overviewLabel}>Available</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#D4501E" }]}>
-            <Text style={[styles.summaryCount, { color: "#D4501E" }]}>
-              {occupiedCount}
-            </Text>
-            <Text style={styles.summaryLabel}>Occupied</Text>
+          <View style={styles.overviewDivider} />
+          <View style={styles.overviewItem}>
+            <Text style={[styles.overviewCount, { color: "#D4501E" }]}>{occupiedCount}</Text>
+            <Text style={styles.overviewLabel}>Occupied</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: "#9E9E9E" }]}>
-            <Text style={[styles.summaryCount, { color: "#9E9E9E" }]}>
-              {disabledCount}
-            </Text>
-            <Text style={styles.summaryLabel}>Disabled</Text>
+          <View style={styles.overviewDivider} />
+          <View style={styles.overviewItem}>
+            <Text style={[styles.overviewCount, { color: "#9E9E9E" }]}>{disabledCount}</Text>
+            <Text style={styles.overviewLabel}>Disabled</Text>
           </View>
         </View>
 
         {/* Spaces Grid */}
-        <View style={styles.legendRow}>
+        <View style={styles.slotMapCard}>
           <Text style={styles.sectionTitle}>Slot Map</Text>
-          <View style={styles.legendItems}>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendDot, { backgroundColor: "#4CAF50" }]}
-              />
-              <Text style={styles.legendText}>Free</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendDot, { backgroundColor: "#D4501E" }]}
-              />
-              <Text style={styles.legendText}>Busy</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendDot, { backgroundColor: "#9E9E9E" }]}
-              />
-              <Text style={styles.legendText}>Off</Text>
-            </View>
-          </View>
-        </View>
-
-        {spaces.length > 0 ? (
+          {spaces.length > 0 ? (
           (() => {
             const hasLevels = spaces.some((s) => s.levelNumber != null);
             if (hasLevels) {
@@ -503,7 +485,7 @@ export default function LocationDetailScreen() {
                           <MaterialIcons
                             name="layers"
                             size={16}
-                            color="#D4501E"
+                            color="#232230"
                           />
                           <Text style={styles.floorTitle}>Floor {level}</Text>
                           <Text style={styles.floorCount}>
@@ -513,8 +495,6 @@ export default function LocationDetailScreen() {
                         <View style={styles.spacesGrid}>
                           {levelSpaces.map((space) => {
                             const slotConfig = SLOT_STATUS_CONFIG[space.status];
-                            const hasActiveReservation =
-                              space.reservations?.length > 0;
                             return (
                               <TouchableOpacity
                                 key={space.id}
@@ -522,7 +502,7 @@ export default function LocationDetailScreen() {
                                   styles.spaceSlot,
                                   {
                                     backgroundColor: slotConfig.bg,
-                                    borderColor: slotConfig.color,
+                                    borderColor: slotConfig.border,
                                   },
                                 ]}
                                 onPress={() => setSelectedSpace(space)}
@@ -541,15 +521,6 @@ export default function LocationDetailScreen() {
                                 >
                                   {space.name || space.slotNumber}
                                 </Text>
-                                {hasActiveReservation && (
-                                  <View style={styles.activeIndicator}>
-                                    <MaterialIcons
-                                      name="directions-car"
-                                      size={10}
-                                      color="#fff"
-                                    />
-                                  </View>
-                                )}
                               </TouchableOpacity>
                             );
                           })}
@@ -564,7 +535,6 @@ export default function LocationDetailScreen() {
               <View style={styles.spacesGrid}>
                 {spaces.map((space) => {
                   const slotConfig = SLOT_STATUS_CONFIG[space.status];
-                  const hasActiveReservation = space.reservations?.length > 0;
                   return (
                     <TouchableOpacity
                       key={space.id}
@@ -572,7 +542,7 @@ export default function LocationDetailScreen() {
                         styles.spaceSlot,
                         {
                           backgroundColor: slotConfig.bg,
-                          borderColor: slotConfig.color,
+                          borderColor: slotConfig.border,
                         },
                       ]}
                       onPress={() => setSelectedSpace(space)}
@@ -588,15 +558,6 @@ export default function LocationDetailScreen() {
                       >
                         {space.name || space.slotNumber}
                       </Text>
-                      {hasActiveReservation && (
-                        <View style={styles.activeIndicator}>
-                          <MaterialIcons
-                            name="directions-car"
-                            size={10}
-                            color="#fff"
-                          />
-                        </View>
-                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -611,19 +572,7 @@ export default function LocationDetailScreen() {
               This location has no individual parking spaces configured.
             </Text>
           </View>
-        )}
-
-        {/* Created date */}
-        <View style={styles.metaCard}>
-          <MaterialIcons name="schedule" size={16} color="#A09A94" />
-          <Text style={styles.metaText}>
-            Created{" "}
-            {new Date(location.createdAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </Text>
+          )}
         </View>
 
         {/* Disabled Banner */}
@@ -637,42 +586,36 @@ export default function LocationDetailScreen() {
           </View>
         )}
 
-        {/* Disable / Enable Location */}
-        {(location.status === "APPROVED" || location.status === "DISABLED") && (
+        {/* Action buttons: disable/enable + delete */}
+        <View style={styles.actionBtnRow}>
+          {(location.status === "APPROVED" || location.status === "DISABLED") && (
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                location.status === "DISABLED" ? styles.actionBtnEnable : styles.actionBtnDisable,
+              ]}
+              onPress={handleToggleLocation}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons
+                name={location.status === "DISABLED" ? "visibility" : "visibility-off"}
+                size={16}
+                color={location.status === "DISABLED" ? "#D4501E" : "#A09A94"}
+              />
+              <Text style={[styles.actionBtnText, { color: location.status === "DISABLED" ? "#D4501E" : "#A09A94" }]}>
+                {location.status === "DISABLED" ? "Enable" : "Disable"}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
-            style={[
-              styles.toggleLocationBtn,
-              location.status === "DISABLED"
-                ? styles.toggleLocationBtnEnable
-                : styles.toggleLocationBtnDisable,
-            ]}
-            onPress={handleToggleLocation}
+            style={[styles.actionBtn, styles.actionBtnDelete]}
+            onPress={handleDeleteLocation}
             activeOpacity={0.8}
           >
-            <MaterialIcons
-              name={
-                location.status === "DISABLED" ? "visibility" : "visibility-off"
-              }
-              size={20}
-              color="#fff"
-            />
-            <Text style={styles.toggleLocationBtnText}>
-              {location.status === "DISABLED"
-                ? "Enable Location"
-                : "Disable Location"}
-            </Text>
+            <MaterialIcons name="delete-outline" size={16} color="#E53935" />
+            <Text style={[styles.actionBtnText, { color: "#E53935" }]}>Delete</Text>
           </TouchableOpacity>
-        )}
-
-        {/* Delete Location */}
-        <TouchableOpacity
-          style={styles.deleteLocationBtn}
-          onPress={handleDeleteLocation}
-          activeOpacity={0.8}
-        >
-          <MaterialIcons name="delete-outline" size={20} color="#E53935" />
-          <Text style={styles.deleteLocationBtnText}>Delete Location</Text>
-        </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {/* Space Action Modal */}
@@ -788,27 +731,53 @@ export default function LocationDetailScreen() {
                       )}
 
                       {selectedSpace.status === "OCCUPIED" && (
-                        <View style={styles.modalOccupiedNotice}>
-                          <MaterialIcons
-                            name="directions-car"
-                            size={18}
-                            color="#D4501E"
-                          />
-                          <Text style={styles.modalOccupiedText}>
-                            This space is currently occupied. Actions are
-                            unavailable until the session ends.
-                          </Text>
-                        </View>
+                        <>
+                          <View style={styles.modalOccupiedNotice}>
+                            <MaterialIcons
+                              name="directions-car"
+                              size={18}
+                              color="#D4501E"
+                            />
+                            <Text style={styles.modalOccupiedText}>
+                              This space is currently occupied. Actions are
+                              unavailable until the session ends.
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.modalViewBookingBtn}
+                            onPress={() => handleViewBooking(selectedSpace)}
+                            disabled={viewingBooking}
+                            activeOpacity={0.8}
+                          >
+                            {viewingBooking ? (
+                              <ActivityIndicator color="#D4501E" size="small" />
+                            ) : (
+                              <>
+                                <MaterialIcons name="receipt-long" size={18} color="#D4501E" />
+                                <Text style={styles.modalViewBookingText}>View Active Booking</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </>
                       )}
 
-                      {/* Delete */}
+                    </View>
+
+                    {/* Delete + Close row */}
+                    <View style={styles.modalBottomRow}>
+                      <TouchableOpacity
+                        style={styles.modalCloseBtn}
+                        onPress={() => setSelectedSpace(null)}
+                      >
+                        <Text style={styles.modalCloseBtnText}>Close</Text>
+                      </TouchableOpacity>
+
                       <TouchableOpacity
                         style={[
-                          styles.modalActionBtn,
-                          styles.modalActionBtnDelete,
+                          styles.modalDeleteBtn,
                           (hasReservations ||
                             selectedSpace.status === "OCCUPIED") &&
-                            styles.modalActionBtnDeleteDisabled,
+                            styles.modalDeleteBtnDisabled,
                         ]}
                         onPress={() => handleDeleteSpace(selectedSpace)}
                         disabled={
@@ -820,30 +789,23 @@ export default function LocationDetailScreen() {
                       >
                         <MaterialIcons
                           name="delete-outline"
-                          size={20}
-                          color="#fff"
+                          size={18}
+                          color={
+                            hasReservations || selectedSpace.status === "OCCUPIED"
+                              ? "#E09090"
+                              : "#fff"
+                          }
                         />
-                        <Text style={styles.modalActionBtnText}>
-                          Delete Space
+                        <Text
+                          style={[
+                            styles.modalDeleteBtnText,
+                            (hasReservations || selectedSpace.status === "OCCUPIED") && { color: "#E09090" },
+                          ]}
+                        >
+                          Delete
                         </Text>
                       </TouchableOpacity>
-
-                      {(hasReservations ||
-                        selectedSpace.status === "OCCUPIED") && (
-                        <Text style={styles.modalDeleteHint}>
-                          Spaces with active reservations cannot be deleted.
-                          Disable them instead.
-                        </Text>
-                      )}
                     </View>
-
-                    {/* Close */}
-                    <TouchableOpacity
-                      style={styles.modalCloseBtn}
-                      onPress={() => setSelectedSpace(null)}
-                    >
-                      <Text style={styles.modalCloseBtnText}>Close</Text>
-                    </TouchableOpacity>
                   </>
                 );
               })()}
@@ -861,21 +823,38 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
 
   // Info Card
-  infoCard: {
+  detailsCard: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 18,
-    gap: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
+    overflow: "hidden",
   },
-  titleRow: {
+  detailRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  detailLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#232230",
+  },
+  detailValue: {
+    fontSize: 14,
+    color: "#A09A94",
+    fontWeight: "500",
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: "#F0EDE8",
+    marginLeft: 44,
+  },
+  locationHeader: {
+    gap: 8,
   },
   locationTitle: {
     fontSize: 20,
@@ -887,9 +866,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 4,
+    marginTop: 0,
   },
-  addressText: { flex: 1, fontSize: 13, color: "#A09A94" },
+  addressText: { flex: 1, fontSize: 13, color: "#A09A94", flexShrink: 1 },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -899,23 +878,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   statusText: { fontSize: 12, fontWeight: "700" },
-  description: {
-    fontSize: 14,
-    color: "#555",
-    lineHeight: 20,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-  },
-  infoItem: { flex: 1, alignItems: "center", gap: 4 },
-  infoLabel: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
-  infoValue: { fontSize: 16, fontWeight: "800", color: "#232230" },
-  infoDivider: { width: 1, height: 36, backgroundColor: "#E0E0E0" },
 
   // Section
   sectionTitle: {
@@ -924,45 +886,44 @@ const styles = StyleSheet.create({
     color: "#232230",
   },
 
-  // Summary Row
-  summaryRow: {
+  // Overview Row
+  overviewRow: {
     flexDirection: "row",
-    gap: 10,
-  },
-  summaryCard: {
-    flex: 1,
     backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 14,
-    alignItems: "center",
-    borderLeftWidth: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
+    paddingVertical: 16,
   },
-  summaryCount: {
+  overviewItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  overviewCount: {
     fontSize: 22,
     fontWeight: "800",
   },
-  summaryLabel: {
+  overviewLabel: {
     fontSize: 11,
     fontWeight: "600",
     color: "#A09A94",
-    marginTop: 2,
+  },
+  overviewDivider: {
+    width: 1,
+    backgroundColor: "#F0EDE8",
   },
 
-  // Legend
-  legendRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+
+
+  slotMapCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
   },
-  legendItems: { flexDirection: "row", gap: 12 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
 
   // Spaces Grid
   spacesGrid: {
@@ -1004,7 +965,7 @@ const styles = StyleSheet.create({
   floorTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#D4501E",
+    color: "#232230",
   },
   floorCount: {
     fontSize: 12,
@@ -1024,136 +985,78 @@ const styles = StyleSheet.create({
   noSpacesTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
   noSpacesText: { fontSize: 13, color: "#A09A94", textAlign: "center" },
 
-  // Meta
-  metaCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    justifyContent: "center",
-    paddingTop: 4,
-  },
-  metaText: { fontSize: 12, color: "#A09A94" },
   editHeaderBtn: { marginRight: 8 },
 
-  // Image Gallery
+  // Image Carousel
   imageGallery: {
     marginHorizontal: -16,
     marginTop: -16,
     marginBottom: 0,
   },
-  imageScrollContent: {
-    paddingHorizontal: 16,
+  carouselImage: {
+    width: SCREEN_WIDTH,
+    height: 220,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.5)",
+  },
+  dotActive: {
+    backgroundColor: "#fff",
+    width: 20,
+  },
+  noImagePlaceholder: {
+    height: 220,
+    backgroundColor: "#E8ECF0",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+  },
+  noImageText: { fontSize: 14, color: "#A09A94" },
+
+
+  // Action buttons row
+  actionBtnRow: {
+    flexDirection: "row" as const,
     gap: 10,
   },
-  galleryImageWrapper: {
-    width: SCREEN_WIDTH * 0.75,
-    height: SCREEN_WIDTH * 0.48,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  galleryImage: {
-    width: "100%",
-    height: "100%",
-  },
-  primaryImageBadge: {
-    position: "absolute",
-    bottom: 8,
-    left: 8,
-    backgroundColor: "rgba(17,121,111,0.9)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  primaryImageText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
-  // Operating Hours
-  operatingHoursCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  operatingHoursHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  operatingHoursTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#232230",
-  },
-  hours24Badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FFF0EC",
-    borderRadius: 10,
-    paddingVertical: 12,
-  },
-  hours24Text: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#D4501E",
-  },
-  hoursDisplay: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-  },
-  timeBlock: {
-    alignItems: "center",
-    gap: 4,
-  },
-  timeValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#232230",
-  },
-  timeLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#A09A94",
-  },
-  timeSeparator: {
-    paddingHorizontal: 8,
-  },
-  noHoursText: {
-    fontSize: 13,
-    color: "#A09A94",
-    textAlign: "center",
-  },
-
-  // Toggle Location
-  toggleLocationBtn: {
+  actionBtn: {
+    flex: 1,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  toggleLocationBtnEnable: {
-    backgroundColor: "#D4501E",
+  actionBtnEnable: {
+    backgroundColor: "#FFF0EC",
+    borderColor: "#FFD5C8",
   },
-  toggleLocationBtnDisable: {
-    backgroundColor: "#A09A94",
+  actionBtnDisable: {
+    backgroundColor: "#F5F5F5",
+    borderColor: "#E0E0E0",
   },
-  toggleLocationBtnText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: "#fff",
+  actionBtnDelete: {
+    backgroundColor: "#FEE8E7",
+    borderColor: "#FECDD3",
+  },
+  actionBtnText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
   },
   disabledBanner: {
     flexDirection: "row" as const,
@@ -1171,22 +1074,6 @@ const styles = StyleSheet.create({
     color: "#A09A94",
     fontWeight: "500" as const,
     lineHeight: 18,
-  },
-  deleteLocationBtn: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#E53935",
-    backgroundColor: "#fff",
-  },
-  deleteLocationBtnText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: "#E53935",
   },
 
   // Space Action Modal
@@ -1312,13 +1199,58 @@ const styles = StyleSheet.create({
     textAlign: "center" as const,
     marginTop: -4,
   },
-  modalCloseBtn: {
+  modalViewBookingBtn: {
+    flexDirection: "row" as const,
     alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
     paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFD5C8",
+    backgroundColor: "#FFF0EC",
+  },
+  modalViewBookingText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#D4501E",
+  },
+  modalBottomRow: {
+    flexDirection: "row" as const,
+    gap: 10,
+    marginTop: 4,
+  },
+  modalCloseBtn: {
+    flex: 1,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
+    backgroundColor: "#F5F5F5",
   },
   modalCloseBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
     color: "#A09A94",
+  },
+  modalDeleteBtn: {
+    flex: 1,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#E53935",
+  },
+  modalDeleteBtnDisabled: {
+    backgroundColor: "#F5C6C5",
+  },
+  modalDeleteBtnText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
 });

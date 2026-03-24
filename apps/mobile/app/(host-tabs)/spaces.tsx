@@ -24,7 +24,7 @@ interface ParkingLocation {
 }
 
 const STATUS_CONFIG = {
-  APPROVED: { label: "Approved", color: "#4CAF50", bg: "#F5F4F2" },
+  APPROVED: { label: "Approved", color: "#4CAF50", bg: "#F0FBF1" },
   PENDING: { label: "Pending", color: "#D4501E", bg: "#FFF0EC" },
   REJECTED: { label: "Rejected", color: "#E53935", bg: "#FFEBEE" },
   DISABLED: { label: "Disabled", color: "#A09A94", bg: "#F5F5F5" },
@@ -201,6 +201,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -270,7 +272,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#232230",
     marginBottom: 8,

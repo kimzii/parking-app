@@ -21,15 +21,15 @@ const STATUS_CONFIG = {
     icon: "hourglass-top",
   },
   CONFIRMED: {
-    color: "#1976D2",
-    bg: "#E3F2FD",
-    label: "Upcoming",
-    icon: "event-available",
+    color: "#D4501E",
+    bg: "#FFF0EC",
+    label: "Confirmed",
+    icon: "directions-car",
   },
   ACTIVE: {
     color: "#4CAF50",
-    bg: "#F5F4F2",
-    label: "Parked",
+    bg: "#F0FBF1",
+    label: "Active",
     icon: "directions-car",
   },
   COMPLETED: {
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   // Time
   timeSection: { gap: 6, marginBottom: 12 },
   timeItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  timeText: { fontSize: 13, color: "#666" },
+  timeText: { fontSize: 13, color: "#A09A94" },
 
   // Amount
   amountRow: {
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: "#FFF8E1",
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 14,
     marginTop: 12,
     borderWidth: 1,
     borderColor: "#FFE0B2",
