@@ -20,6 +20,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import * as reservationsService from "../../src/services/reservations";
+import { startGeofencing, stopGeofencing } from "../../src/services/geofencing";
 
 const STATUS_CONFIG: Record<
   string,
@@ -93,6 +94,27 @@ export default function ReservationQRScreen() {
 
     return () => clearInterval(interval);
   }, [reservationStatus, fetchReservation]);
+
+  // Start/stop geofencing based on reservation status
+  useEffect(() => {
+    if (!reservation) return;
+    if (
+      reservationStatus === "CONFIRMED" ||
+      reservationStatus === "ACTIVE"
+    ) {
+      startGeofencing(
+        reservation.id,
+        reservation.parkingLocation.latitude,
+        reservation.parkingLocation.longitude,
+      ).catch(() => {});
+    } else if (
+      reservationStatus === "COMPLETED" ||
+      reservationStatus === "CANCELLED" ||
+      reservationStatus === "EXPIRED"
+    ) {
+      stopGeofencing().catch(() => {});
+    }
+  }, [reservationStatus, reservation]);
 
   // Live timer for countdown / session duration
   useEffect(() => {

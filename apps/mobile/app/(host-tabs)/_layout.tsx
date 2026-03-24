@@ -1,12 +1,14 @@
 ﻿import { Tabs, useRouter, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import * as SecureStore from "expo-secure-store";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { registerForPushNotifications } from "../../src/services/notifications";
 
 export default function HostTabLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const pushRegistered = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -14,6 +16,9 @@ export default function HostTabLayout() {
         const token = await SecureStore.getItemAsync("accessToken");
         if (!token) {
           router.replace("/(auth)/login");
+        } else if (!pushRegistered.current) {
+          pushRegistered.current = true;
+          registerForPushNotifications().catch(() => {});
         }
       };
       checkToken();

@@ -13,6 +13,7 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { EmailService } from '../common/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   // Get current user profile
@@ -275,6 +277,14 @@ export class UsersService {
         },
       },
     });
+
+    // Send notification when driver is verified
+    if (
+      userRole.role.name === 'DRIVER' &&
+      updateStatusDto.status === 'VERIFIED'
+    ) {
+      this.notificationsService.notifyDriverVerified(userId).catch(() => {});
+    }
 
     return {
       message: `User ${userRole.role.name} role status updated to ${updateStatusDto.status}`,
