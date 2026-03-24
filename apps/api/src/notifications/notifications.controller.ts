@@ -76,6 +76,7 @@ export class NotificationsController {
     }
 
     const hostUserId = reservation.parkingSpace.parkingLocation.host.userId;
+    const driverUserId = reservation.driver.user.id;
     const driverName =
       [reservation.driver.user.firstName, reservation.driver.user.lastName]
         .filter(Boolean)
@@ -84,6 +85,7 @@ export class NotificationsController {
 
     await this.notificationsService.notifyDriverNearby(
       hostUserId,
+      driverUserId,
       driverName,
       locationTitle,
       body.reservationId,

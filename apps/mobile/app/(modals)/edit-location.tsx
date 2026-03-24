@@ -212,7 +212,10 @@ export default function EditLocationScreen() {
           // Upload new local images
           let uploadedUrls: string[] = [];
           if (newImages.length > 0) {
-            uploadedUrls = await hostService.uploadImages(newImages);
+            uploadedUrls = await hostService.uploadImages(
+              newImages,
+              title.trim(),
+            );
           }
           // Combine existing image URLs with newly uploaded ones
           imageUrls = [

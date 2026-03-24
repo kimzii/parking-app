@@ -220,9 +220,9 @@ function LoginPageContent() {
       localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("user", JSON.stringify(user));
 
-      // Set cookies for middleware authentication
+      // Set cookies for middleware authentication (30 days to outlive the access token)
       const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 7);
+      expiryDate.setDate(expiryDate.getDate() + 30);
       const expires = expiryDate.toUTCString();
 
       document.cookie = `accessToken=${accessToken}; path=/; expires=${expires}; samesite=strict`;

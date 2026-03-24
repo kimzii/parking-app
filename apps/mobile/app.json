@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "ParkLink",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +21,10 @@
           "apiKey": "AIzaSyBoBwscEd2USQ5RXlGQHk-R6a4X_6heNPM"
         }
       },
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -64,9 +67,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "57514a0b-0adb-41fd-8f4e-8668e9c99086"
+        "projectId": "acc0c135-3a0e-4177-9eef-0a3c06f896f6"
       }
     },
-    "owner": "kimzie123"
+    "owner": "jibinjava"
   }
 }

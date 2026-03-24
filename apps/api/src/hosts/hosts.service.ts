@@ -9,6 +9,7 @@ import { UpdateParkingLocationDto } from './dto/update-parking-location.dto';
 import { QueryParkingLocationsDto } from './dto/query-parking-locations.dto';
 import { UpdateLocationStatusDto } from './dto/update-location-status.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { S3Service } from '../common/s3.service';
 import { Prisma } from '@prisma/client';
 
 // Convert level number to letter prefix: 1→"A", 2→"B", ..., 26→"Z", 27→"AA"
@@ -44,6 +45,7 @@ export class HostsService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    private s3: S3Service,
   ) {}
 
   // Become a host - adds HOST role and creates Host profile
@@ -376,6 +378,7 @@ export class HostsService {
         id: locationId,
         hostId: host.id,
       },
+      include: { images: true },
     });
 
     if (!location) {
@@ -386,7 +389,25 @@ export class HostsService {
     const newStatus =
       location.status === 'APPROVED' ? 'PENDING' : location.status;
 
-    const { imageUrls, ...locationData } = updateLocationDto;
+    const { imageUrls, proofOfResidenceUrl, ...locationData } =
+      updateLocationDto;
+
+    // Delete old images from S3 if new ones are provided
+    if (imageUrls && imageUrls.length > 0) {
+      const oldUrls = location.images.map((img) => img.imageUrl);
+      await this.s3
+        .deleteByUrls(oldUrls)
+        .catch((err) => console.warn('Failed to delete old S3 images:', err));
+    }
+
+    // Delete old proof of residence from S3 if new one is provided
+    if (proofOfResidenceUrl && location.proofOfResidenceUrl) {
+      await this.s3
+        .deleteByUrl(location.proofOfResidenceUrl)
+        .catch((err) =>
+          console.warn('Failed to delete old proof of residence:', err),
+        );
+    }
 
     return this.prisma.$transaction(async (tx) => {
       // Update location
@@ -394,6 +415,7 @@ export class HostsService {
         where: { id: locationId },
         data: {
           ...locationData,
+          ...(proofOfResidenceUrl && { proofOfResidenceUrl }),
           status: newStatus, // Reset to pending if was approved
           availableSlots:
             updateLocationDto.totalSlots || location.availableSlots,
@@ -402,7 +424,7 @@ export class HostsService {
 
       // Update images if provided
       if (imageUrls && imageUrls.length > 0) {
-        // Delete existing images
+        // Delete existing image records
         await tx.parkingLocationImage.deleteMany({
           where: { parkingLocationId: locationId },
         });
@@ -436,6 +458,7 @@ export class HostsService {
         id: locationId,
         hostId: host.id,
       },
+      include: { images: true },
     });
 
     if (!location) {
@@ -459,6 +482,15 @@ export class HostsService {
         'Cannot delete location with active reservations',
       );
     }
+
+    // Delete images from S3
+    const imageUrls = location.images.map((img) => img.imageUrl);
+    if (location.proofOfResidenceUrl) {
+      imageUrls.push(location.proofOfResidenceUrl);
+    }
+    await this.s3
+      .deleteByUrls(imageUrls)
+      .catch((err) => console.warn('Failed to delete S3 images:', err));
 
     await this.prisma.parkingLocation.delete({
       where: { id: locationId },

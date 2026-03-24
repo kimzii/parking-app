@@ -330,14 +330,20 @@ export default function AddLocationScreen() {
       // Upload images to S3 first
       let uploadedImageUrls: string[] | undefined;
       if (images.length > 0) {
-        uploadedImageUrls = await hostService.uploadImages(images);
+        uploadedImageUrls = await hostService.uploadImages(
+          images,
+          title.trim(),
+        );
       }
 
       // Upload proof of residence to S3
       let proofOfResidenceUrl: string | undefined;
       if (proofOfResidence) {
         proofOfResidenceUrl =
-          await hostService.uploadProofOfResidence(proofOfResidence);
+          await hostService.uploadProofOfResidence(
+            proofOfResidence,
+            title.trim(),
+          );
       }
 
       const parsedLevelSlots = isMultiLevel

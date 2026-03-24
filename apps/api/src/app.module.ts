@@ -15,6 +15,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { S3Module } from './common/s3.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     ReservationsModule,
     ReviewsModule,
     NotificationsModule,
+    S3Module,
   ],
   controllers: [AppController],
   providers: [
