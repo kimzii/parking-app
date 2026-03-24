@@ -25,6 +25,7 @@ const NOTIFICATION_ICONS: Record<
   BOOKING_COMPLETED: { icon: "check-circle", color: "#4CAF50", bg: "#E8F5E9" },
   BOOKING_CANCELLED: { icon: "cancel", color: "#E53935", bg: "#FFEBEE" },
   BOOKING_PENDING: { icon: "hourglass-top", color: "#D4501E", bg: "#FFF0EC" },
+  BOOKING_APPROVED: { icon: "check-circle", color: "#4CAF50", bg: "#E8F5E9" },
   DRIVER_NEARBY: { icon: "near-me", color: "#1976D2", bg: "#E3F2FD" },
   DRIVER_VERIFIED: { icon: "verified-user", color: "#4CAF50", bg: "#E8F5E9" },
   LOCATION_APPROVED: {

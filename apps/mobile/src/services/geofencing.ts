@@ -3,13 +3,35 @@ import { notifyDriverNearby } from "./notifications";
 const GEOFENCE_TASK = "PARKING_GEOFENCE_TASK";
 
 let taskDefined = false;
+let nativeAvailable: boolean | null = null;
+
+/**
+ * Check whether the native geofencing modules are available.
+ * Returns false in Expo Go where native modules aren't linked.
+ */
+function isNativeAvailable(): boolean {
+  if (nativeAvailable !== null) return nativeAvailable;
+  try {
+    const ExpoTaskManager =
+      require("expo-modules-core").requireOptionalNativeModule?.(
+        "ExpoTaskManager",
+      );
+    nativeAvailable = ExpoTaskManager != null;
+  } catch {
+    nativeAvailable = false;
+  }
+  if (!nativeAvailable) {
+    console.log("Geofencing unavailable (native modules not linked)");
+  }
+  return nativeAvailable;
+}
 
 /**
  * Lazily define the background geofence task.
- * Native modules are imported dynamically so the app doesn't crash in Expo Go.
+ * Skipped entirely when native modules aren't available (Expo Go).
  */
 async function ensureTaskDefined() {
-  if (taskDefined) return;
+  if (taskDefined || !isNativeAvailable()) return;
   try {
     const TaskManager = await import("expo-task-manager");
     const Location = await import("expo-location");
@@ -35,7 +57,7 @@ async function ensureTaskDefined() {
 
     taskDefined = true;
   } catch (err) {
-    console.warn("Geofence task setup failed (expected in Expo Go):", err);
+    console.warn("Geofence task setup failed:", err);
   }
 }
 
@@ -50,6 +72,7 @@ export async function startGeofencing(
   longitude: number,
   radiusMeters = 500,
 ) {
+  if (!isNativeAvailable()) return;
   try {
     await ensureTaskDefined();
     const Location = await import("expo-location");
@@ -71,7 +94,7 @@ export async function startGeofencing(
       },
     ]);
   } catch (err) {
-    console.warn("startGeofencing failed (expected in Expo Go):", err);
+    console.warn("startGeofencing failed:", err);
   }
 }
 
@@ -79,6 +102,7 @@ export async function startGeofencing(
  * Stop geofencing (call when reservation completes or is cancelled)
  */
 export async function stopGeofencing() {
+  if (!isNativeAvailable()) return;
   try {
     const TaskManager = await import("expo-task-manager");
     const Location = await import("expo-location");
@@ -89,6 +113,6 @@ export async function stopGeofencing() {
       await Location.stopGeofencingAsync(GEOFENCE_TASK);
     }
   } catch (err) {
-    console.warn("stopGeofencing failed (expected in Expo Go):", err);
+    console.warn("stopGeofencing failed:", err);
   }
 }

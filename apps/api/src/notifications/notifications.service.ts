@@ -217,6 +217,20 @@ export class NotificationsService {
     });
   }
 
+  async notifyBookingApproved(
+    driverUserId: string,
+    reservationId: string,
+    locationTitle: string,
+  ) {
+    await this.send({
+      userId: driverUserId,
+      title: 'Booking Approved',
+      message: `Your booking at ${locationTitle} has been approved! You have 60 minutes to arrive.`,
+      type: 'BOOKING_APPROVED',
+      data: { reservationId },
+    });
+  }
+
   async notifyDriverNearby(
     hostUserId: string,
     driverName: string,
