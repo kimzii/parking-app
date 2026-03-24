@@ -31,41 +31,17 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleName } from '@prisma/client';
 import type { AuthenticatedRequest } from '../users/types/request.type';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
-import { ConfigService } from '@nestjs/config';
+import { S3Service } from '../common/s3.service';
 
 @ApiTags('Hosts')
 @ApiBearerAuth()
 @Controller('hosts')
 @UseGuards(JwtAuthGuard)
 export class HostsController {
-  private readonly s3: S3Client;
-  private readonly bucket: string;
-  private readonly region: string;
-
   constructor(
     private readonly hostsService: HostsService,
-    private readonly configService: ConfigService,
-  ) {
-    const region = this.configService.get<string>('AWS_REGION');
-    const bucket = this.configService.get<string>('AWS_S3_BUCKET');
-    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.configService.get<string>(
-      'AWS_SECRET_ACCESS_KEY',
-    );
-
-    if (!region || !bucket || !accessKeyId || !secretAccessKey) {
-      throw new Error('AWS environment variables are not configured properly');
-    }
-
-    this.region = region;
-    this.bucket = bucket;
-    this.s3 = new S3Client({
-      region,
-      credentials: { accessKeyId, secretAccessKey },
-    });
-  }
+    private readonly s3: S3Service,
+  ) {}
 
   // Upload parking location images to S3
   @Post('upload-images')
@@ -79,27 +55,20 @@ export class HostsController {
   async uploadImages(
     @UploadedFiles()
     files: Array<{ originalname: string; buffer: Buffer; mimetype: string }>,
+    @Body('locationName') locationName?: string,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded');
     }
 
+    const name = locationName || 'location';
     const urls: string[] = [];
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
-      const key = `parking-images/${uuidv4()}.${fileExt}`;
-      await this.s3.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-          ACL: 'public-read',
-        }),
-      );
-      urls.push(
-        `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`,
-      );
+      const key = this.s3.parkingImageKey(name, i, fileExt);
+      const url = await this.s3.upload(key, file.buffer, file.mimetype);
+      urls.push(url);
     }
 
     return { urls };
@@ -115,24 +84,17 @@ export class HostsController {
   async uploadProofOfResidence(
     @UploadedFiles()
     files: Array<{ originalname: string; buffer: Buffer; mimetype: string }>,
+    @Body('locationName') locationName?: string,
   ) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No file uploaded');
     }
 
     const file = files[0];
+    const name = locationName || 'location';
     const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
-    const key = `proof-of-residence/${uuidv4()}.${fileExt}`;
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ACL: 'public-read',
-      }),
-    );
-    const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+    const key = this.s3.proofOfResidenceKey(name, fileExt);
+    const url = await this.s3.upload(key, file.buffer, file.mimetype);
 
     return { url };
   }

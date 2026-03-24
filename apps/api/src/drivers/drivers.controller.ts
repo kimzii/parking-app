@@ -21,8 +21,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { ConfigService } from '@nestjs/config';
+import { S3Service } from '../common/s3.service';
 import { DriversService } from './drivers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -39,33 +38,10 @@ import { QueryDriverVehiclesDto } from './dto/query-driver-vehicles.dto';
 @ApiBearerAuth('JWT-auth')
 @Controller('drivers')
 export class DriversController {
-  private readonly s3: S3Client;
-  private readonly bucket: string;
-  private readonly region: string;
-
   constructor(
     private readonly driversService: DriversService,
-    private readonly configService: ConfigService,
-  ) {
-    const region = this.configService.get<string>('AWS_REGION');
-    const bucket = this.configService.get<string>('AWS_S3_BUCKET');
-    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.configService.get<string>(
-      'AWS_SECRET_ACCESS_KEY',
-    );
-
-    if (!region || !bucket || !accessKeyId || !secretAccessKey) {
-      throw new Error('AWS environment variables are not configured properly');
-    }
-
-    this.region = region;
-    this.bucket = bucket;
-
-    this.s3 = new S3Client({
-      region,
-      credentials: { accessKeyId, secretAccessKey },
-    });
-  }
+    private readonly s3: S3Service,
+  ) {}
 
   // ========== DRIVER PROFILE ENDPOINTS ==========
 
@@ -100,21 +76,29 @@ export class DriversController {
       throw new BadRequestException('File size must not exceed 5MB');
     }
 
+    // Delete old license image from S3 if exists
+    const driver = await this.driversService.getDriverProfileSafe(req.user.id);
+    if (driver?.licenseImageUrl) {
+      await this.s3
+        .deleteByUrl(driver.licenseImageUrl)
+        .catch((err) =>
+          console.warn('Failed to delete old license image:', err),
+        );
+    }
+
     const parts = file.originalname.split('.');
     const fileExt: string = parts.length > 1 ? parts[parts.length - 1] : 'jpg';
-    const key = `driver-licenses/${req.user.id}.${fileExt}`;
 
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ACL: 'public-read',
-    });
+    // Use user name for consistent naming
+    const userName = driver?.user
+      ? [driver.user.firstName, driver.user.lastName]
+          .filter(Boolean)
+          .join('-') || req.user.id
+      : req.user.id;
+    const key = this.s3.driverLicenseKey(userName, fileExt);
+    await this.s3.upload(key, file.buffer, file.mimetype);
 
-    await this.s3.send(command);
-
-    const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}?t=${Date.now()}`;
+    const url = this.s3.buildUrl(key, true);
 
     return { url };
   }

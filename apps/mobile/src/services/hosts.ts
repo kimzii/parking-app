@@ -2,7 +2,10 @@ import api from "./api";
 import * as SecureStore from "expo-secure-store";
 
 export const hostService = {
-  uploadImages: async (imageUris: string[]): Promise<string[]> => {
+  uploadImages: async (
+    imageUris: string[],
+    locationName?: string,
+  ): Promise<string[]> => {
     const formData = new FormData();
     for (const uri of imageUris) {
       const filename = uri.split("/").pop() || "photo.jpg";
@@ -14,6 +17,9 @@ export const hostService = {
         type: mimeType,
       } as any);
     }
+    if (locationName) {
+      formData.append("locationName", locationName);
+    }
     const token = await SecureStore.getItemAsync("accessToken");
     const res = await api.post("/hosts/upload-images", formData, {
       headers: {
@@ -23,7 +29,10 @@ export const hostService = {
     });
     return res.data.urls;
   },
-  uploadProofOfResidence: async (imageUri: string): Promise<string> => {
+  uploadProofOfResidence: async (
+    imageUri: string,
+    locationName?: string,
+  ): Promise<string> => {
     const formData = new FormData();
     const filename = imageUri.split("/").pop() || "proof.jpg";
     const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
@@ -33,6 +42,9 @@ export const hostService = {
       name: filename,
       type: mimeType,
     } as any);
+    if (locationName) {
+      formData.append("locationName", locationName);
+    }
     const token = await SecureStore.getItemAsync("accessToken");
     const res = await api.post("/hosts/upload-proof-of-residence", formData, {
       headers: {

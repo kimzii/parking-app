@@ -29,43 +29,15 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleName } from '@prisma/client';
 
 import { FileInterceptor } from '@nestjs/platform-express';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-import { ConfigService } from '@nestjs/config';
+import { S3Service } from '../common/s3.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  private readonly s3: S3Client;
-  private readonly bucket: string;
-  private readonly region: string;
-
   constructor(
     private readonly usersService: UsersService,
-    private readonly configService: ConfigService,
-  ) {
-    const region = this.configService.get<string>('AWS_REGION');
-    const bucket = this.configService.get<string>('AWS_S3_BUCKET');
-    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.configService.get<string>(
-      'AWS_SECRET_ACCESS_KEY',
-    );
-
-    if (!region || !bucket || !accessKeyId || !secretAccessKey) {
-      throw new Error('AWS environment variables are not configured properly');
-    }
-
-    this.region = region;
-    this.bucket = bucket;
-
-    this.s3 = new S3Client({
-      region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    });
-  }
+    private readonly s3: S3Service,
+  ) {}
 
   // Get current user profile
   @Get('profile')
@@ -116,23 +88,25 @@ export class UsersController {
     const parts = file.originalname.split('.');
     const fileExt: string = parts.length > 1 ? parts[parts.length - 1] : 'jpg';
 
-    // Use userId as key so re-uploads overwrite the existing file
-    const key = `profile-pictures/${req.user.id}.${fileExt}`;
+    // Delete old profile picture from S3 if exists
+    const profile = await this.usersService.getProfile(req.user.id);
+    if (profile.profilePicture) {
+      await this.s3
+        .deleteByUrl(profile.profilePicture)
+        .catch((err) =>
+          console.warn('Failed to delete old profile picture:', err),
+        );
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ACL: 'public-read',
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    await this.s3.send(command);
+    // Use user name for consistent naming
+    const userName =
+      [profile.firstName, profile.lastName].filter(Boolean).join('-') ||
+      req.user.id;
+    const key = this.s3.profilePictureKey(userName, fileExt);
+    await this.s3.upload(key, file.buffer, file.mimetype);
 
     // Add timestamp to bust image cache on the client
-    const url = `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}?t=${Date.now()}`;
+    const url = this.s3.buildUrl(key, true);
 
     // Save the profile picture URL to the user's profile
     await this.usersService.updateProfile(req.user.id, { profilePicture: url });

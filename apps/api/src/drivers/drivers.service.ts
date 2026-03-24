@@ -151,6 +151,18 @@ export class DriversService {
     };
   }
 
+  /** Like getDriverProfile but returns null instead of throwing */
+  async getDriverProfileSafe(userId: string) {
+    return this.prisma.driver.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: { firstName: true, lastName: true },
+        },
+      },
+    });
+  }
+
   // Update driver profile
   async updateDriverProfile(
     userId: string,
