@@ -62,11 +62,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "57514a0b-0adb-41fd-8f4e-8668e9c99086"
-      }
-    },
-    "owner": "kimzie123"
+      "router": {}
+    }
   }
 }
