@@ -12,20 +12,14 @@ import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 
-import { authService } from "../../src/services/auth";
 import { userService } from "../../src/services/user";
 import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
-import BecomeAHostButton from "../../src/components/BecomeAHostButton";
-import DriverVerificationButton from "../../src/components/DriverVerificationButton";
 import MenuItem from "../../src/components/MenuItem";
-import { useViewMode } from "../../src/contexts/ViewModeContext";
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const { setViewMode } = useViewMode();
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);
@@ -52,24 +46,13 @@ export default function ProfileScreen() {
     }, [fetchUserIfToken]),
   );
 
-  const handleLogout = async () => {
-    await authService.logout();
-    await SecureStore.deleteItemAsync("viewMode");
-    router.replace("/(auth)/login");
-  };
-
-  const switchToHost = async () => {
-    await setViewMode("host");
-    router.replace("/(host-tabs)" as any);
-  };
-
   const isDriverVerified =
     user?.roleStatuses?.find((r) => r.role === "DRIVER")?.status === "VERIFIED";
-  const isHost = user?.roles?.includes("HOST");
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
       <View style={styles.container}>
+        {/* Orange header */}
         <View style={styles.profileHeader}>
           {user?.profilePicture ? (
             <Image
@@ -88,8 +71,7 @@ export default function ProfileScreen() {
               {loading
                 ? "Loading..."
                 : user
-                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
-                    "-"
+                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "-"
                   : "-"}
             </Text>
 
@@ -125,11 +107,11 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.menuWrapper}>
+        {/* White content area */}
+        <View style={styles.contentWrapper}>
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
           >
             <EWallet
               balance={Number(user?.walletBalance ?? 0)}
@@ -138,132 +120,28 @@ export default function ProfileScreen() {
                   ? router.push("/(modals)/top-up")
                   : router.push("/(modals)/driver-verification")
               }
-              onWithdraw={() => {}}
               locked={!isDriverVerified}
             />
 
-            <View style={styles.actionButtons}>
-              {isHost ? (
-                <TouchableOpacity
-                  style={styles.switchHostButton}
-                  onPress={switchToHost}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.switchHostIconBg}>
-                    <MaterialIcons name="home-work" size={20} color="#11796F" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.switchHostTitle}>
-                      Switch to Host View
-                    </Text>
-                    <Text style={styles.switchHostSubtitle}>
-                      Manage your parking spaces
-                    </Text>
-                  </View>
-                  <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
-                </TouchableOpacity>
-              ) : (
-                <BecomeAHostButton
-                  onPress={() => router.push("/(modals)/become-a-ahost")}
-                />
-              )}
-              {!isDriverVerified && (
-                <DriverVerificationButton
-                  onPress={() => router.push("/(modals)/driver-verification")}
-                />
-              )}
-            </View>
-
             <View style={styles.menuSection}>
-              <Text style={styles.menuSectionTitle}>Account</Text>
+              <Text style={styles.sectionLabel}>Account</Text>
               <View style={styles.menuCard}>
-                <TouchableOpacity
-                  style={styles.settingsItem}
-                  onPress={() => setSettingsOpen((open) => !open)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View
-                      style={[
-                        styles.menuIconBg,
-                        { backgroundColor: "#F2F2F7" },
-                      ]}
-                    >
-                      <MaterialIcons
-                        name="settings"
-                        size={18}
-                        color="#8E8E93"
-                      />
-                    </View>
-                    <Text style={styles.menuItemLabel}>Settings</Text>
-                  </View>
-                  <MaterialIcons
-                    name={
-                      settingsOpen
-                        ? "keyboard-arrow-up"
-                        : "keyboard-arrow-right"
-                    }
-                    size={22}
-                    color="#8E8E93"
-                  />
-                </TouchableOpacity>
-
-                {settingsOpen && (
-                  <View style={styles.settingsDropdown}>
-                    {/* <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => router.push("/(modals)/forgot-password")}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialIcons
-                        name="lock-reset"
-                        size={18}
-                        color="#8E8E93"
-                      />
-                      <Text style={styles.dropdownText}>Forgot Password</Text>
-                    </TouchableOpacity> */}
-                    <TouchableOpacity
-                      style={styles.dropdownItem}
-                      onPress={() => router.push("/(modals)/change-password")}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialIcons name="vpn-key" size={18} color="#8E8E93" />
-                      <Text style={styles.dropdownText}>Change Password</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 <MenuItem
                   label="My Vehicles"
                   icon="directions-car"
-                  iconBg="#F2F2F7"
-                  iconColor="#8E8E93"
+                  iconBg="#F5F4F2"
+                  iconColor="#A09A94"
                   onPress={() => router.push("/(modals)/my-vehicles")}
                 />
                 <MenuItem
                   label="My Reservations"
                   icon="confirmation-number"
-                  iconBg="#F2F2F7"
-                  iconColor="#8E8E93"
+                  iconBg="#F5F4F2"
+                  iconColor="#A09A94"
                   onPress={() => router.push("/(modals)/my-reservations")}
-                />
-                <MenuItem
-                  label="Help & Support"
-                  icon="help-outline"
-                  iconBg="#F2F2F7"
-                  iconColor="#8E8E93"
                 />
               </View>
             </View>
-
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="logout" size={18} color="#E53935" />
-              <Text style={styles.logoutText}>Logout</Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
       </View>
@@ -272,7 +150,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  safeArea: { flex: 1, backgroundColor: "#D4501E" },
   container: { flex: 1 },
   profileHeader: {
     flexDirection: "row",
@@ -286,7 +164,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: "#038A7A",
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
@@ -322,109 +200,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginTop: 10,
-    backgroundColor: "#038A7A",
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
     alignSelf: "flex-start",
   },
   editProfileText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  menuWrapper: {
+  contentWrapper: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
   },
   scrollContent: { padding: 20, paddingBottom: 40, gap: 16 },
-  actionButtons: { gap: 10 },
   menuSection: { gap: 10 },
-  menuSectionTitle: {
-    fontSize: 13,
+  sectionLabel: {
+    fontSize: 12,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     marginLeft: 4,
   },
   menuCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  settingsItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  menuIconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  menuItemLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A2E" },
-  settingsDropdown: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 2,
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 44,
-  },
-  dropdownText: { fontSize: 14, color: "#555" },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FEE8E7",
-    paddingVertical: 16,
-    borderRadius: 14,
-  },
-  logoutText: {
-    color: "#E53935",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  switchHostButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#E8F5F3",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: "#11796F",
-  },
-  switchHostIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  switchHostTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#11796F",
-  },
-  switchHostSubtitle: {
-    fontSize: 12,
-    color: "#8E8E93",
-    marginTop: 2,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
   },
 });

@@ -1,4 +1,4 @@
-import { Stack, useRouter, useFocusEffect, usePathname } from "expo-router";
+﻿import { Stack, useRouter, useFocusEffect, usePathname } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native";
 import { useCallback } from "react";
@@ -42,7 +42,7 @@ export default function StackLayout() {
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: "#fff" },
-        headerTintColor: "#11796F",
+        headerTintColor: "#D4501E",
         statusBarTranslucent: false,
         statusBarStyle: "dark",
         headerTitle: "",
@@ -54,7 +54,7 @@ export default function StackLayout() {
             <MaterialIcons
               name="arrow-back-ios-new"
               size={24}
-              color="#11796F"
+              color="#D4501E"
             />
           </TouchableOpacity>
         ),

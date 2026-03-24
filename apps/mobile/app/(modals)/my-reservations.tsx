@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,8 +16,8 @@ import * as reservationsService from "../../src/services/reservations";
 
 const STATUS_CONFIG = {
   PENDING: {
-    color: "#F57C00",
-    bg: "#FFF3E0",
+    color: "#D4501E",
+    bg: "#FFF0EC",
     label: "Pending Approval",
     icon: "hourglass-top",
   },
@@ -29,12 +29,12 @@ const STATUS_CONFIG = {
   },
   ACTIVE: {
     color: "#4CAF50",
-    bg: "#E8F5E9",
+    bg: "#F5F4F2",
     label: "Active",
     icon: "directions-car",
   },
   COMPLETED: {
-    color: "#8E8E93",
+    color: "#A09A94",
     bg: "#F5F5F5",
     label: "Completed",
     icon: "check-circle",
@@ -96,116 +96,97 @@ export default function MyReservationsScreen() {
     const status = STATUS_CONFIG[item.status] || STATUS_CONFIG.CONFIRMED;
 
     return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() =>
-          router.push({
-            pathname: "/(modals)/reservation-qr",
-            params: { id: item.id },
-          })
-        }
-        activeOpacity={0.7}
-      >
-        {/* Image */}
-        <View style={styles.cardImage}>
-          {item.parkingLocation.image ? (
-            <Image
-              source={{ uri: item.parkingLocation.image }}
-              style={styles.image}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <MaterialIcons name="local-parking" size={24} color="#C7C7CC" />
-            </View>
-          )}
-        </View>
-
-        {/* Content */}
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {item.parkingLocation.title}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-              <MaterialIcons
-                name={status.icon as any}
-                size={12}
-                color={status.color}
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() =>
+            router.push({
+              pathname: "/(modals)/reservation-qr",
+              params: { id: item.id },
+            })
+          }
+          activeOpacity={0.7}
+        >
+          {/* Image */}
+          <View style={styles.cardImage}>
+            {item.parkingLocation.image ? (
+              <Image
+                source={{ uri: item.parkingLocation.image }}
+                style={styles.image}
+                contentFit="cover"
               />
-              <Text style={[styles.statusText, { color: status.color }]}>
-                {status.label}
-              </Text>
-            </View>
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <MaterialIcons name="local-parking" size={24} color="#C7C7CC" />
+              </View>
+            )}
           </View>
 
-          <Text style={styles.cardAddress} numberOfLines={1}>
-            {item.parkingLocation.address}
-          </Text>
+          {/* Content */}
+          <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {item.parkingLocation.title}
+              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+                <MaterialIcons
+                  name={status.icon as any}
+                  size={12}
+                  color={status.color}
+                />
+                <Text style={[styles.statusText, { color: status.color }]}>
+                  {status.label}
+                </Text>
+              </View>
+            </View>
 
-          <View style={styles.cardMeta}>
-            <View style={styles.metaItem}>
-              <MaterialIcons name="event-seat" size={14} color="#11796F" />
-              <Text style={styles.metaText} numberOfLines={1}>
-                Slot {item.parkingSpace.slotNumber}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <MaterialIcons name="schedule" size={14} color="#8E8E93" />
-              <Text style={styles.metaText}>
-                {new Date(item.createdAt).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <MaterialIcons name="payments" size={14} color="#11796F" />
-              <Text style={styles.metaText}>
-                ₱{Number(item.totalAmount).toFixed(0)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.timeRow}>
-            <Text style={styles.timeText} numberOfLines={1}>
-              {item.status === "PENDING" && item.arrivalDeadline
-                ? `Awaiting host approval until ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                : item.status === "ACTIVE" && item.sessionStartedAt
-                  ? `Started ${new Date(item.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                  : item.status === "COMPLETED" &&
-                      item.sessionStartedAt &&
-                      item.sessionEndedAt
-                    ? `${new Date(item.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })} - ${new Date(item.sessionEndedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                    : item.arrivalDeadline
-                      ? `Arrive by ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
-                      : "Pay-as-you-go"}
+            <Text style={styles.cardAddress} numberOfLines={1}>
+              {item.parkingLocation.address}
             </Text>
-            <MaterialIcons name="chevron-right" size={20} color="#C7C7CC" />
-          </View>
 
-          {item.status === "COMPLETED" && (
-            <TouchableOpacity
-              style={styles.reviewBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                router.push({
-                  pathname: "/(modals)/leave-review",
-                  params: {
-                    reservationId: item.id,
-                    locationTitle: item.parkingLocation.title,
-                    reviewType: "driver",
-                  },
-                });
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="star-outline" size={14} color="#FFB300" />
-              <Text style={styles.reviewBtnText}>Leave a Review</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
+            <View style={styles.cardMeta}>
+              <View style={styles.metaItem}>
+                <MaterialIcons name="event-seat" size={14} color="#11796F" />
+                <Text style={styles.metaText} numberOfLines={1}>
+                  Slot {item.parkingSpace.slotNumber}
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <MaterialIcons name="schedule" size={14} color="#8E8E93" />
+                <Text style={styles.metaText}>
+                  {new Date(item.createdAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <MaterialIcons name="payments" size={14} color="#11796F" />
+                <Text style={styles.metaText}>
+                  ₱{Number(item.totalAmount).toFixed(0)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText} numberOfLines={1}>
+                {item.status === "PENDING" && item.arrivalDeadline
+                  ? `Awaiting host approval until ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                  : item.status === "ACTIVE" && item.sessionStartedAt
+                    ? `Started ${new Date(item.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                    : item.status === "COMPLETED" &&
+                        item.sessionStartedAt &&
+                        item.sessionEndedAt
+                      ? `${new Date(item.sessionStartedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })} - ${new Date(item.sessionEndedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                      : item.arrivalDeadline
+                        ? `Arrive by ${new Date(item.arrivalDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}`
+                        : "Pay-as-you-go"}
+              </Text>
+              <MaterialIcons name="chevron-right" size={20} color="#C7C7CC" />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -258,7 +239,7 @@ export default function MyReservationsScreen() {
       {loading ? (
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 40 }}
         />
       ) : (
@@ -272,7 +253,7 @@ export default function MyReservationsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#11796F"
+              tintColor="#D4501E"
             />
           }
           showsVerticalScrollIndicator={false}
@@ -283,7 +264,7 @@ export default function MyReservationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
 
   // Filters
   filters: {
@@ -301,10 +282,10 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
   },
   filterBtnActive: {
-    backgroundColor: "#11796F",
-    borderColor: "#11796F",
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
   },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#8E8E93" },
+  filterText: { fontSize: 13, fontWeight: "600", color: "#A09A94" },
   filterTextActive: { color: "#fff" },
 
   // List
@@ -315,7 +296,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#fff",
     borderRadius: 16,
-    marginBottom: 12,
+    height: 120,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -323,11 +304,11 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: "hidden",
   },
-  cardImage: { width: 90 },
-  image: { width: 90, height: "100%" },
+  cardImage: { width: 90, height: 120 },
+  image: { width: 90, height: 120 },
   imagePlaceholder: {
     width: 90,
-    height: "100%",
+    height: 120,
     backgroundColor: "#F5F5F5",
     justifyContent: "center",
     alignItems: "center",
@@ -339,7 +320,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
-  cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  cardTitle: { flex: 1, fontSize: 15, fontWeight: "700", color: "#232230" },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -349,7 +330,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statusText: { fontSize: 11, fontWeight: "600" },
-  cardAddress: { fontSize: 12, color: "#8E8E93" },
+  cardAddress: { fontSize: 12, color: "#A09A94" },
   cardMeta: { flexDirection: "row", gap: 12, marginTop: 4 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { fontSize: 12, color: "#666", fontWeight: "500" },
@@ -359,7 +340,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 4,
   },
-  timeText: { fontSize: 13, fontWeight: "600", color: "#1A1A2E" },
+  timeText: { fontSize: 13, fontWeight: "600", color: "#232230" },
 
   // Empty State
   emptyState: {
@@ -372,38 +353,24 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
     marginTop: 8,
   },
   findParkingBtn: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,
     marginTop: 20,
   },
   findParkingBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  reviewBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    backgroundColor: "#FFF8E1",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginTop: 4,
-    alignSelf: "flex-start",
-  },
-  reviewBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFB300",
+  cardWrapper: {
+    marginBottom: 12,
   },
 });

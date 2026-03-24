@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -129,7 +129,7 @@ export default function HostProfileScreen() {
                   <MaterialIcons
                     name="directions-car"
                     size={20}
-                    color="#11796F"
+                    color="#D4501E"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -138,7 +138,7 @@ export default function HostProfileScreen() {
                     Go back to finding parking
                   </Text>
                 </View>
-                <MaterialIcons name="swap-horiz" size={22} color="#11796F" />
+                <MaterialIcons name="swap-horiz" size={22} color="#D4501E" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -150,7 +150,7 @@ export default function HostProfileScreen() {
                   <MaterialIcons
                     name="directions-car"
                     size={20}
-                    color="#11796F"
+                    color="#D4501E"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -159,7 +159,7 @@ export default function HostProfileScreen() {
                     Find and book parking spots
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={22} color="#11796F" />
+                <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
               </TouchableOpacity>
             )}
 
@@ -181,7 +181,7 @@ export default function HostProfileScreen() {
                       <MaterialIcons
                         name="settings"
                         size={18}
-                        color="#8E8E93"
+                        color="#A09A94"
                       />
                     </View>
                     <Text style={styles.menuItemLabel}>Settings</Text>
@@ -193,7 +193,7 @@ export default function HostProfileScreen() {
                         : "keyboard-arrow-right"
                     }
                     size={22}
-                    color="#8E8E93"
+                    color="#A09A94"
                   />
                 </TouchableOpacity>
 
@@ -204,7 +204,7 @@ export default function HostProfileScreen() {
                       onPress={() => router.push("/(modals)/forgot-password")}
                       activeOpacity={0.7}
                     >
-                      <MaterialIcons name="lock-reset" size={18} color="#8E8E93" />
+                      <MaterialIcons name="lock-reset" size={18} color="#A09A94" />
                       <Text style={styles.dropdownText}>Forgot Password</Text>
                     </TouchableOpacity> */}
                     <TouchableOpacity
@@ -212,7 +212,7 @@ export default function HostProfileScreen() {
                       onPress={() => router.push("/(modals)/change-password")}
                       activeOpacity={0.7}
                     >
-                      <MaterialIcons name="vpn-key" size={18} color="#8E8E93" />
+                      <MaterialIcons name="vpn-key" size={18} color="#A09A94" />
                       <Text style={styles.dropdownText}>Change Password</Text>
                     </TouchableOpacity>
                   </View>
@@ -222,7 +222,7 @@ export default function HostProfileScreen() {
                   label="Help & Support"
                   icon="help-outline"
                   iconBg="#F2F2F7"
-                  iconColor="#8E8E93"
+                  iconColor="#A09A94"
                 />
               </View>
             </View>
@@ -243,7 +243,7 @@ export default function HostProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#11796F" },
+  safeArea: { flex: 1, backgroundColor: "#D4501E" },
   container: { flex: 1 },
   profileHeader: {
     flexDirection: "row",
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: "#038A7A",
+    backgroundColor: "#D4501E",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginTop: 10,
-    backgroundColor: "#038A7A",
+    backgroundColor: "#D4501E",
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   editProfileText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   menuWrapper: {
     flex: 1,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
   },
@@ -305,11 +305,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1.5,
-    borderColor: "#11796F",
+    borderColor: "#D4501E",
   },
   switchIconBg: {
     width: 40,
@@ -322,18 +322,18 @@ const styles = StyleSheet.create({
   switchTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#11796F",
+    color: "#D4501E",
   },
   switchSubtitle: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#A09A94",
     marginTop: 2,
   },
   menuSection: { gap: 10 },
   menuSectionTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#8E8E93",
+    color: "#A09A94",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  menuItemLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A2E" },
+  menuItemLabel: { fontSize: 15, fontWeight: "600", color: "#232230" },
   settingsDropdown: {
     paddingHorizontal: 16,
     paddingBottom: 8,

@@ -8,6 +8,7 @@ import { CreateParkingLocationDto } from './dto/create-parking-location.dto';
 import { UpdateParkingLocationDto } from './dto/update-parking-location.dto';
 import { QueryParkingLocationsDto } from './dto/query-parking-locations.dto';
 import { UpdateLocationStatusDto } from './dto/update-location-status.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Prisma } from '@prisma/client';
 
 // Convert level number to letter prefix: 1→"A", 2→"B", ..., 26→"Z", 27→"AA"
@@ -40,7 +41,10 @@ function getDistanceKm(
 
 @Injectable()
 export class HostsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // Become a host - adds HOST role and creates Host profile
   async becomeHost(userId: string) {
@@ -739,8 +743,16 @@ export class HostsService {
       },
     });
 
-    // TODO: Send notification to host about status change
-    // Could create a notification record here
+    // Notify host about location status change
+    if (updateStatusDto.status === 'APPROVED') {
+      this.notificationsService
+        .notifyLocationApproved(location.host.userId, location.title)
+        .catch(() => {});
+    } else if (updateStatusDto.status === 'REJECTED') {
+      this.notificationsService
+        .notifyLocationRejected(location.host.userId, location.title)
+        .catch(() => {});
+    }
 
     return {
       message: `Parking location ${updateStatusDto.status.toLowerCase()}`,

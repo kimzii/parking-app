@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -23,7 +23,6 @@ import { driversService } from "../../src/services/drivers";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_HEIGHT = 220;
 const MAP_HEIGHT = 140;
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 interface SpotImage {
   id: string;
@@ -67,12 +66,6 @@ interface SpotDetail {
   };
 }
 
-interface DirectionsInfo {
-  distance: string;
-  duration: string;
-  routeCoords: { latitude: number; longitude: number }[];
-}
-
 function formatTime(time: string): string {
   const [hourStr, minuteStr] = time.split(":");
   let hour = parseInt(hourStr, 10);
@@ -83,57 +76,12 @@ function formatTime(time: string): string {
   return `${hour}:${minute.padStart(2, "0")} ${period}`;
 }
 
-const SLOT_COLORS = {
-  AVAILABLE: { bg: "#E8F5E9", color: "#4CAF50" },
-  OCCUPIED: { bg: "#FFF3E0", color: "#F57C00" },
-  DISABLED: { bg: "#F5F5F5", color: "#9E9E9E" },
-};
-
-function decodePolyline(
-  encoded: string,
-): { latitude: number; longitude: number }[] {
-  const points: { latitude: number; longitude: number }[] = [];
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-
-  while (index < encoded.length) {
-    let shift = 0;
-    let result = 0;
-    let byte: number;
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-    lat += result & 1 ? ~(result >> 1) : result >> 1;
-
-    shift = 0;
-    result = 0;
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-    lng += result & 1 ? ~(result >> 1) : result >> 1;
-
-    points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
-  }
-  return points;
-}
-
 export default function SpotDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [spot, setSpot] = useState<SpotDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
-  const [userLocation, setUserLocation] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [directions, setDirections] = useState<DirectionsInfo | null>(null);
-  const [directionsLoading, setDirectionsLoading] = useState(false);
   const [checkingVehicles, setCheckingVehicles] = useState(false);
 
   const fetchSpot = useCallback(async () => {
@@ -161,50 +109,12 @@ export default function SpotDetailScreen() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") return;
-        const loc = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
+        await Location.getCurrentPositionAsync({});
       } catch {
         console.error("Failed to get user location");
       }
     })();
   }, []);
-
-  // Fetch directions when both user location and spot are available
-  useEffect(() => {
-    if (!userLocation || !spot || !GOOGLE_MAPS_API_KEY) return;
-
-    const fetchDirections = async () => {
-      setDirectionsLoading(true);
-      try {
-        const origin = `${userLocation.latitude},${userLocation.longitude}`;
-        const destination = `${spot.latitude},${spot.longitude}`;
-        const res = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${destination}&mode=driving&key=${GOOGLE_MAPS_API_KEY}`,
-        );
-        const data = await res.json();
-
-        if (data.routes?.length > 0) {
-          const route = data.routes[0];
-          const leg = route.legs[0];
-          const routeCoords = decodePolyline(route.overview_polyline.points);
-          setDirections({
-            distance: leg.distance.text,
-            duration: leg.duration.text,
-            routeCoords,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch directions:", err);
-      } finally {
-        setDirectionsLoading(false);
-      }
-    };
-
-    fetchDirections();
-  }, [userLocation, spot]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -278,7 +188,7 @@ export default function SpotDetailScreen() {
       <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <ActivityIndicator
           size="large"
-          color="#11796F"
+          color="#D4501E"
           style={{ marginTop: 60 }}
         />
       </SafeAreaView>
@@ -296,8 +206,6 @@ export default function SpotDetailScreen() {
     );
   }
 
-  const spotLat = Number(spot.latitude);
-  const spotLng = Number(spot.longitude);
   const available = spot.parkingSpaces.filter(
     (s) => s.status === "AVAILABLE",
   ).length;
@@ -317,7 +225,7 @@ export default function SpotDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#11796F"
+            tintColor="#D4501E"
           />
         }
       >
@@ -371,18 +279,18 @@ export default function SpotDetailScreen() {
               onPress={openGoogleMaps}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="location-on" size={16} color="#11796F" />
+              <MaterialIcons name="location-on" size={16} color="#D4501E" />
               <Text style={styles.address} numberOfLines={2}>
                 {spot.address}
               </Text>
-              <MaterialIcons name="directions" size={18} color="#11796F" />
+              <MaterialIcons name="directions" size={18} color="#D4501E" />
             </TouchableOpacity>
           </View>
 
           {/* Quick Stats */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <MaterialIcons name="payments" size={22} color="#11796F" />
+              <MaterialIcons name="payments" size={22} color="#D4501E" />
               <Text style={styles.statValue}>
                 P{Number(spot.basePricePerHour).toFixed(2)}
               </Text>
@@ -411,7 +319,7 @@ export default function SpotDetailScreen() {
             <Text style={styles.sectionTitle}>Parking Info</Text>
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
-                <MaterialIcons name="local-parking" size={20} color="#11796F" />
+                <MaterialIcons name="local-parking" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Type</Text>
                 <Text style={styles.infoValue}>
                   {spot.isMultiLevel
@@ -421,56 +329,86 @@ export default function SpotDetailScreen() {
               </View>
               {spot.isMultiLevel && (
                 <View style={styles.infoRow}>
-                  <MaterialIcons name="layers" size={20} color="#1976D2" />
+                  <MaterialIcons name="layers" size={20} color="#D4501E" />
                   <Text style={styles.infoLabel}>Floors</Text>
-                  <Text style={[styles.infoValue, { color: "#1976D2" }]}>
+                  <Text style={[styles.infoValue, { color: "#000" }]}>
                     {spot.numberOfLevels ?? "-"}{" "}
                     {spot.numberOfLevels === 1 ? "Floor" : "Floors"}
                   </Text>
                 </View>
               )}
               <View style={styles.infoRow}>
-                <MaterialIcons name="schedule" size={20} color="#11796F" />
+                <MaterialIcons name="schedule" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Hours</Text>
                 <Text style={styles.infoValue}>
                   {spot.is24Hours
                     ? "Open 24 Hours"
                     : spot.openTime && spot.closeTime
-                      ? `${formatTime(spot.openTime)} - ${formatTime(spot.closeTime)}`
-                      : "Not specified"}
+                        ? `${formatTime(spot.openTime)} - ${formatTime(spot.closeTime)}`
+                        : "Not specified"}
                 </Text>
               </View>
               <View style={styles.infoRow}>
-                <MaterialIcons name="event-seat" size={20} color="#11796F" />
+                <MaterialIcons name="event-seat" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Total Slots</Text>
                 <Text style={styles.infoValue}>{total}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <MaterialIcons
-                  name="check-circle"
-                  size={20}
-                  color={available > 0 ? "#4CAF50" : "#E53935"}
-                />
-                <Text style={styles.infoLabel}>Available</Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    { color: available > 0 ? "#4CAF50" : "#E53935" },
-                  ]}
-                >
-                  {available > 0 ? `${available} Slots` : "Full"}
-                </Text>
               </View>
             </View>
           </View>
 
-          {/* Description */}
-          {spot.description ? (
+          {/* Description + Parking Slots Card */}
+          {(spot.description || spot.parkingSpaces.length > 0) && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.descriptionText}>{spot.description}</Text>
+              <View style={styles.infoCard}>
+                {spot.description && (
+                  <View style={{ gap: 8 }}>
+                    <Text style={styles.sectionTitle}>Description</Text>
+                    <Text style={styles.descriptionText}>{spot.description}</Text>
+                  </View>
+                )}
+
+                {spot.description && spot.parkingSpaces.length > 0 && (
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: "#E0E0E0",
+                      marginVertical: 12,
+                    }}
+                  />
+                )}
+
+                {spot.parkingSpaces.length > 0 && (
+                  <View style={{ gap: 10 }}>
+                    <View style={styles.slotsHeader}>
+                      <Text style={styles.sectionTitle}>Parking Slots</Text>
+                      <View style={styles.legendRow}>
+                        <View style={styles.legendItem}>
+                          <View
+                            style={[
+                              styles.legendDot,
+                              { backgroundColor: "#4CAF50" },
+                            ]}
+                          />
+                          <Text style={styles.legendText}>{available} Free</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                          <View
+                            style={[
+                              styles.legendDot,
+                              { backgroundColor: "#D4501E" },
+                            ]}
+                          />
+                          <Text style={styles.legendText}>
+                            {occupied} Occupied
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
             </View>
-          ) : null}
+          )}
 
           {/* Host Info */}
           {hostName ? (
@@ -491,145 +429,6 @@ export default function SpotDetailScreen() {
               </View>
             </View>
           ) : null}
-
-          {/* Parking Slots */}
-          {spot.parkingSpaces.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.slotsHeader}>
-                <Text style={styles.sectionTitle}>Parking Slots</Text>
-                <View style={styles.legendRow}>
-                  <View style={styles.legendItem}>
-                    <View
-                      style={[styles.legendDot, { backgroundColor: "#4CAF50" }]}
-                    />
-                    <Text style={styles.legendText}>{available} Free</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View
-                      style={[styles.legendDot, { backgroundColor: "#F57C00" }]}
-                    />
-                    <Text style={styles.legendText}>{occupied} Busy</Text>
-                  </View>
-                </View>
-              </View>
-              {(() => {
-                const hasLevels = spot.parkingSpaces.some(
-                  (s) => s.levelNumber != null,
-                );
-                if (hasLevels) {
-                  const levelMap = new Map<number, ParkingSpace[]>();
-                  spot.parkingSpaces.forEach((s) => {
-                    const lvl = s.levelNumber ?? 0;
-                    if (!levelMap.has(lvl)) levelMap.set(lvl, []);
-                    levelMap.get(lvl)!.push(s);
-                  });
-                  const sortedLevels = [...levelMap.keys()].sort(
-                    (a, b) => a - b,
-                  );
-                  return (
-                    <View style={{ gap: 14 }}>
-                      {sortedLevels.map((level) => {
-                        const levelSpaces = levelMap.get(level)!;
-                        const levelAvail = levelSpaces.filter(
-                          (s) => s.status === "AVAILABLE",
-                        ).length;
-                        return (
-                          <View key={level} style={{ gap: 8 }}>
-                            <View style={styles.floorHeader}>
-                              <MaterialIcons
-                                name="layers"
-                                size={16}
-                                color="#11796F"
-                              />
-                              <Text style={styles.floorTitle}>
-                                Floor {level}
-                              </Text>
-                              <Text style={styles.floorCount}>
-                                {levelAvail}/{levelSpaces.length} available
-                              </Text>
-                            </View>
-                            <View style={styles.slotsGrid}>
-                              {levelSpaces.map((space) => {
-                                const colors = SLOT_COLORS[space.status];
-                                return (
-                                  <View
-                                    key={space.id}
-                                    style={[
-                                      styles.slotCell,
-                                      {
-                                        backgroundColor: colors.bg,
-                                        borderColor: colors.color,
-                                      },
-                                    ]}
-                                  >
-                                    <MaterialIcons
-                                      name={
-                                        space.status === "AVAILABLE"
-                                          ? "event-seat"
-                                          : space.status === "OCCUPIED"
-                                            ? "directions-car"
-                                            : "block"
-                                      }
-                                      size={18}
-                                      color={colors.color}
-                                    />
-                                    <Text
-                                      style={[
-                                        styles.slotNumber,
-                                        { color: colors.color },
-                                      ]}
-                                    >
-                                      {space.name || space.slotNumber}
-                                    </Text>
-                                  </View>
-                                );
-                              })}
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  );
-                }
-                return (
-                  <View style={styles.slotsGrid}>
-                    {spot.parkingSpaces.map((space) => {
-                      const colors = SLOT_COLORS[space.status];
-                      return (
-                        <View
-                          key={space.id}
-                          style={[
-                            styles.slotCell,
-                            {
-                              backgroundColor: colors.bg,
-                              borderColor: colors.color,
-                            },
-                          ]}
-                        >
-                          <MaterialIcons
-                            name={
-                              space.status === "AVAILABLE"
-                                ? "event-seat"
-                                : space.status === "OCCUPIED"
-                                  ? "directions-car"
-                                  : "block"
-                            }
-                            size={18}
-                            color={colors.color}
-                          />
-                          <Text
-                            style={[styles.slotNumber, { color: colors.color }]}
-                          >
-                            {space.name || space.slotNumber}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                );
-              })()}
-            </View>
-          )}
         </View>
       </ScrollView>
 
@@ -637,7 +436,7 @@ export default function SpotDetailScreen() {
       {available > 0 && (
         <View style={styles.footer}>
           <View style={styles.footerPrice}>
-            <Text style={styles.footerPriceLabel}>From</Text>
+            <Text style={styles.footerPriceLabel}>Parking Fee</Text>
             <Text style={styles.footerPriceValue}>
               ₱{Number(spot.basePricePerHour).toFixed(2)}/hr
             </Text>
@@ -664,9 +463,9 @@ export default function SpotDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFB" },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   errorState: { alignItems: "center", paddingTop: 80, gap: 12 },
-  errorTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A2E" },
+  errorTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
 
   // Image Carousel
   carouselImage: {
@@ -700,13 +499,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  noImageText: { fontSize: 14, color: "#8E8E93" },
+  noImageText: { fontSize: 14, color: "#A09A94" },
 
   // Content
   content: {
     padding: 20,
     gap: 20,
-    paddingBottom: 100,
+    paddingBottom: 110,
   },
 
   // Title Section
@@ -714,7 +513,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.3,
   },
   addressRow: {
@@ -725,7 +524,7 @@ const styles = StyleSheet.create({
   address: {
     flex: 1,
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
 
   // Stats Row
@@ -749,12 +548,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   statLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#8E8E93",
+    color: "#A09A94",
   },
 
   // Section
@@ -762,7 +561,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   descriptionText: {
     fontSize: 14,
@@ -798,7 +597,7 @@ const styles = StyleSheet.create({
   },
   directionsLoadingText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   dirInfoItem: {
     flex: 1,
@@ -809,11 +608,11 @@ const styles = StyleSheet.create({
   dirInfoValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
   dirInfoLabel: {
     fontSize: 11,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
   },
   dirInfoDivider: {
@@ -823,14 +622,14 @@ const styles = StyleSheet.create({
   },
   dirNaText: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#A09A94",
   },
   openMapsBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
@@ -860,7 +659,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -870,8 +669,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
   },
-  hostLabel: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
-  hostName: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
+  hostLabel: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
+  hostName: { fontSize: 15, fontWeight: "700", color: "#232230" },
 
   // Parking Info
   infoCard: {
@@ -893,13 +692,13 @@ const styles = StyleSheet.create({
   infoLabel: {
     flex: 1,
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
   },
   infoValue: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
   },
 
   // Slots
@@ -911,41 +710,7 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: "row", gap: 12 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: "#8E8E93", fontWeight: "600" },
-  floorHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  floorTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#11796F",
-  },
-  floorCount: {
-    fontSize: 12,
-    color: "#8E8E93",
-    fontWeight: "600",
-    marginLeft: "auto",
-  },
-  slotsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  slotCell: {
-    width: Math.floor((SCREEN_WIDTH - 72) / 5),
-    height: Math.floor((SCREEN_WIDTH - 72) / 5),
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  slotNumber: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
+  legendText: { fontSize: 11, color: "#A09A94", fontWeight: "600" },
 
   // Footer/Book Button
   footer: {
@@ -968,13 +733,13 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   footerPrice: { gap: 2 },
-  footerPriceLabel: { fontSize: 12, color: "#8E8E93", fontWeight: "600" },
-  footerPriceValue: { fontSize: 20, fontWeight: "800", color: "#1A1A2E" },
+  footerPriceLabel: { fontSize: 12, color: "#A09A94", fontWeight: "600" },
+  footerPriceValue: { fontSize: 20, fontWeight: "800", color: "#232230" },
   bookBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,

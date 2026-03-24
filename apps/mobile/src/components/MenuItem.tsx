@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   TouchableOpacity,
   View,
@@ -21,7 +21,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
   label,
   icon = "keyboard-arrow-right",
   iconBg = "#F2F2F7",
-  iconColor = "#8E8E93",
+  iconColor = "#A09A94",
   onPress,
   style,
 }) => (
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   menuItemText: {
-    color: "#1A1A2E",
+    color: "#232230",
     fontSize: 15,
     fontWeight: "600",
   },

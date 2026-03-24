@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { TouchableOpacity, Text, StyleSheet, View } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
@@ -33,11 +33,11 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#038A7A",
+    backgroundColor: "#D4501E",
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 18,
-    shadowColor: "#038A7A",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

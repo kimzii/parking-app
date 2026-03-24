@@ -1,0 +1,9 @@
+-- CreateEnum
+CREATE TYPE "NotificationType" AS ENUM ('GENERAL', 'BOOKING_COMPLETED', 'BOOKING_CANCELLED', 'BOOKING_PENDING', 'DRIVER_NEARBY', 'DRIVER_VERIFIED', 'LOCATION_APPROVED', 'LOCATION_REJECTED');
+
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "push_token" TEXT;
+
+-- AlterTable
+ALTER TABLE "notifications" ADD COLUMN "type" "NotificationType" NOT NULL DEFAULT 'GENERAL';
+ALTER TABLE "notifications" ADD COLUMN "data" JSONB;

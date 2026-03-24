@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -176,7 +176,7 @@ export default function LeaveReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
     flexGrow: 1,
     padding: 24,
@@ -191,11 +191,11 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -204,12 +204,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     textAlign: "center",
   },
   ratingSection: {
@@ -248,15 +248,15 @@ const styles = StyleSheet.create({
   commentLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 10,
   },
   commentInput: {
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     fontSize: 14,
-    color: "#1A1A2E",
+    color: "#232230",
     minHeight: 100,
     borderWidth: 1,
     borderColor: "#E8ECF0",
@@ -272,10 +272,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   skipBtnText: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#A09A94",
     fontWeight: "600",
   },
 });

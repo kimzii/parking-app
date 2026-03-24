@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -75,7 +75,7 @@ export default function ForgotPasswordScreen() {
             <Feather
               name="mail"
               size={18}
-              color="#8E8E93"
+              color="#A09A94"
               style={styles.inputIcon}
             />
             <TextInput
@@ -110,7 +110,7 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
@@ -122,10 +122,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -134,11 +134,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 14,
     letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4 },
+  subtitle: { fontSize: 14, color: "#A09A94", marginTop: 4 },
   form: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 8,
     marginTop: 14,
     textTransform: "uppercase",
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E8ECF0",
     borderRadius: 12,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   inputIcon: { marginLeft: 14 },
   input: {
@@ -172,15 +172,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
   },
   button: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 24,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

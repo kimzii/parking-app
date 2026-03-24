@@ -53,6 +53,14 @@ export interface Reservation {
     images?: { id: string; imageUrl: string; isPrimary: boolean }[];
     basePricePerHour?: number;
   };
+  vehicle?: {
+    id?: string;
+    plateNumber?: string;
+    brand?: string;
+    model?: string;
+    color?: string;
+    vehicleType?: string;
+  } | null;
 }
 
 export interface CreateReservationResponse extends Reservation {

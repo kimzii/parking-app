@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -93,7 +93,7 @@ export default function DriverSetupScreen() {
         <View style={styles.form}>
           <Text style={styles.label}>License Number</Text>
           <View style={styles.inputContainer}>
-            <Feather name="credit-card" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="credit-card" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter license number"
@@ -117,7 +117,7 @@ export default function DriverSetupScreen() {
             ) : (
               <View style={styles.imagePlaceholder}>
                 <View style={styles.cameraCircle}>
-                  <Ionicons name="camera-outline" size={28} color="#11796F" />
+                  <Ionicons name="camera-outline" size={28} color="#D4501E" />
                 </View>
                 <Text style={styles.imagePlaceholderTitle}>Tap to upload</Text>
                 <Text style={styles.imagePlaceholderText}>
@@ -155,7 +155,7 @@ export default function DriverSetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
@@ -167,10 +167,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 22,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -179,11 +179,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 14,
     letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4, textAlign: "center" },
+  subtitle: { fontSize: 14, color: "#A09A94", marginTop: 4, textAlign: "center" },
   form: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 8,
     marginTop: 14,
     textTransform: "uppercase",
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E8ECF0",
     borderRadius: 12,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   inputIcon: { marginLeft: 14 },
   input: {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
   },
   imagePickerButton: { borderRadius: 16, overflow: "hidden", marginBottom: 8 },
   licensePreview: { width: "100%", height: 200, borderRadius: 16 },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     borderColor: "#E8ECF0",
     borderStyle: "dashed",
     borderRadius: 16,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     gap: 6,
@@ -237,20 +237,20 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: "#E8F5F3",
+    backgroundColor: "#FFF0EC",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 4,
   },
-  imagePlaceholderTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A2E" },
-  imagePlaceholderText: { fontSize: 13, color: "#8E8E93" },
+  imagePlaceholderTitle: { fontSize: 15, fontWeight: "700", color: "#232230" },
+  imagePlaceholderText: { fontSize: 13, color: "#A09A94" },
   button: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 16,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -265,5 +265,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     backgroundColor: "#F2F2F7",
   },
-  skipText: { color: "#8E8E93", fontSize: 15, fontWeight: "600" },
+  skipText: { color: "#A09A94", fontSize: 15, fontWeight: "600" },
 });

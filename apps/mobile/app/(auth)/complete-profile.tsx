@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -108,7 +108,7 @@ export default function CompleteProfileScreen() {
         <View style={styles.form}>
           <Text style={styles.label}>First Name</Text>
           <View style={styles.inputContainer}>
-            <Feather name="user" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="First Name"
@@ -123,7 +123,7 @@ export default function CompleteProfileScreen() {
 
           <Text style={styles.label}>Last Name</Text>
           <View style={styles.inputContainer}>
-            <Feather name="user" size={18} color="#8E8E93" style={styles.inputIcon} />
+            <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Last Name"
@@ -155,7 +155,7 @@ export default function CompleteProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
@@ -166,10 +166,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1A1A2E",
+    color: "#232230",
     letterSpacing: -0.5,
   },
-  subtitle: { fontSize: 14, color: "#8E8E93", marginTop: 4 },
+  subtitle: { fontSize: 14, color: "#A09A94", marginTop: 4 },
   avatarContainer: { alignSelf: "center", marginBottom: 24 },
   avatar: {
     width: 110,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 2,
     right: 2,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     width: 34,
     height: 34,
     borderRadius: 12,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 3,
     borderColor: "#fff",
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 8,
     marginTop: 14,
     textTransform: "uppercase",
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#E8ECF0",
     borderRadius: 12,
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
   },
   inputIcon: { marginLeft: 14 },
   input: {
@@ -240,15 +240,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#1A1A2E",
+    color: "#232230",
   },
   button: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 24,
-    shadowColor: "#11796F",
+    shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,

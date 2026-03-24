@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -27,6 +28,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private prisma: PrismaService,
     private walletService: WalletService,
+    private notificationsService: NotificationsService,
   ) {}
 
   private readonly HOST_APPROVAL_WINDOW_MS = 5 * 60 * 1000;
@@ -427,6 +429,31 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const space = result.parkingSpace;
     const location = space.parkingLocation;
 
+    // Notify host of pending booking
+    const [driverUser, hostRecord] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+      }),
+      this.prisma.host.findUnique({
+        where: { id: location.hostId },
+        select: { userId: true },
+      }),
+    ]);
+    const driverName =
+      [driverUser?.firstName, driverUser?.lastName].filter(Boolean).join(' ') ||
+      'A driver';
+    if (hostRecord) {
+      this.notificationsService
+        .notifyBookingPending(
+          hostRecord.userId,
+          result.id,
+          location.title,
+          driverName,
+        )
+        .catch(() => {});
+    }
+
     return {
       id: result.id,
       qrCode: result.qrCode,
@@ -778,6 +805,16 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       });
     });
 
+    // Notify driver that host rejected/cancelled their booking
+    this.notificationsService
+      .notifyBookingCancelled(
+        reservation.driver.userId,
+        reservationId,
+        reservation.parkingSpace.parkingLocation.title,
+        'host',
+      )
+      .catch(() => {});
+
     return {
       success: true,
       message: 'Reservation rejected. Driver has been refunded.',
@@ -1033,6 +1070,17 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       },
     );
 
+    // Notify both driver and host of completion
+    const locationTitle = reservation.parkingSpace.parkingLocation.title;
+    this.notificationsService
+      .notifyBookingCompleted(
+        reservation.driver.userId,
+        hostUserId,
+        reservation.id,
+        locationTitle,
+      )
+      .catch(() => {});
+
     return {
       success: true,
       message: 'Session ended. Payment has been processed.',
@@ -1134,6 +1182,26 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         },
       });
     });
+
+    // Notify host that driver cancelled
+    const cancelledRes = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: {
+          include: { parkingLocation: { include: { host: true } } },
+        },
+      },
+    });
+    if (cancelledRes) {
+      this.notificationsService
+        .notifyBookingCancelled(
+          cancelledRes.parkingSpace.parkingLocation.host.userId,
+          reservationId,
+          cancelledRes.parkingSpace.parkingLocation.title,
+          'driver',
+        )
+        .catch(() => {});
+    }
 
     return {
       success: true,

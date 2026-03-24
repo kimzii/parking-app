@@ -1,12 +1,14 @@
 import { Tabs, useRouter, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import * as SecureStore from "expo-secure-store";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { registerForPushNotifications } from "../../src/services/notifications";
 
 export default function TabLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const pushRegistered = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -14,6 +16,9 @@ export default function TabLayout() {
         const token = await SecureStore.getItemAsync("accessToken");
         if (!token) {
           router.replace("/(auth)/login");
+        } else if (!pushRegistered.current) {
+          pushRegistered.current = true;
+          registerForPushNotifications().catch(() => {});
         }
       };
       checkToken();
@@ -25,8 +30,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#11796F",
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarActiveTintColor: "#D4501E",
+        tabBarInactiveTintColor: "#A09A94",
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#fff",
@@ -77,13 +82,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarLabel: "Settings",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="settings" color={color} size={size} />
+          ),
+        }}
+      />
+      {/* Profile is accessed via the home screen header button, not the tab bar */}
+      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarLabel: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" color={color} size={size} />
-          ),
+          href: null,
         }}
       />
     </Tabs>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -48,7 +48,7 @@ function CameraScanner({
   if (!permission) {
     return (
       <View style={styles.cameraContainer}>
-        <ActivityIndicator size="large" color="#11796F" style={{ flex: 1 }} />
+        <ActivityIndicator size="large" color="#D4501E" style={{ flex: 1 }} />
       </View>
     );
   }
@@ -179,7 +179,7 @@ export default function ScanQRScreen() {
           <MaterialIcons
             name="login"
             size={20}
-            color={scanMode === "entry" ? "#fff" : "#11796F"}
+            color={scanMode === "entry" ? "#fff" : "#D4501E"}
           />
           <Text
             style={[
@@ -203,7 +203,7 @@ export default function ScanQRScreen() {
           <MaterialIcons
             name="logout"
             size={20}
-            color={scanMode === "exit" ? "#fff" : "#11796F"}
+            color={scanMode === "exit" ? "#fff" : "#D4501E"}
           />
           <Text
             style={[
@@ -271,7 +271,7 @@ export default function ScanQRScreen() {
 
           {/* Instructions */}
           <View style={styles.instructions}>
-            <MaterialIcons name="qr-code-scanner" size={24} color="#11796F" />
+            <MaterialIcons name="qr-code-scanner" size={24} color="#D4501E" />
             <Text style={styles.instructionsText}>
               {scanMode === "entry"
                 ? "Scan driver's QR code to check them in"
@@ -284,7 +284,7 @@ export default function ScanQRScreen() {
             style={styles.manualEntryBtn}
             onPress={() => setShowManualInput(true)}
           >
-            <MaterialIcons name="keyboard" size={20} color="#11796F" />
+            <MaterialIcons name="keyboard" size={20} color="#D4501E" />
             <Text style={styles.manualEntryBtnText}>Enter Code Manually</Text>
           </TouchableOpacity>
 
@@ -305,7 +305,7 @@ export default function ScanQRScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFB" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
 
   // Permission
   permissionContainer: {
@@ -318,12 +318,12 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginTop: 16,
   },
-  permissionText: { fontSize: 14, color: "#8E8E93", textAlign: "center" },
+  permissionText: { fontSize: 14, color: "#A09A94", textAlign: "center" },
   permissionBtn: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 10,
@@ -347,12 +347,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#11796F",
+    borderColor: "#D4501E",
   },
   modeBtnActive: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
-  modeBtnText: { fontSize: 15, fontWeight: "700", color: "#11796F" },
+  modeBtnText: { fontSize: 15, fontWeight: "700", color: "#D4501E" },
   modeBtnTextActive: { color: "#fff" },
 
   // Camera
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 40,
     height: 40,
-    borderColor: "#11796F",
+    borderColor: "#D4501E",
   },
   topLeft: {
     top: 0,
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
-  manualEntryBtnText: { fontSize: 15, fontWeight: "600", color: "#11796F" },
+  manualEntryBtnText: { fontSize: 15, fontWeight: "600", color: "#D4501E" },
 
   // Scan Again
   scanAgainBtn: {
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
   },
   scanAgainBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 
@@ -472,16 +472,16 @@ const styles = StyleSheet.create({
   manualInputTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A2E",
+    color: "#232230",
     marginBottom: 16,
   },
   manualInput: {
-    backgroundColor: "#F8FAFB",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
     fontSize: 18,
     fontWeight: "600",
-    color: "#1A1A2E",
+    color: "#232230",
     textAlign: "center",
     letterSpacing: 2,
     borderWidth: 1,
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     alignItems: "center",
   },
   submitBtnDisabled: { backgroundColor: "#9E9E9E" },
