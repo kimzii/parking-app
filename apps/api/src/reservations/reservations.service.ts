@@ -660,6 +660,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
       include: {
+        driver: true,
         parkingSpace: {
           include: {
             parkingLocation: true,
@@ -703,6 +704,17 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         arrivalDeadline,
       },
     });
+
+    // Notify the driver that their booking was approved
+    this.notificationsService
+      .notifyBookingApproved(
+        reservation.driver.userId,
+        reservation.id,
+        reservation.parkingSpace.parkingLocation.title,
+      )
+      .catch((err) =>
+        console.error('Failed to send booking approved notification:', err),
+      );
 
     return {
       success: true,

@@ -1,5 +1,3 @@
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import { Platform } from "react-native";
 import api from "./api";
 
@@ -13,61 +11,68 @@ export interface AppNotification {
   createdAt: string;
 }
 
-/** Configure how notifications appear when the app is in the foreground */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
 /**
- * Register for push notifications and send the token to the API
+ * Register for push notifications and send the token to the API.
+ * Native modules are loaded lazily so the app doesn't crash in Expo Go.
  */
 export async function registerForPushNotifications(): Promise<string | null> {
-  if (!Device.isDevice) {
-    console.log("Push notifications require a physical device");
-    return null;
-  }
-
-  // Check / request permissions
-  const { status: existingStatus } =
-    await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== "granted") {
-    console.log("Push notification permission not granted");
-    return null;
-  }
-
-  // Android notification channel
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "Default",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#D4501E",
-    });
-  }
-
-  // Get Expo push token
-  const tokenData = await Notifications.getExpoPushTokenAsync();
-  const pushToken = tokenData.data;
-
-  // Send token to our API
   try {
-    await api.post("/notifications/register-token", { pushToken });
-  } catch (err) {
-    console.error("Failed to register push token:", err);
-  }
+    const Notifications = await import("expo-notifications");
+    const Device = await import("expo-device");
 
-  return pushToken;
+    // Configure foreground behaviour
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+
+    if (!Device.isDevice) {
+      console.log("Push notifications require a physical device");
+      return null;
+    }
+
+    // Check / request permissions
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+      console.log("Push notification permission not granted");
+      return null;
+    }
+
+    // Android notification channel
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Default",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#D4501E",
+      });
+    }
+
+    // Get Expo push token
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const pushToken = tokenData.data;
+
+    // Send token to our API
+    await api.post("/notifications/register-token", { pushToken });
+
+    return pushToken;
+  } catch (err) {
+    console.warn("Push notification setup failed (expected in Expo Go):", err);
+    return null;
+  }
 }
 
 /** Get all notifications for the current user */
@@ -93,8 +98,6 @@ export async function markAllAsRead(): Promise<void> {
 }
 
 /** Notify API that driver is near a parking location (geofence trigger) */
-export async function notifyDriverNearby(
-  reservationId: string,
-): Promise<void> {
+export async function notifyDriverNearby(reservationId: string): Promise<void> {
   await api.post("/notifications/driver-nearby", { reservationId });
 }

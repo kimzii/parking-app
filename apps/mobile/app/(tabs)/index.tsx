@@ -15,6 +15,7 @@ import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
+import { getUnreadCount } from "../../src/services/notifications";
 
 interface ParkingSpot {
   id: string;
@@ -36,7 +37,17 @@ export default function HomeScreen() {
   const [activeBookings, setActiveBookings] = useState<
     reservationsService.Reservation[]
   >([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const count = await getUnreadCount();
+      setUnreadCount(count);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const fetchSpots = useCallback(async (search?: string) => {
     try {
@@ -70,7 +81,8 @@ export default function HomeScreen() {
     useCallback(() => {
       fetchSpots();
       fetchActiveBookings();
-    }, [fetchSpots, fetchActiveBookings]),
+      fetchUnread();
+    }, [fetchSpots, fetchActiveBookings, fetchUnread]),
   );
 
   const onRefresh = () => {
@@ -281,10 +293,17 @@ export default function HomeScreen() {
           <Text style={styles.greetingText}>{greeting}</Text>
           <TouchableOpacity
             style={styles.profileBtn}
-            onPress={() => router.navigate("/(tabs)/profile" as any)}
+            onPress={() => router.push("/(modals)/notifications" as any)}
             activeOpacity={0.75}
           >
-            <MaterialIcons name="person-outline" size={22} color="#232230" />
+            <MaterialIcons name="notifications" size={22} color="#D4501E" />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -627,6 +646,23 @@ const styles = StyleSheet.create({
   },
   bookingMetaDot: {
     fontSize: 13,
-  color: "#A09A94",
+    color: "#A09A94",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#E53935",
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#fff",
   },
 });

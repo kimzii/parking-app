@@ -8,12 +8,13 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, router } from "expo-router";
+import { Stack, useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { driversService } from "../../src/services/drivers";
 import { userService } from "../../src/services/user";
@@ -29,11 +30,6 @@ type Vehicle = {
 };
 
 const VEHICLE_TYPES = ["CAR", "MOTORCYCLE"] as const;
-
-const TYPE_ICONS: Record<string, keyof typeof MaterialIcons.glyphMap> = {
-  CAR: "directions-car",
-  MOTORCYCLE: "two-wheeler",
-};
 
 const TYPE_IMAGES: Record<string, any> = {
   CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
@@ -199,8 +195,49 @@ export default function MyVehiclesScreen() {
         </View>
         <View style={styles.cardBody}>
           <View style={styles.cardTopRow}>
-            <View style={styles.plateBadge}>
-              <Text style={styles.plateText}>{item.plateNumber}</Text>
+            <View style={{ flex: 1 }}>
+              {details ? (
+                <Text style={styles.cardDetails}>{details}</Text>
+              ) : (
+                <Text style={styles.cardDetails}>Vehicle</Text>
+              )}
+              <View style={styles.cardBottomRow}>
+                {item.color ? (
+                  <View style={styles.colorTag}>
+                    <View
+                      style={[styles.colorDot, { backgroundColor: item.color }]}
+                    />
+                    <Text style={styles.colorText}>{item.color}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.typeTag}>
+                  <Image
+                    source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
+                    style={{ width: 14, height: 14, tintColor: "#D4501E" }}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.typeTagText}>
+                    {item.vehicleType || "N/A"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Plate row under details/color/type */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginTop: 8,
+              gap: 6,
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={styles.plateBadge}>
+                <Text style={styles.plateText}>{item.plateNumber}</Text>
+              </View>
             </View>
             <View style={styles.cardActions}>
               <TouchableOpacity
@@ -218,30 +255,9 @@ export default function MyVehiclesScreen() {
                 <MaterialIcons
                   name="delete-outline"
                   size={18}
-                  color="#E53935"
+                  color="#6C6C70" // neutral gray
                 />
               </TouchableOpacity>
-            </View>
-          </View>
-          {details ? <Text style={styles.cardDetails}>{details}</Text> : null}
-          <View style={styles.cardBottomRow}>
-            {item.color ? (
-              <View style={styles.colorTag}>
-                <View
-                  style={[styles.colorDot, { backgroundColor: item.color }]}
-                />
-                <Text style={styles.colorText}>{item.color}</Text>
-              </View>
-            ) : null}
-            <View style={styles.typeTag}>
-              <Image
-                source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
-                style={{ width: 14, height: 14, tintColor: "#D4501E" }}
-                resizeMode="contain"
-              />
-              <Text style={styles.typeTagText}>
-                {item.vehicleType || "N/A"}
-              </Text>
             </View>
           </View>
         </View>
@@ -253,42 +269,62 @@ export default function MyVehiclesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+      <Stack.Screen
+        options={{
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => {
+                if (isEditing) {
+                  handleCloseForm();
+                } else {
+                  router.back();
+                }
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="chevron-left" size={28} color="#D4501E" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>My Vehicles</Text>
-            <Text style={styles.subtitle}>
-              {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""}{" "}
-              registered
-            </Text>
+        {!isEditing && (
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>My Vehicles</Text>
+              <Text style={styles.subtitle}>
+                {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""}{" "}
+                registered
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.addToggle,
+                showForm && styles.addToggleActive,
+                !isDriverVerified && styles.addToggleDisabled,
+              ]}
+              onPress={() =>
+                !isDriverVerified
+                  ? router.push("/(modals)/driver-verification")
+                  : showForm
+                    ? handleCloseForm()
+                    : openAddForm()
+              }
+              activeOpacity={0.8}
+            >
+              <MaterialIcons
+                name={!isDriverVerified ? "lock" : showForm ? "close" : "add"}
+                size={22}
+                color={!isDriverVerified ? "#fff" : showForm ? "#D4501E" : "#fff"}
+              />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.addToggle,
-              showForm && styles.addToggleActive,
-              !isDriverVerified && styles.addToggleDisabled,
-            ]}
-            onPress={() =>
-              !isDriverVerified
-                ? router.push("/(modals)/driver-verification")
-                : showForm
-                  ? handleCloseForm()
-                  : openAddForm()
-            }
-            activeOpacity={0.8}
-          >
-            <MaterialIcons
-              name={!isDriverVerified ? "lock" : showForm ? "close" : "add"}
-              size={22}
-              color={!isDriverVerified ? "#fff" : showForm ? "#D4501E" : "#fff"}
-            />
-          </TouchableOpacity>
-        </View>
+        )}
 
-        {!isDriverVerified && (
+        {!isDriverVerified && !isEditing && (
           <TouchableOpacity
             style={styles.verifyBanner}
             onPress={() => router.push("/(modals)/driver-verification")}
@@ -307,119 +343,71 @@ export default function MyVehiclesScreen() {
           </TouchableOpacity>
         )}
 
-        {showForm && (
-          <View style={styles.form}>
-            <Text style={styles.formTitle}>
-              {isEditing ? "Edit Vehicle" : "Add New Vehicle"}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Plate Number *"
-              placeholderTextColor="#aaa"
-              value={plateNumber}
-              onChangeText={setPlateNumber}
-              autoCapitalize="characters"
-              editable={!saving}
-            />
-            <Text style={styles.fieldLabel}>Vehicle Type</Text>
-            <View style={styles.typeRow}>
-              {VEHICLE_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[
-                    styles.typeChip,
-                    vehicleType === t && styles.typeChipActive,
-                  ]}
-                  onPress={() => setVehicleType(t)}
-                  disabled={saving}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={TYPE_IMAGES[t] || TYPE_IMAGES.CAR}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      tintColor: vehicleType === t ? "#fff" : "#888",
-                      marginBottom: 2,
-                    }}
-                    resizeMode="contain"
-                  />
-                  <Text
-                    style={[
-                      styles.typeChipText,
-                      vehicleType === t && styles.typeChipTextActive,
-                    ]}
-                  >
-                    {t}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={[styles.input, styles.inputHalf]}
-                placeholder="Brand"
-                placeholderTextColor="#aaa"
-                value={brand}
-                onChangeText={setBrand}
-                editable={!saving}
-              />
-              <TextInput
-                style={[styles.input, styles.inputHalf]}
-                placeholder="Model"
-                placeholderTextColor="#aaa"
-                value={model}
-                onChangeText={setModel}
-                editable={!saving}
-              />
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Color (e.g. Red, Blue)"
-              placeholderTextColor="#aaa"
-              value={color}
-              onChangeText={setColor}
-              editable={!saving}
-            />
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                saving && styles.submitButtonDisabled,
-              ]}
-              onPress={isEditing ? handleUpdate : handleAdd}
-              disabled={saving}
-              activeOpacity={0.8}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <View style={styles.submitInner}>
-                  <MaterialIcons
-                    name={
-                      isEditing ? "check-circle-outline" : "add-circle-outline"
-                    }
-                    size={20}
-                    color="#fff"
-                  />
-                  <Text style={styles.submitButtonText}>
-                    {isEditing ? "Update Vehicle" : "Add Vehicle"}
-                  </Text>
+        {isEditing && editingVehicle ? (
+          <ScrollView
+            contentContainerStyle={styles.editScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {renderVehicleCard({ item: editingVehicle })}
+            {showForm && (
+              <View style={[styles.form, { marginHorizontal: 0 }]}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={styles.formTitle}>Edit Vehicle</Text>
                 </View>
-              )}
-            </TouchableOpacity>
-            {isEditing && (
-              <TouchableOpacity
-                style={styles.cancelFormButton}
-                onPress={handleCloseForm}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.cancelFormText}>Cancel</Text>
-              </TouchableOpacity>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Plate Number *"
+                  placeholderTextColor="#aaa"
+                  value={plateNumber}
+                  onChangeText={setPlateNumber}
+                  autoCapitalize="characters"
+                  editable={!saving}
+                />
+                <Text style={styles.fieldLabel}>Vehicle Type</Text>
+                <View style={styles.typeRow}>
+                  {VEHICLE_TYPES.map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[styles.typeChip, vehicleType === t && styles.typeChipActive]}
+                      onPress={() => setVehicleType(t)}
+                      disabled={saving}
+                      activeOpacity={0.7}
+                    >
+                      <Image
+                        source={TYPE_IMAGES[t] || TYPE_IMAGES.CAR}
+                        style={{ width: 24, height: 24, tintColor: vehicleType === t ? "#fff" : "#888", marginBottom: 2 }}
+                        resizeMode="contain"
+                      />
+                      <Text style={[styles.typeChipText, vehicleType === t && styles.typeChipTextActive]}>{t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.inputRow}>
+                  <TextInput style={[styles.input, styles.inputHalf]} placeholder="Brand" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} editable={!saving} />
+                  <TextInput style={[styles.input, styles.inputHalf]} placeholder="Model" placeholderTextColor="#aaa" value={model} onChangeText={setModel} editable={!saving} />
+                </View>
+                <TextInput style={styles.input} placeholder="Color (e.g. Red, Blue)" placeholderTextColor="#aaa" value={color} onChangeText={setColor} editable={!saving} />
+                <TouchableOpacity
+                  style={[styles.submitButton, saving && styles.submitButtonDisabled]}
+                  onPress={handleUpdate}
+                  disabled={saving}
+                  activeOpacity={0.8}
+                >
+                  {saving ? <ActivityIndicator color="#fff" /> : (
+                    <View style={styles.submitInner}>
+                      <MaterialIcons name="check-circle-outline" size={20} color="#fff" />
+                      <Text style={styles.submitButtonText}>Update Vehicle</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelFormButton} onPress={handleCloseForm} activeOpacity={0.8}>
+                  <Text style={styles.cancelFormText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             )}
-          </View>
-        )}
-
-        {loading ? (
+          </ScrollView>
+        ) : loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color="#D4501E" />
           </View>
@@ -441,6 +429,60 @@ export default function MyVehiclesScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
           />
+        )}
+
+        {!isEditing && showForm && (
+          <View style={styles.form}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={styles.formTitle}>Add New Vehicle</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Plate Number *"
+              placeholderTextColor="#aaa"
+              value={plateNumber}
+              onChangeText={setPlateNumber}
+              autoCapitalize="characters"
+              editable={!saving}
+            />
+            <Text style={styles.fieldLabel}>Vehicle Type</Text>
+            <View style={styles.typeRow}>
+              {VEHICLE_TYPES.map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.typeChip, vehicleType === t && styles.typeChipActive]}
+                  onPress={() => setVehicleType(t)}
+                  disabled={saving}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={TYPE_IMAGES[t] || TYPE_IMAGES.CAR}
+                    style={{ width: 24, height: 24, tintColor: vehicleType === t ? "#fff" : "#888", marginBottom: 2 }}
+                    resizeMode="contain"
+                  />
+                  <Text style={[styles.typeChipText, vehicleType === t && styles.typeChipTextActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.inputRow}>
+              <TextInput style={[styles.input, styles.inputHalf]} placeholder="Brand" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} editable={!saving} />
+              <TextInput style={[styles.input, styles.inputHalf]} placeholder="Model" placeholderTextColor="#aaa" value={model} onChangeText={setModel} editable={!saving} />
+            </View>
+            <TextInput style={styles.input} placeholder="Color (e.g. Red, Blue)" placeholderTextColor="#aaa" value={color} onChangeText={setColor} editable={!saving} />
+            <TouchableOpacity
+              style={[styles.submitButton, saving && styles.submitButtonDisabled]}
+              onPress={handleAdd}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : (
+                <View style={styles.submitInner}>
+                  <MaterialIcons name="add-circle-outline" size={20} color="#fff" />
+                  <Text style={styles.submitButtonText}>Add Vehicle</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -586,12 +628,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#232230" },
   emptySubtitle: { fontSize: 14, color: "#A09A94" },
-  list: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24 },
+  list: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 },
+  editScrollContent: { padding: 20, paddingBottom: 40, gap: 12 },
   card: {
     flexDirection: "row",
     backgroundColor: "#fff",
     borderRadius: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -619,16 +662,26 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   plateBadge: {
-    backgroundColor: "#232230",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: "transparent", // unfilled
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#D4501E", // orange border
   },
   plateText: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#fff",
+    color: "#D4501E", // orange text to match border
     letterSpacing: 1,
+  },
+  plateLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6C6C70",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
   cardActions: { flexDirection: "row", gap: 6 },
   editBtn: {
@@ -643,7 +696,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "#FEE8E7",
+    backgroundColor: "#E5E5EA", // lighter gray
     justifyContent: "center",
     alignItems: "center",
   },

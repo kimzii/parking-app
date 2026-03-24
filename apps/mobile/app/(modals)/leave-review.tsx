@@ -26,6 +26,8 @@ export default function LeaveReviewScreen() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedRating, setSubmittedRating] = useState(0);
 
   const ratingLabels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
@@ -50,9 +52,8 @@ export default function LeaveReviewScreen() {
           comment.trim() || undefined,
         );
       }
-      Alert.alert("Thank you!", "Your review has been submitted.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      setSubmittedRating(rating);
+      setSubmitted(true);
     } catch (err: any) {
       const message =
         err.response?.data?.message || "Failed to submit review";
@@ -64,6 +65,39 @@ export default function LeaveReviewScreen() {
       setSubmitting(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+        <Stack.Screen options={{ title: "Review Submitted" }} />
+        <View style={styles.submittedContainer}>
+          <View style={styles.iconCircle}>
+            <MaterialIcons name="check" size={32} color="#fff" />
+          </View>
+          <Text style={styles.submittedTitle}>Thank you!</Text>
+          <Text style={styles.subtitle}>{locationTitle}</Text>
+          <View style={styles.starsRow}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <MaterialIcons
+                key={star}
+                name={star <= submittedRating ? "star" : "star-outline"}
+                size={40}
+                color={star <= submittedRating ? "#FFB300" : "#D0D0D0"}
+              />
+            ))}
+          </View>
+          <Text style={styles.ratingLabel}>{ratingLabels[submittedRating]}</Text>
+          <TouchableOpacity
+            style={styles.submitBtn}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.submitBtnText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -298,5 +332,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#A09A94",
     fontWeight: "600",
+  },
+  submittedContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    gap: 12,
+  },
+  submittedTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#232230",
+    marginTop: 4,
   },
 });

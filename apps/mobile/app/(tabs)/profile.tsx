@@ -142,6 +142,19 @@ export default function ProfileScreen() {
                 />
               </View>
             </View>
+
+            <View style={styles.menuSection}>
+              <Text style={styles.sectionLabel}>App</Text>
+              <View style={styles.menuCard}>
+                <MenuItem
+                  label="Settings"
+                  icon="settings"
+                  iconBg="#F5F4F2"
+                  iconColor="#A09A94"
+                  onPress={() => router.push("/(tabs)/settings")}
+                />
+              </View>
+            </View>
           </ScrollView>
         </View>
       </View>

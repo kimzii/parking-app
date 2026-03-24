@@ -317,7 +317,9 @@ export default function MapScreen() {
                 >
                   <View style={styles.markerContainer}>
                     <View style={styles.markerBubble}>
-                      <Text style={styles.markerPrice}>P</Text>
+                      <Text style={styles.markerPrice}>
+                        ₱{Number(spot.basePricePerHour).toFixed(0)}
+                      </Text>
                     </View>
                     <View style={styles.markerArrow} />
                   </View>
@@ -518,7 +520,7 @@ const styles = StyleSheet.create({
   },
   markerContainer: { alignItems: "center" },
   markerBubble: {
-    backgroundColor: "#11796F",
+  backgroundColor: "#D4501E",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,

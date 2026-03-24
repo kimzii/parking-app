@@ -82,18 +82,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="profile"
         options={{
-          title: "Settings",
-          tabBarLabel: "Settings",
+          title: "Profile",
+          tabBarLabel: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="settings" color={color} size={size} />
+            <MaterialIcons name="person" color={color} size={size} />
           ),
         }}
       />
-      {/* Profile is accessed via the home screen header button, not the tab bar */}
+      {/* Settings is accessed via the profile page, not the tab bar */}
       <Tabs.Screen
-        name="profile"
+        name="settings"
         options={{
           href: null,
         }}

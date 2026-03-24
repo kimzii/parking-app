@@ -20,15 +20,16 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import * as reservationsService from "../../src/services/reservations";
+import * as reviewsService from "../../src/services/reviews";
 import { startGeofencing, stopGeofencing } from "../../src/services/geofencing";
 
 const STATUS_CONFIG: Record<
   string,
   { color: string; bg: string; label: string }
 > = {
-  PENDING: { color: "#D4501E", bg: "#FFF0EC", label: "Awaiting Approval" },
+  PENDING: { color: "#A09A94", bg: "#FFF0EC", label: "Awaiting Approval" },
   CONFIRMED: { color: "#1976D2", bg: "#E3F2FD", label: "Awaiting Arrival" },
-  ACTIVE: { color: "#4CAF50", bg: "#F5F4F2", label: "Session Active" },
+  ACTIVE: { color: "#D4501E", bg: "#F5F4F2", label: "Session Active" },
   COMPLETED: { color: "#A09A94", bg: "#F5F5F5", label: "Completed" },
   CANCELLED: { color: "#E53935", bg: "#FFEBEE", label: "Cancelled" },
   EXPIRED: { color: "#D4501E", bg: "#FFF0EC", label: "Expired" },
@@ -56,6 +57,8 @@ export default function ReservationQRScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [existingReview, setExistingReview] =
+    useState<reviewsService.Review | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reservationStatus = reservation?.status;
 
@@ -64,6 +67,17 @@ export default function ReservationQRScreen() {
     try {
       const data = await reservationsService.getReservation(id);
       setReservation(data);
+      if (data.status === "COMPLETED") {
+        try {
+          const reviews = await reviewsService.getReservationReviews(id);
+          const mine = reviews.find(
+            (r) => r.reviewType === "DRIVER_TO_LOCATION",
+          );
+          setExistingReview(mine ?? null);
+        } catch {
+          // ignore review fetch errors
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch reservation:", err);
       Alert.alert("Error", "Failed to load reservation details");
@@ -330,7 +344,7 @@ export default function ReservationQRScreen() {
         {/* Session Timer (ACTIVE) */}
         {reservation.status === "ACTIVE" && sessionStart && (
           <View style={styles.sessionCard}>
-            <MaterialIcons name="timer" size={28} color="#4CAF50" />
+            <MaterialIcons name="timer" size={28} color="#D4501E" />
             <View style={{ flex: 1 }}>
               <Text style={styles.sessionLabel}>Session Duration</Text>
               <Text style={styles.sessionValue}>
@@ -421,9 +435,9 @@ export default function ReservationQRScreen() {
             </View>
             {sessionStart && (
               <View style={styles.timeRow}>
-                <MaterialIcons name="login" size={20} color="#4CAF50" />
+                <MaterialIcons name="login" size={20} color="#D4501E" />
                 <Text style={styles.timeLabel}>Checked In</Text>
-                <Text style={[styles.timeValue, { color: "#4CAF50" }]}>
+                <Text style={[styles.timeValue, { color: "#D4501E" }]}>
                   {sessionStart.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -434,9 +448,9 @@ export default function ReservationQRScreen() {
             )}
             {sessionEnd && (
               <View style={styles.timeRow}>
-                <MaterialIcons name="logout" size={20} color="#1976D2" />
+                <MaterialIcons name="logout" size={20} color="#A09A94" />
                 <Text style={styles.timeLabel}>Checked Out</Text>
-                <Text style={[styles.timeValue, { color: "#1976D2" }]}>
+                <Text style={[styles.timeValue, { color: "#A09A94" }]}>
                   {sessionEnd.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -449,7 +463,7 @@ export default function ReservationQRScreen() {
               <View style={styles.timeRow}>
                 <MaterialIcons name="timelapse" size={20} color="#D4501E" />
                 <Text style={styles.timeLabel}>Duration</Text>
-                <Text style={styles.timeValue}>
+                <Text style={[styles.timeValue, { color: "#D4501E" }]}>
                   {formatDuration(sessionDuration)}
                 </Text>
               </View>
@@ -514,7 +528,7 @@ export default function ReservationQRScreen() {
         {/* Completed Message */}
         {reservation.status === "COMPLETED" && (
           <View style={styles.completedCard}>
-            <MaterialIcons name="check-circle" size={32} color="#4CAF50" />
+            <MaterialIcons name="check-circle" size={32} color="#D4501E" />
             <Text style={styles.completedTitle}>Parking Session Complete</Text>
             <Text style={styles.completedText}>
               Thank you for using ParkLink!
@@ -522,26 +536,46 @@ export default function ReservationQRScreen() {
           </View>
         )}
 
-        {/* Leave a Review */}
-        {reservation.status === "COMPLETED" && (
-          <TouchableOpacity
-            style={styles.reviewBtn}
-            onPress={() =>
-              router.push({
-                pathname: "/(modals)/leave-review",
-                params: {
-                  reservationId: reservation.id,
-                  locationTitle: reservation.parkingLocation.title,
-                  reviewType: "driver",
-                },
-              })
-            }
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="star" size={20} color="#FFB300" />
-            <Text style={styles.reviewBtnText}>Leave a Review</Text>
-          </TouchableOpacity>
-        )}
+        {/* Review */}
+        {reservation.status === "COMPLETED" &&
+          (existingReview ? (
+            <View style={styles.reviewCard}>
+              <Text style={styles.reviewCardLabel}>Your Review</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <MaterialIcons
+                    key={star}
+                    name={star <= existingReview.rating ? "star" : "star-outline"}
+                    size={28}
+                    color={star <= existingReview.rating ? "#FFB300" : "#D0D0D0"}
+                  />
+                ))}
+              </View>
+              {existingReview.comment ? (
+                <Text style={styles.reviewComment}>
+                  {`"${existingReview.comment}"`}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.reviewBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/(modals)/leave-review",
+                  params: {
+                    reservationId: reservation.id,
+                    locationTitle: reservation.parkingLocation.title,
+                    reviewType: "driver",
+                  },
+                })
+              }
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="star" size={20} color="#FFB300" />
+              <Text style={styles.reviewBtnText}>Leave a Review</Text>
+            </TouchableOpacity>
+          ))}
 
         {/* Expired Message */}
         {reservation.status === "EXPIRED" && (
@@ -610,7 +644,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sessionLabel: { fontSize: 12, color: "#666", fontWeight: "600" },
-  sessionValue: { fontSize: 22, fontWeight: "800", color: "#4CAF50" },
+  sessionValue: { fontSize: 22, fontWeight: "800", color: "#D4501E" },
   sessionStartText: { fontSize: 11, color: "#A09A94" },
 
   // QR Card
@@ -762,7 +796,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
-  completedTitle: { fontSize: 17, fontWeight: "700", color: "#4CAF50" },
+  completedTitle: { fontSize: 17, fontWeight: "700", color: "#D4501E" },
   completedText: { fontSize: 14, color: "#666" },
 
   // Expired Card
@@ -794,5 +828,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#FFB300",
+  },
+  reviewCard: {
+    backgroundColor: "#FFFDF5",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 12,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+  },
+  reviewCardLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#A09A94",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  reviewComment: {
+    fontSize: 13,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
   },
 });
