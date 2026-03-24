@@ -21,7 +21,10 @@
           "apiKey": "AIzaSyBoBwscEd2USQ5RXlGQHk-R6a4X_6heNPM"
         }
       },
-      "permissions": ["android.permission.CAMERA"],
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -62,7 +65,11 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "acc0c135-3a0e-4177-9eef-0a3c06f896f6"
+      }
+    },
+    "owner": "jibinjava"
   }
 }
