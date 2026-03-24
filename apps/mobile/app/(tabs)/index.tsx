@@ -291,29 +291,20 @@ export default function HomeScreen() {
         {/* Greeting row */}
         <View style={styles.greetingRow}>
           <Text style={styles.greetingText}>{greeting}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <TouchableOpacity
-              style={styles.profileBtn}
-              onPress={() => router.push("/(modals)/notifications" as any)}
-              activeOpacity={0.75}
-            >
-              <MaterialIcons name="notifications-none" size={22} color="#232230" />
-              {unreadCount > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.profileBtn}
-              onPress={() => router.navigate("/(tabs)/profile" as any)}
-              activeOpacity={0.75}
-            >
-              <MaterialIcons name="person-outline" size={22} color="#232230" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.profileBtn}
+            onPress={() => router.push("/(modals)/notifications" as any)}
+            activeOpacity={0.75}
+          >
+            <MaterialIcons name="notifications" size={22} color="#D4501E" />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Search bar */}
