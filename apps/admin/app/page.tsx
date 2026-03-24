@@ -127,7 +127,7 @@ function LoginPageContent() {
       localStorage.setItem("user", JSON.stringify(user));
 
       const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 7);
+      expiryDate.setDate(expiryDate.getDate() + 30);
       const expires = expiryDate.toUTCString();
 
       document.cookie = `accessToken=${accessToken}; path=/; expires=${expires}${cookieFlags}`;

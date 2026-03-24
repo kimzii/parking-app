@@ -104,7 +104,7 @@ api.interceptors.response.use(
           localStorage.setItem("user", JSON.stringify(data.user));
         }
 
-        const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString();
         document.cookie = `accessToken=${data.accessToken}; path=/; expires=${expires}; samesite=strict`;
         document.cookie = `refreshToken=${data.refreshToken}; path=/; expires=${expires}; samesite=strict`;
 
