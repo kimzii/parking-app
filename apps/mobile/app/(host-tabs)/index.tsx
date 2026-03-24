@@ -28,20 +28,20 @@ const STATUS_CONFIG: Record<
     icon: "hourglass-top",
   },
   CONFIRMED: {
-    color: "#1976D2",
-    bg: "#E3F2FD",
+  color: "#D4501E",
+  bg: "#FFF0EC",
     label: "Confirmed",
-    icon: "check-circle",
+  icon: "directions-car",
   },
   ACTIVE: {
-    color: "#4CAF50",
-    bg: "#F5F4F2",
-    label: "Active",
-    icon: "directions-car",
+  color: "#D4501E",
+  bg: "#FFF0EC",
+  label: "Active",
+  icon: "directions-car",
   },
   COMPLETED: {
-    color: "#A09A94",
-    bg: "#F5F5F5",
+  color: "#A09A94",
+  bg: "#F5F5F5",
     label: "Completed",
     icon: "done-all",
   },
@@ -333,8 +333,8 @@ export default function HostHomeScreen() {
           )}
           {item.status === "CONFIRMED" && item.arrivalDeadline && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="schedule" size={16} color="#A09A94" />
-              <Text style={styles.timeText}>
+              <MaterialIcons name="schedule" size={16} color="#D4501E" />
+              <Text style={[styles.timeText, { color: "#D4501E" }]}>
                 Driver arrives by{" "}
                 {new Date(item.arrivalDeadline).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -346,8 +346,8 @@ export default function HostHomeScreen() {
           )}
           {item.sessionStartedAt && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="login" size={16} color="#4CAF50" />
-              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+              <MaterialIcons name="login" size={16} color="#D4501E" />
+              <Text style={[styles.timeText, { color: "#D4501E" }]}>
                 Checked in:{" "}
                 {new Date(item.sessionStartedAt).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -359,8 +359,8 @@ export default function HostHomeScreen() {
           )}
           {item.sessionEndedAt && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="logout" size={16} color="#1976D2" />
-              <Text style={[styles.timeText, { color: "#1976D2" }]}>
+              <MaterialIcons name="logout" size={16} color="#A09A94" />
+              <Text style={[styles.timeText, { color: "#A09A94" }]}>
                 Checked out:{" "}
                 {new Date(item.sessionEndedAt).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -370,14 +370,14 @@ export default function HostHomeScreen() {
               </Text>
             </View>
           )}
-          {item.status === "ACTIVE" && !item.sessionEndedAt && (
+          {/* {item.status === "ACTIVE" && !item.sessionEndedAt && (
             <View style={styles.timeItem}>
-              <MaterialIcons name="timer" size={16} color="#4CAF50" />
-              <Text style={[styles.timeText, { color: "#4CAF50" }]}>
+              <MaterialIcons name="timer" size={16} color="#D4501E" />
+              <Text style={[styles.timeText, { color: "#D4501E" }]}>
                 Session in progress — Pay-as-you-go
               </Text>
             </View>
-          )}
+          )} */}
         </View>
 
         {/* Amount */}
@@ -481,7 +481,11 @@ export default function HostHomeScreen() {
         <View>
           <Text style={styles.greetingText}>{greeting}</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={styles.headerRight}>
+          <View style={styles.hostBadge}>
+            <MaterialIcons name="home-work" size={16} color="#D4501E" />
+            <Text style={styles.hostBadgeText}>Host</Text>
+          </View>
           <TouchableOpacity
             style={styles.notifBtn}
             onPress={() => router.push("/(modals)/notifications" as any)}
@@ -496,10 +500,6 @@ export default function HostHomeScreen() {
               </View>
             )}
           </TouchableOpacity>
-          <View style={styles.hostBadge}>
-            <MaterialIcons name="home-work" size={16} color="#D4501E" />
-            <Text style={styles.hostBadgeText}>Host</Text>
-          </View>
         </View>
       </View>
 
@@ -549,6 +549,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#232230",
     letterSpacing: -0.3,
+    paddingTop: 8,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   notifBtn: {
     width: 40,
@@ -561,11 +567,12 @@ const styles = StyleSheet.create({
   hostBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFF0EC",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    justifyContent: "center",
+    gap: 4,
+    width: 65,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F5F4F2",
   },
   hostBadgeText: {
     fontSize: 13,
@@ -588,13 +595,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginLeft: 4,
-    marginTop: 8,
+    marginTop: 12,
+    marginBottom: 8,
   },
 
   // Scan QR
   scanBtn: {
     backgroundColor: "#D4501E",
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 18,
     alignItems: "center",
     justifyContent: "center",
@@ -740,7 +748,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
   },
-  amountLabel: { fontSize: 14, color: "#A09A94" },
+  amountLabel: { fontSize: 16, fontWeight: "700", color: "#A09A94" },
   amountValue: { fontSize: 16, fontWeight: "700", color: "#D4501E" },
   overtimeText: { fontSize: 12, color: "#E53935" },
 
