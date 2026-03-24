@@ -86,6 +86,13 @@ export default function HostHomeScreen() {
   const [now, setNow] = useState(new Date());
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  })();
+
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
@@ -472,15 +479,15 @@ export default function HostHomeScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.userName}>{userName}</Text>
+          <Text style={styles.greetingText}>{greeting}</Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <TouchableOpacity
+            style={styles.notifBtn}
             onPress={() => router.push("/(modals)/notifications" as any)}
             activeOpacity={0.75}
           >
-            <MaterialIcons name="notifications-none" size={24} color="#232230" />
+            <MaterialIcons name="notifications" size={22} color="#D4501E" />
             {unreadCount > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeText}>
@@ -532,20 +539,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
   },
-  greeting: {
-    fontSize: 15,
-    color: "#A09A94",
-    fontWeight: "500",
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: "800",
+  greetingText: {
+    fontSize: 22,
+    fontWeight: "700",
     color: "#232230",
     letterSpacing: -0.3,
+  },
+  notifBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F5F4F2",
+    justifyContent: "center",
+    alignItems: "center",
   },
   hostBadge: {
     flexDirection: "row",
