@@ -233,16 +233,26 @@ export class NotificationsService {
 
   async notifyDriverNearby(
     hostUserId: string,
+    driverUserId: string,
     driverName: string,
     locationTitle: string,
     reservationId: string,
   ) {
-    await this.send({
-      userId: hostUserId,
-      title: 'Driver Approaching',
-      message: `${driverName} is near ${locationTitle}. Get ready!`,
-      type: 'DRIVER_NEARBY',
-      data: { reservationId },
-    });
+    await Promise.all([
+      this.send({
+        userId: hostUserId,
+        title: 'Driver Approaching',
+        message: `${driverName} is near ${locationTitle}. Get ready!`,
+        type: 'DRIVER_NEARBY',
+        data: { reservationId },
+      }),
+      this.send({
+        userId: driverUserId,
+        title: 'Almost There!',
+        message: `You're close to ${locationTitle}. Your parking spot is nearby!`,
+        type: 'DRIVER_NEARBY',
+        data: { reservationId },
+      }),
+    ]);
   }
 }
