@@ -29,16 +29,16 @@ const STATUS_CONFIG: Record<
     icon: "hourglass-top",
   },
   CONFIRMED: {
-    color: "#1976D2",
-    bg: "#E3F2FD",
-    label: "Confirmed",
-    icon: "check-circle",
+  color: "#D4501E",
+  bg: "#FFF0EC",
+  label: "Confirmed",
+  icon: "directions-car",
   },
   ACTIVE: {
-    color: "#4CAF50",
-    bg: "#F5F4F2",
-    label: "Active",
-    icon: "directions-car",
+  color: "#D4501E",
+  bg: "#FFF0EC",
+  label: "Active",
+  icon: "directions-car",
   },
   COMPLETED: {
     color: "#A09A94",
@@ -93,9 +93,6 @@ export default function HostReservationDetailScreen() {
     );
   }
 
-  const status = STATUS_CONFIG[reservation.status] ?? STATUS_CONFIG.CONFIRMED;
-  const driverPlateNumber =
-    reservation.driver?.vehicle?.plateNumber || "Not provided";
   const slotName = reservation.parkingSpace.name?.trim() || "Unnamed Spot";
   const bookedSpot = slotName;
 
@@ -107,36 +104,41 @@ export default function HostReservationDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Driver Profile Section */}
-        <View style={styles.driverSection}>
-          {reservation.driver?.image ? (
-            <Image
-              source={{ uri: reservation.driver.image }}
-              style={styles.driverImage}
-            />
-          ) : (
-            <View style={styles.driverImagePlaceholder}>
-              <MaterialIcons name="person" size={40} color="#C7C7CC" />
+        {/* Session state (host view) */}
+        {reservation.status === "ACTIVE" && !reservation.sessionEndedAt && (
+          <View style={styles.sessionChipRowStandalone}>
+            <View style={styles.sessionChip}>
+              <MaterialIcons
+                name="directions-car"
+                size={14}
+                color="#D4501E"
+              />
+              <Text style={styles.sessionChipText}>Session Active</Text>
             </View>
-          )}
-          <Text style={styles.driverDisplayName}>
-            {reservation.driver?.name || "Driver"}
-          </Text>
-          <Text style={styles.driverPhone}>
-            Phone: {reservation.driver?.phone || "Not provided"}
-          </Text>
-          <Text style={styles.driverPhone}>
-            Plate Number: {driverPlateNumber}
-          </Text>
-          <View style={[styles.statusChip, { backgroundColor: status.bg }]}>
-            <MaterialIcons
-              name={status.icon as any}
-              size={14}
-              color={status.color}
-            />
-            <Text style={[styles.statusChipText, { color: status.color }]}>
-              {status.label}
-            </Text>
+          </View>
+        )}
+
+        {/* Driver Profile */}
+        <View style={styles.driverCard}>
+          <View style={styles.driverMainRow}>
+            {reservation.driver?.image ? (
+              <Image
+                source={{ uri: reservation.driver.image }}
+                style={styles.driverImage}
+              />
+            ) : (
+              <View style={styles.driverImagePlaceholder}>
+                <MaterialIcons name="person" size={40} color="#C7C7CC" />
+              </View>
+            )}
+            <View style={styles.driverInfoColumn}>
+              <Text style={styles.driverDisplayName}>
+                {reservation.driver?.name || "Driver"}
+              </Text>
+              <Text style={styles.driverPhone} numberOfLines={1}>
+                {reservation.driver?.phone || "No phone provided"}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -172,16 +174,14 @@ export default function HostReservationDetailScreen() {
                       </Text>
                     )}
                   </View>
-                </View>
-                {reservation.driver.vehicle.plateNumber && (
-                  <View style={styles.plateRow}>
-                    <View style={styles.plateBadge}>
-                      <Text style={styles.plateText}>
+                  {reservation.driver.vehicle.plateNumber && (
+                    <View style={styles.plateBadgeInline}>
+                      <Text style={styles.plateTextInline}>
                         {reservation.driver.vehicle.plateNumber}
                       </Text>
                     </View>
-                  </View>
-                )}
+                  )}
+                </View>
               </>
             ) : (
               <View style={styles.infoRow}>
@@ -200,15 +200,32 @@ export default function HostReservationDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Parking Details</Text>
           <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <MaterialIcons name="location-on" size={20} color="#D4501E" />
+            <View style={[styles.infoRow, { alignItems: "flex-start" }]}>
+              <MaterialIcons
+                name="location-on"
+                size={18}
+                color="#D4501E"
+                style={{ marginTop: 2 }}
+              />
               <View style={{ flex: 1 }}>
-                <Text style={styles.infoTitle}>
+                <Text style={[styles.infoTitle, { marginBottom: 2 }]}>
                   {reservation.parkingLocation.title}
                 </Text>
-                <Text style={styles.infoSubtext}>
-                  Booked Spot: {bookedSpot}
-                </Text>
+                {reservation.parkingLocation.address ? (
+                  <Text style={[styles.infoSubtext, { marginBottom: 4 }]}>
+                    {reservation.parkingLocation.address}
+                  </Text>
+                ) : null}
+                <View style={styles.spotPillRow}>
+                  <View style={styles.spotPill}>
+                    <MaterialIcons
+                      name="event-seat"
+                      size={14}
+                      color="#D4501E"
+                    />
+                    <Text style={styles.spotPillText}>{bookedSpot}</Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -218,112 +235,104 @@ export default function HostReservationDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Session</Text>
           <View style={styles.infoCard}>
-            {reservation.status === "PENDING" &&
-              reservation.arrivalDeadline && (
-                <View style={styles.infoRow}>
-                  <MaterialIcons
-                    name="hourglass-empty"
-                    size={18}
-                    color="#D4501E"
-                  />
-                  <Text style={[styles.infoText, { color: "#D4501E" }]}>
-                    Approval deadline{" "}
-                    {new Date(reservation.arrivalDeadline).toLocaleTimeString(
-                      [],
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      },
-                    )}
-                  </Text>
-                </View>
-              )}
-            {reservation.status === "CONFIRMED" &&
-              reservation.arrivalDeadline && (
-                <View style={styles.infoRow}>
-                  <MaterialIcons name="schedule" size={18} color="#A09A94" />
-                  <Text style={styles.infoText}>
-                    Arrive by{" "}
-                    {new Date(reservation.arrivalDeadline).toLocaleTimeString(
-                      [],
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      },
-                    )}
-                  </Text>
-                </View>
-              )}
-            {reservation.sessionStartedAt && (
-              <>
-                {reservation.arrivalDeadline && (
-                  <View style={styles.timeDivider} />
-                )}
-                <View style={styles.infoRow}>
-                  <MaterialIcons name="login" size={18} color="#4CAF50" />
-                  <Text style={[styles.infoText, { color: "#4CAF50" }]}>
-                    Checked in{" "}
-                    {new Date(reservation.sessionStartedAt).toLocaleTimeString(
-                      [],
-                      { hour: "2-digit", minute: "2-digit", hour12: true },
-                    )}
-                  </Text>
-                </View>
-              </>
-            )}
-            {reservation.sessionEndedAt && (
-              <>
-                <View style={styles.timeDivider} />
-                <View style={styles.infoRow}>
-                  <MaterialIcons name="logout" size={18} color="#1976D2" />
-                  <Text style={[styles.infoText, { color: "#1976D2" }]}>
-                    Checked out{" "}
-                    {new Date(reservation.sessionEndedAt).toLocaleTimeString(
-                      [],
-                      { hour: "2-digit", minute: "2-digit", hour12: true },
-                    )}
-                  </Text>
-                </View>
-              </>
-            )}
-            {reservation.status === "ACTIVE" && !reservation.sessionEndedAt && (
-              <>
-                {reservation.sessionStartedAt && (
-                  <View style={styles.timeDivider} />
-                )}
-                <View style={styles.infoRow}>
-                  <MaterialIcons name="timer" size={18} color="#4CAF50" />
-                  <Text style={[styles.infoText, { color: "#4CAF50" }]}>
-                    Session in progress — Pay-as-you-go
-                  </Text>
-                </View>
-              </>
-            )}
+            <View style={styles.sessionRow}>
+              <View style={styles.sessionRowLeft}>
+                <MaterialIcons
+                  name="access-time"
+                  size={18}
+                  color="#D4501E"
+                />
+                <Text style={styles.sessionLabel}>Booked at</Text>
+              </View>
+              <Text style={styles.sessionValue}>
+                {reservation.createdAt
+                  ? new Date(reservation.createdAt).toLocaleString([], {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })
+                  : "-"}
+              </Text>
+            </View>
+
+            <View style={styles.sessionRow}>
+              <View style={styles.sessionRowLeft}>
+                <MaterialIcons
+                  name="login"
+                  size={18}
+                  color="#D4501E"
+                />
+                <Text style={styles.sessionLabel}>Checked In</Text>
+              </View>
+              <Text style={[styles.sessionValue, styles.sessionValueHighlight]}>
+                {reservation.sessionStartedAt
+                  ? new Date(
+                      reservation.sessionStartedAt,
+                    ).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })
+                  : "-"}
+              </Text>
+            </View>
+
+            <View style={styles.sessionRow}>
+              <View style={styles.sessionRowLeft}>
+                <MaterialIcons
+                  name="timer"
+                  size={18}
+                  color="#D4501E"
+                />
+                <Text style={styles.sessionLabel}>Duration</Text>
+              </View>
+              <Text style={[styles.sessionValue, styles.sessionValueHighlight]}>
+                {reservation.sessionStartedAt
+                  ? (() => {
+                      const start = new Date(reservation.sessionStartedAt);
+                      const end = reservation.sessionEndedAt
+                        ? new Date(reservation.sessionEndedAt)
+                        : new Date();
+                      const diffMs = Math.max(0, end.getTime() - start.getTime());
+                      const mins = Math.round(diffMs / 60000);
+                      return `${mins}m`;
+                    })()
+                  : "-"}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Amount */}
+        {/* Payment */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Payment</Text>
           <View style={styles.infoCard}>
             <View style={styles.amountMainRow}>
-              <Text style={styles.amountLabel}>Total Amount</Text>
+              <Text style={styles.amountLabel}>First Hour (upfront)</Text>
               <Text style={styles.amountValue}>
                 ₱
-                {Number(
-                  reservation.finalAmount || reservation.totalAmount,
-                ).toFixed(2)}
+                {Number(reservation.totalAmount || 0).toFixed(2)}
               </Text>
             </View>
-            {reservation.overtimeAmount &&
-              Number(reservation.overtimeAmount) > 0 && (
-                <Text style={styles.overtimeText}>
-                  Includes ₱{Number(reservation.overtimeAmount).toFixed(2)}{" "}
-                  overtime
+
+            {reservation.parkingLocation.basePricePerHour && (
+              <View style={[styles.amountMainRow, { marginTop: 6 }]}>
+                <Text style={styles.amountLabel}>Rate</Text>
+                <Text style={styles.amountValue}>
+                  ₱
+                  {Number(
+                    reservation.parkingLocation.basePricePerHour,
+                  ).toFixed(2)}
+                  /hr
                 </Text>
-              )}
+              </View>
+            )}
+
+            <Text style={styles.overtimeText}>
+              Additional charges apply based on session duration
+            </Text>
           </View>
         </View>
 
@@ -355,15 +364,33 @@ export default function HostReservationDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+  paddingHorizontal: 20,
+  paddingTop: 16,
+  paddingBottom: 32,
   },
 
-  // Driver Profile
+  // Driver Profile / Session Header
   driverSection: {
+    marginBottom: 12,
+  },
+  driverCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+    marginBottom: 14,
+  },
+  driverMainRow: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 24,
-    marginBottom: 8,
+    gap: 12,
+    width: "100%",
+    paddingHorizontal: 4,
   },
   driverImage: {
     width: 88,
@@ -388,12 +415,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     color: "#232230",
-    marginBottom: 4,
+  marginBottom: 2,
   },
   driverPhone: {
     fontSize: 14,
     color: "#A09A94",
     marginBottom: 2,
+  },
+  driverInfoColumn: {
+    flex: 1,
   },
   statusChip: {
     flexDirection: "row",
@@ -407,15 +437,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  sessionChipRowStandalone: {
+  flexDirection: "row",
+  justifyContent: "center",
+  marginBottom: 12,
+  },
+  sessionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+  borderRadius: 999,
+  backgroundColor: "#F5F4F2",
+  },
+  sessionChipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#D4501E",
+  },
 
   // Section
   section: {
-    marginBottom: 16,
+  marginBottom: 14,
   },
   sectionLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#A09A94",
+    color: "#000",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -424,7 +473,8 @@ const styles = StyleSheet.create({
   infoCard: {
     backgroundColor: "#fff",
     borderRadius: 14,
-    padding: 16,
+  paddingHorizontal: 16,
+  paddingVertical: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -447,9 +497,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   infoText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#232230",
+  fontSize: 13,
+  fontWeight: "500",
+  color: "#232230",
   },
   timeDivider: {
     height: 1,
@@ -506,6 +556,24 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#232230",
     letterSpacing: 1,
+  },
+
+  // Inline plate badge (compact, matches vehicle edit style)
+  plateBadgeInline: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#D4501E",
+    backgroundColor: "#ffffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  plateTextInline: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#D4501E",
+    letterSpacing: 0.5,
   },
 
   // Amount
@@ -583,5 +651,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#FFB300",
+  },
+  spotPillRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  spotPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#F5F4F2",
+    gap: 4,
+  },
+  spotPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#D4501E",
+  },
+  sessionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  sessionRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sessionLabel: {
+    fontSize: 13,
+    color: "#77716B",
+  },
+  sessionValue: {
+    fontSize: 13,
+    color: "#232230",
+  },
+  sessionValueHighlight: {
+    color: "#D4501E",
+    fontWeight: "600",
   },
 });
