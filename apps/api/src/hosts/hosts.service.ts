@@ -778,11 +778,19 @@ export class HostsService {
     // Notify host about location status change
     if (updateStatusDto.status === 'APPROVED') {
       this.notificationsService
-        .notifyLocationApproved(location.host.userId, location.title)
+        .notifyLocationApproved(
+          location.host.userId,
+          location.title,
+          locationId,
+        )
         .catch(() => {});
     } else if (updateStatusDto.status === 'REJECTED') {
       this.notificationsService
-        .notifyLocationRejected(location.host.userId, location.title)
+        .notifyLocationRejected(
+          location.host.userId,
+          location.title,
+          locationId,
+        )
         .catch(() => {});
     }
 
