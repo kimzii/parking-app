@@ -139,11 +139,15 @@ export default function NotificationsScreen() {
         router.push("/(modals)/my-reservations");
         break;
       case "location-detail":
-        if (locationId)
+        if (locationId) {
           router.push({
             pathname: "/(modals)/location-detail",
             params: { id: locationId },
           } as any);
+        } else {
+          // Old notifications without locationId — go to spaces list
+          router.replace("/(host-tabs)/spaces" as any);
+        }
         break;
     }
   };
