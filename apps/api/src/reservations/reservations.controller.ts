@@ -131,4 +131,15 @@ export class ReservationsController {
       status,
     );
   }
+
+  /**
+   * Host: Get a single reservation by ID
+   */
+  @Get('host/reservations/:id')
+  async getHostReservation(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.reservationsService.getHostReservation(req.user.id, id);
+  }
 }
