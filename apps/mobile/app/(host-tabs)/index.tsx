@@ -34,8 +34,8 @@ const STATUS_CONFIG: Record<
   icon: "directions-car",
   },
   ACTIVE: {
-    color: "#4CAF50",
-    bg: "#F0FBF1",
+    color: "#D4501E",
+    bg: "#F5F4F2",
     label: "Active",
     icon: "directions-car",
   },
@@ -434,16 +434,6 @@ export default function HostHomeScreen() {
 
   const renderHeader = () => (
     <>
-      {/* Scan QR Button */}
-      <TouchableOpacity
-        style={styles.scanBtn}
-        onPress={() => router.push("/(modals)/scan-qr")}
-        activeOpacity={0.8}
-      >
-        <MaterialIcons name="qr-code-scanner" size={28} color="#fff" />
-        <Text style={styles.scanBtnText}>Scan QR</Text>
-      </TouchableOpacity>
-
       {/* Reservations Section Title */}
       <Text style={styles.sectionTitle}>Reservations</Text>
 
@@ -529,6 +519,15 @@ export default function HostHomeScreen() {
           />
         )}
       </View>
+
+      {/* Floating Scan QR FAB */}
+      <TouchableOpacity
+        style={styles.scanFab}
+        onPress={() => router.push("/(modals)/scan-qr")}
+        activeOpacity={0.8}
+      >
+        <MaterialIcons name="qr-code-scanner" size={26} color="#fff" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -600,29 +599,21 @@ const styles = StyleSheet.create({
   },
 
   // Scan QR
-  scanBtn: {
+  scanFab: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     backgroundColor: "#D4501E",
-    borderRadius: 18,
-    padding: 18,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
     shadowColor: "#D4501E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
-    flexDirection: "row",
-  },
-  scanBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  scanBtnHint: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.7)",
+    elevation: 6,
   },
 
   // Filters

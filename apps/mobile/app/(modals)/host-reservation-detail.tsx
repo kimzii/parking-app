@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,11 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, router } from "expo-router";
+import { Stack, useLocalSearchParams, router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as reservationsService from "../../src/services/reservations";
+import * as reviewsService from "../../src/services/reviews";
+import { hostService } from "../../src/services/hosts";
 
 const VEHICLE_IMAGES: Record<string, any> = {
   CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
@@ -36,9 +38,9 @@ const STATUS_CONFIG: Record<
   icon: "directions-car",
   },
   ACTIVE: {
-    color: "#4CAF50",
-    bg: "#F0FBF1",
-    label: "Active",
+    color: "#D4501E",
+    bg: "#F5F5F5",
+    label: "Session Active",
     icon: "directions-car",
   },
   COMPLETED: {
@@ -77,13 +79,26 @@ export default function HostReservationDetailScreen() {
   const [reservation, setReservation] =
     useState<reservationsService.HostReservation | null>(null);
   const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
+  const [existingReview, setExistingReview] = useState<reviewsService.Review | null>(null);
+  const [locationRate, setLocationRate] = useState<number | null>(null);
+
+  const fetchReview = useCallback(async (reservationId: string) => {
+    try {
+      const reviews = await reviewsService.getReservationReviews(reservationId);
+      const mine = reviews.find((r) => r.reviewType === "HOST_TO_DRIVER");
+      setExistingReview(mine ?? null);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (params.reservation) {
       try {
-        setReservation(
-          JSON.parse(params.reservation) as reservationsService.HostReservation,
-        );
+        const parsed = JSON.parse(params.reservation) as reservationsService.HostReservation;
+        setReservation(parsed);
+        fetchReview(parsed.id);
+        hostService.getLocation(parsed.parkingLocation.id)
+          .then((loc) => setLocationRate(Number(loc.basePricePerHour)))
+          .catch(() => {});
       } catch {
         console.error("Failed to parse reservation data");
       }
@@ -93,7 +108,17 @@ export default function HostReservationDetailScreen() {
         .then(setReservation)
         .catch(() => Alert.alert("Error", "Failed to load reservation details."));
     }
-  }, [params.reservation, params.id]);
+<<<<<<< Updated upstream
+  }, [params.reservation, params.id, fetchReview]);
+=======
+  }, [params.reservation, fetchReview]);
+>>>>>>> Stashed changes
+
+  useFocusEffect(
+    useCallback(() => {
+      if (reservation) fetchReview(reservation.id);
+    }, [reservation, fetchReview]),
+  );
 
   const handleApprove = () => {
     if (!reservation) return;
@@ -165,15 +190,17 @@ export default function HostReservationDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Session state (host view) */}
-        {reservation.status === "ACTIVE" && !reservation.sessionEndedAt && (
-          <View style={styles.sessionChipRowStandalone}>
-            <View style={styles.sessionChip}>
-              <MaterialIcons name="directions-car" size={14} color="#4CAF50" />
-              <Text style={styles.sessionChipText}>Session Active</Text>
+        {/* Status Badge */}
+        {(reservation.status === "ACTIVE" || reservation.status === "COMPLETED" ||
+          reservation.status === "CANCELLED" || reservation.status === "EXPIRED") && (() => {
+          const cfg = STATUS_CONFIG[reservation.status];
+          return (
+            <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+              <MaterialIcons name={cfg.icon as any} size={16} color={cfg.color} />
+              <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
             </View>
-          </View>
-        )}
+          );
+        })()}
 
         {/* Driver Profile */}
         <View style={styles.driverCard}>
@@ -253,9 +280,9 @@ export default function HostReservationDetailScreen() {
           </View>
         </View>
 
-        {/* Parking Details */}
+        {/* Parking Location */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Parking Details</Text>
+          <Text style={styles.sectionLabel}>Parking Location</Text>
           <View style={styles.infoCard}>
             <View style={[styles.infoRow, { alignItems: "flex-start" }]}>
               <MaterialIcons
@@ -290,7 +317,7 @@ export default function HostReservationDetailScreen() {
 
         {/* Session Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Session</Text>
+          <Text style={styles.sectionLabel}>Session Details</Text>
           <View style={styles.infoCard}>
             <View style={styles.sessionRow}>
               <View style={styles.sessionRowLeft}>
@@ -347,6 +374,22 @@ export default function HostReservationDetailScreen() {
                   : "-"}
               </Text>
             </View>
+
+            {reservation.sessionEndedAt && (
+              <View style={styles.sessionRow}>
+                <View style={styles.sessionRowLeft}>
+                  <MaterialIcons name="logout" size={18} color="#A09A94" />
+                  <Text style={styles.sessionLabel}>Checked Out</Text>
+                </View>
+                <Text style={styles.sessionValue}>
+                  {new Date(reservation.sessionEndedAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -357,27 +400,38 @@ export default function HostReservationDetailScreen() {
             <View style={styles.amountMainRow}>
               <Text style={styles.amountLabel}>First Hour (upfront)</Text>
               <Text style={styles.amountValue}>
-                ₱
-                {Number(reservation.totalAmount || 0).toFixed(2)}
+                ₱{Number(reservation.escrowAmount ?? reservation.totalAmount ?? 0).toFixed(2)}
               </Text>
             </View>
 
-            {reservation.parkingLocation.basePricePerHour && (
-              <View style={[styles.amountMainRow, { marginTop: 6 }]}>
-                <Text style={styles.amountLabel}>Rate</Text>
-                <Text style={styles.amountValue}>
-                  ₱
-                  {Number(
-                    reservation.parkingLocation.basePricePerHour,
-                  ).toFixed(2)}
-                  /hr
-                </Text>
-              </View>
+            <View style={styles.amountMainRow}>
+              <Text style={styles.amountLabel}>Rate</Text>
+              <Text style={styles.amountValue}>
+                {locationRate != null
+                  ? `₱${locationRate.toFixed(2)}/hr`
+                  : reservation.parkingLocation.basePricePerHour != null
+                    ? `₱${Number(reservation.parkingLocation.basePricePerHour).toFixed(2)}/hr`
+                    : "-"}
+              </Text>
+            </View>
+
+            {reservation.status !== "COMPLETED" && (
+              <Text style={styles.overtimeText}>
+                Additional charges apply based on session duration
+              </Text>
             )}
 
-            <Text style={styles.overtimeText}>
-              Additional charges apply based on session duration
-            </Text>
+            {reservation.status === "COMPLETED" && reservation.finalAmount != null && (
+              <>
+                <View style={styles.amountDivider} />
+                <View style={styles.amountMainRow}>
+                  <Text style={[styles.amountLabel, { fontWeight: "700", color: "#232230" }]}>Total</Text>
+                  <Text style={[styles.amountValue, { fontWeight: "800", color: "#D4501E", fontSize: 20 }]}>
+                    ₱{Number(reservation.finalAmount).toFixed(2)}
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -417,25 +471,58 @@ export default function HostReservationDetailScreen() {
           </View>
         )}
 
+        {/* Scan QR */}
+        {(reservation.status === "CONFIRMED" || reservation.status === "ACTIVE") && (
+          <TouchableOpacity
+            style={styles.scanQrBtn}
+            onPress={() => router.push("/(modals)/scan-qr")}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="qr-code-scanner" size={20} color="#fff" />
+            <Text style={styles.scanQrBtnText}>Scan Driver QR</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Rate Driver */}
         {reservation.status === "COMPLETED" && (
-          <TouchableOpacity
-            style={styles.reviewBtn}
-            onPress={() =>
-              router.push({
-                pathname: "/(modals)/leave-review",
-                params: {
-                  reservationId: reservation.id,
-                  locationTitle: reservation.driver?.name || "Driver",
-                  reviewType: "host",
-                },
-              })
-            }
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="star" size={20} color="#FFB300" />
-            <Text style={styles.reviewBtnText}>Rate Driver</Text>
-          </TouchableOpacity>
+          existingReview ? (
+            <View style={styles.reviewCard}>
+              <Text style={styles.reviewCardLabel}>Your Review</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <MaterialIcons
+                    key={star}
+                    name={star <= existingReview.rating ? "star" : "star-outline"}
+                    size={28}
+                    color={star <= existingReview.rating ? "#FFB300" : "#D0D0D0"}
+                  />
+                ))}
+              </View>
+              {existingReview.comment ? (
+                <Text style={styles.reviewComment}>
+                  {`"${existingReview.comment}"`}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.reviewBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/(modals)/leave-review",
+                  params: {
+                    reservationId: reservation.id,
+                    locationTitle: reservation.driver?.name || "Driver",
+                    reviewType: "host",
+                  },
+                })
+              }
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="star" size={20} color="#FFB300" />
+              <Text style={styles.reviewBtnText}>Rate Driver</Text>
+            </TouchableOpacity>
+          )
         )}
       </ScrollView>
     </SafeAreaView>
@@ -518,6 +605,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  statusBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    alignSelf: "center" as const,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginBottom: 12,
+  },
+  statusBadgeText: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+  },
   sessionChipRowStandalone: {
   flexDirection: "row",
   justifyContent: "center",
@@ -535,7 +636,7 @@ const styles = StyleSheet.create({
   sessionChipText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#4CAF50",
+    color: "#D4501E",
   },
 
   // Section
@@ -662,19 +763,40 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: 6,
   },
   amountLabel: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#A09A94",
   },
   amountValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#D4501E",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#232230",
+  },
+  scanQrBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    backgroundColor: "#D4501E",
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 4,
+  },
+  scanQrBtnText: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  amountDivider: {
+    height: 1,
+    backgroundColor: "#F0EDE8",
+    marginVertical: 8,
   },
   overtimeText: {
     fontSize: 12,
-    color: "#E53935",
+    color: "#A09A94",
     marginTop: 6,
   },
 
@@ -713,6 +835,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#fff",
+  },
+
+  // Review Card
+  reviewCard: {
+    backgroundColor: "#FFFDF0",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    gap: 8,
+  },
+  reviewCardLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#A09A94",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  reviewComment: {
+    fontSize: 13,
+    color: "#6B6B6B",
+    fontStyle: "italic",
+    lineHeight: 18,
   },
 
   // Review Button
