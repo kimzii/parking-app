@@ -20,6 +20,7 @@ import MenuItem from "../../src/components/MenuItem";
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [infoHeight, setInfoHeight] = useState(0);
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);
@@ -54,19 +55,22 @@ export default function ProfileScreen() {
       <View style={styles.container}>
         {/* Orange header */}
         <View style={styles.profileHeader}>
-          {user?.profilePicture ? (
-            <Image
-              source={{ uri: user.profilePicture }}
-              style={styles.avatar}
-              contentFit="cover"
-            />
-          ) : (
-            <View style={styles.avatar}>
+          <View style={[styles.avatar, infoHeight > 0 && { height: infoHeight }]}>
+            {user?.profilePicture ? (
+              <Image
+                source={{ uri: user.profilePicture }}
+                style={StyleSheet.absoluteFillObject}
+                contentFit="cover"
+              />
+            ) : (
               <MaterialIcons name="person" size={48} color="#fff" />
-            </View>
-          )}
+            )}
+          </View>
 
-          <View style={styles.profileInfo}>
+          <View
+            style={styles.profileInfo}
+            onLayout={(e) => setInfoHeight(e.nativeEvent.layout.height)}
+          >
             <Text style={styles.userName}>
               {loading
                 ? "Loading..."
@@ -174,14 +178,15 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
+    width: 100,
+    height: 100,
+    borderRadius: 24,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.2)",
+    overflow: "hidden",
   },
   profileInfo: { flex: 1 },
   userName: {
