@@ -108,11 +108,7 @@ export default function HostReservationDetailScreen() {
         .then(setReservation)
         .catch(() => Alert.alert("Error", "Failed to load reservation details."));
     }
-<<<<<<< Updated upstream
   }, [params.reservation, params.id, fetchReview]);
-=======
-  }, [params.reservation, fetchReview]);
->>>>>>> Stashed changes
 
   useFocusEffect(
     useCallback(() => {
