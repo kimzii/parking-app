@@ -73,7 +73,7 @@ function formatDuration(startedAt: string, endedAt?: string | null): string {
 }
 
 export default function HostReservationDetailScreen() {
-  const params = useLocalSearchParams<{ reservation: string }>();
+  const params = useLocalSearchParams<{ reservation?: string; id?: string }>();
   const [reservation, setReservation] =
     useState<reservationsService.HostReservation | null>(null);
   const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
@@ -87,8 +87,13 @@ export default function HostReservationDetailScreen() {
       } catch {
         console.error("Failed to parse reservation data");
       }
+    } else if (params.id) {
+      reservationsService
+        .getHostReservation(params.id)
+        .then(setReservation)
+        .catch(() => Alert.alert("Error", "Failed to load reservation details."));
     }
-  }, [params.reservation]);
+  }, [params.reservation, params.id]);
 
   const handleApprove = () => {
     if (!reservation) return;

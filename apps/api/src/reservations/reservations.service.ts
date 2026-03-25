@@ -1304,7 +1304,61 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       orderBy: { createdAt: 'desc' },
     });
 
-    return reservations.map((r) => ({
+    return reservations.map((r) => this.mapHostReservation(r));
+  }
+
+  /**
+   * Host: Get a single reservation by ID
+   */
+  async getHostReservation(hostUserId: string, reservationId: string) {
+    await this.processReservationTimeouts();
+
+    const host = await this.prisma.host.findUnique({
+      where: { userId: hostUserId },
+      include: { parkingLocations: { select: { id: true } } },
+    });
+
+    if (!host) {
+      throw new ForbiddenException('Only hosts can view this reservation');
+    }
+
+    const locationIds = host.parkingLocations.map((l) => l.id);
+
+    const r = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: {
+          include: { parkingLocation: true },
+        },
+        driver: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phoneNumber: true,
+                profilePicture: true,
+              },
+            },
+            vehicles: {
+              where: { isActive: true },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (!r || !locationIds.includes(r.parkingSpace.parkingLocationId)) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    return this.mapHostReservation(r);
+  }
+
+  private mapHostReservation(r: any) {
+    return {
       id: r.id,
       qrCode: r.qrCode,
       status: r.status,
@@ -1335,6 +1389,6 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         licenseImageUrl: toNullable<string>(r.driver.licenseImageUrl),
         vehicle: r.driver.vehicles[0] || null,
       },
-    }));
+    };
   }
 }

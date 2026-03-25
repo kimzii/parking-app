@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as SecureStore from "expo-secure-store";
 import {
   getNotifications,
   markAsRead,
@@ -95,18 +96,28 @@ export default function NotificationsScreen() {
     const reservationId = data.reservationId;
     const locationId = data.locationId;
 
+    // Determine user's current view mode for fallback routing
+    const viewMode = await SecureStore.getItemAsync("viewMode");
+    const isHost = viewMode === "host";
+
     // Use explicit screen if available, otherwise fall back to type-based routing
     const route =
       screen ||
       {
-        BOOKING_COMPLETED: reservationId ? "reservation-qr" : null,
-        BOOKING_CANCELLED: reservationId ? "reservation-qr" : null,
+        BOOKING_COMPLETED: reservationId
+          ? isHost ? "host-reservation-detail" : "reservation-qr"
+          : null,
+        BOOKING_CANCELLED: reservationId
+          ? isHost ? "host-reservation-detail" : "reservation-qr"
+          : null,
         BOOKING_APPROVED: reservationId ? "reservation-qr" : null,
         BOOKING_PENDING: reservationId ? "host-reservation-detail" : null,
-        DRIVER_NEARBY: reservationId ? "reservation-qr" : null,
+        DRIVER_NEARBY: reservationId
+          ? isHost ? "host-reservation-detail" : "reservation-qr"
+          : null,
         DRIVER_VERIFIED: "my-reservations",
-        LOCATION_APPROVED: locationId ? "location-detail" : null,
-        LOCATION_REJECTED: locationId ? "location-detail" : null,
+        LOCATION_APPROVED: "location-detail",
+        LOCATION_REJECTED: "location-detail",
       }[item.type];
 
     switch (route) {

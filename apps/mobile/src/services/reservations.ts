@@ -217,3 +217,13 @@ export async function getHostReservations(
   const response = await api.get("/reservations/host/reservations", { params });
   return response.data;
 }
+
+/**
+ * Host: Get a single reservation by ID
+ */
+export async function getHostReservation(
+  id: string,
+): Promise<HostReservation> {
+  const response = await api.get(`/reservations/host/reservations/${id}`);
+  return response.data;
+}
