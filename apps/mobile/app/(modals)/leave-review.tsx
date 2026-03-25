@@ -88,7 +88,7 @@ export default function LeaveReviewScreen() {
           </View>
           <Text style={styles.ratingLabel}>{ratingLabels[submittedRating]}</Text>
           <TouchableOpacity
-            style={styles.submitBtn}
+            style={[styles.submitBtn, styles.doneBtn]}
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
@@ -345,5 +345,8 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#232230",
     marginTop: 4,
+  },
+  doneBtn: {
+    alignSelf: "stretch",
   },
 });

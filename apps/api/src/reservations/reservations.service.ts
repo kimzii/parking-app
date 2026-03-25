@@ -603,8 +603,14 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Reservation not found');
     }
 
-    // Only allow driver or host to view
-    if (driver && reservation.driverId !== driver.id) {
+    // Allow the driver who owns the reservation
+    const isOwnerDriver = driver && reservation.driverId === driver.id;
+    // Allow the host who owns the parking location
+    const hostLocationUserId =
+      reservation.parkingSpace.parkingLocation.host?.userId;
+    const isOwnerHost = hostLocationUserId === userId;
+
+    if (!isOwnerDriver && !isOwnerHost) {
       throw new ForbiddenException(
         'You do not have access to this reservation',
       );

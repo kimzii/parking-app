@@ -11,7 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as reservationsService from "../../src/services/reservations";
 
@@ -118,22 +118,23 @@ export default function ScanQRScreen() {
         result = await reservationsService.scanExit(code);
       }
 
+      // Fetch full reservation then navigate to detail
+      try {
+        const all = await reservationsService.getHostReservations();
+        const full = all.find((r) => r.id === result.reservation.id);
+        if (full) {
+          router.replace({
+            pathname: "/(modals)/host-reservation-detail",
+            params: { reservation: JSON.stringify(full) },
+          } as any);
+          return;
+        }
+      } catch {}
+
+      // Fallback: show alert if reservation fetch fails
       const title =
         scanMode === "entry" ? "Entry Verified \u2713" : "Exit Verified \u2713";
-      let message = result.message;
-
-      if (result.driver) {
-        message += `\n\nDriver: ${result.driver.name}`;
-        if (result.driver.vehicle) {
-          message += `\nVehicle: ${result.driver.vehicle.brand || ""} ${result.driver.vehicle.model || ""} (${result.driver.vehicle.plateNumber || "N/A"})`;
-        }
-      }
-
-      if (scanMode === "exit" && result.additionalCharge) {
-        message += `\n\nAdditional charge: \u20B1${result.additionalCharge.toFixed(2)}`;
-      }
-
-      Alert.alert(title, message, [
+      Alert.alert(title, result.message, [
         { text: "OK", onPress: () => resetScanner() },
       ]);
     } catch (err: any) {

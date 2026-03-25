@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, router, useFocusEffect } from "expo-router";
@@ -16,6 +17,7 @@ import {
   getNotifications,
   markAsRead,
   markAllAsRead,
+  clearAll,
   type AppNotification,
 } from "../../src/services/notifications";
 
@@ -139,11 +141,15 @@ export default function NotificationsScreen() {
         router.push("/(modals)/my-reservations");
         break;
       case "location-detail":
-        if (locationId)
+        if (locationId) {
           router.push({
             pathname: "/(modals)/location-detail",
             params: { id: locationId },
           } as any);
+        } else {
+          // Old notifications without locationId — go to spaces list
+          router.replace("/(host-tabs)/spaces" as any);
+        }
         break;
     }
   };
@@ -155,6 +161,28 @@ export default function NotificationsScreen() {
     } catch {
       console.error("Failed to mark all as read");
     }
+  };
+
+  const handleClearAll = () => {
+    Alert.alert(
+      "Clear Notifications",
+      "Delete all notifications? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearAll();
+              setNotifications([]);
+            } catch {
+              console.error("Failed to clear notifications");
+            }
+          },
+        },
+      ],
+    );
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -196,14 +224,23 @@ export default function NotificationsScreen() {
         options={{
           title: "Notifications",
           headerRight: () =>
-            unreadCount > 0 ? (
-              <TouchableOpacity
-                onPress={handleMarkAllAsRead}
-                style={{ marginRight: 8 }}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.markAllText}>Read all</Text>
-              </TouchableOpacity>
+            notifications.length > 0 ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginRight: 8 }}>
+                {unreadCount > 0 && (
+                  <TouchableOpacity
+                    onPress={handleMarkAllAsRead}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={styles.markAllText}>Read all</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={handleClearAll}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <MaterialIcons name="delete-sweep" size={22} color="#A09A94" />
+                </TouchableOpacity>
+              </View>
             ) : null,
         }}
       />

@@ -690,9 +690,10 @@ const styles = StyleSheet.create({
   // Section
   section: { marginBottom: 20 },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: "#232230",
+    textTransform: "uppercase",
     marginBottom: 10,
   },
 

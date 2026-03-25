@@ -726,10 +726,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 4,
     left: 4,
-    backgroundColor: "rgba(17,121,111,0.85)",
+    backgroundColor: "#D4501E",
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 5,
   },
   newBadge: {
     position: "absolute",

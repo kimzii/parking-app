@@ -505,7 +505,11 @@ export default function LocationDetailScreen() {
                                     borderColor: slotConfig.border,
                                   },
                                 ]}
-                                onPress={() => setSelectedSpace(space)}
+                                onPress={() =>
+                                  space.status === "OCCUPIED"
+                                    ? handleViewBooking(space)
+                                    : setSelectedSpace(space)
+                                }
                                 activeOpacity={0.7}
                               >
                                 <MaterialIcons
@@ -545,7 +549,11 @@ export default function LocationDetailScreen() {
                           borderColor: slotConfig.border,
                         },
                       ]}
-                      onPress={() => setSelectedSpace(space)}
+                      onPress={() =>
+                        space.status === "OCCUPIED"
+                          ? handleViewBooking(space)
+                          : setSelectedSpace(space)
+                      }
                       activeOpacity={0.7}
                     >
                       <MaterialIcons

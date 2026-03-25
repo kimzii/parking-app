@@ -120,6 +120,15 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * Delete all notifications for a user
+   */
+  async clearAll(userId: string) {
+    return this.prisma.notification.deleteMany({
+      where: { userId },
+    });
+  }
+
   // ──────────────────────────────────────────────
   // Convenience methods for specific notification types
   // ──────────────────────────────────────────────

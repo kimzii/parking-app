@@ -97,6 +97,11 @@ export async function markAllAsRead(): Promise<void> {
   await api.patch("/notifications/read-all");
 }
 
+/** Clear all notifications */
+export async function clearAll(): Promise<void> {
+  await api.delete("/notifications/clear-all");
+}
+
 /** Notify API that driver is near a parking location (geofence trigger) */
 export async function notifyDriverNearby(reservationId: string): Promise<void> {
   await api.post("/notifications/driver-nearby", { reservationId });

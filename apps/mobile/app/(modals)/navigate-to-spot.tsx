@@ -101,6 +101,23 @@ function minDistanceToRoute(
   return min;
 }
 
+/** Find the index of the closest point on the route to the user's position */
+function closestRouteIndex(
+  point: { latitude: number; longitude: number },
+  route: { latitude: number; longitude: number }[],
+): number {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < route.length; i++) {
+    const d = getDistanceMeters(point, route[i]);
+    if (d < minDist) {
+      minDist = d;
+      minIdx = i;
+    }
+  }
+  return minIdx;
+}
+
 export default function NavigateToSpotScreen() {
   const { lat, lng, title, address, vehicleType } = useLocalSearchParams<{
     lat: string;
@@ -370,9 +387,14 @@ export default function NavigateToSpotScreen() {
           </Marker>
         )}
 
-        {directions && directions.routeCoords.length > 0 && (
+        {directions && directions.routeCoords.length > 0 && userLocation && (
           <Polyline
-            coordinates={directions.routeCoords}
+            coordinates={[
+              userLocation,
+              ...directions.routeCoords.slice(
+                closestRouteIndex(userLocation, directions.routeCoords),
+              ),
+            ]}
             strokeColor="#D4501E"
             strokeWidth={5}
           />

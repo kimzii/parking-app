@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Patch,
@@ -53,6 +54,13 @@ export class NotificationsController {
   @Patch('read-all')
   async markAllAsRead(@Req() req: any) {
     await this.notificationsService.markAllAsRead(req.user.id);
+    return { success: true };
+  }
+
+  /** Clear all notifications */
+  @Delete('clear-all')
+  async clearAll(@Req() req: any) {
+    await this.notificationsService.clearAll(req.user.id);
     return { success: true };
   }
 
