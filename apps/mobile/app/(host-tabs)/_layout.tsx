@@ -91,6 +91,13 @@ export default function HostTabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, router, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   getNotifications,
@@ -87,6 +87,56 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleNotificationPress = async (item: AppNotification) => {
+    if (!item.isRead) await handleMarkAsRead(item.id);
+
+    const data = item.data ?? {};
+    const screen = data.screen;
+    const reservationId = data.reservationId;
+    const locationId = data.locationId;
+
+    // Use explicit screen if available, otherwise fall back to type-based routing
+    const route =
+      screen ||
+      {
+        BOOKING_COMPLETED: reservationId ? "reservation-qr" : null,
+        BOOKING_CANCELLED: reservationId ? "reservation-qr" : null,
+        BOOKING_APPROVED: reservationId ? "reservation-qr" : null,
+        BOOKING_PENDING: reservationId ? "host-reservation-detail" : null,
+        DRIVER_NEARBY: reservationId ? "reservation-qr" : null,
+        DRIVER_VERIFIED: "my-reservations",
+        LOCATION_APPROVED: locationId ? "location-detail" : null,
+        LOCATION_REJECTED: locationId ? "location-detail" : null,
+      }[item.type];
+
+    switch (route) {
+      case "reservation-qr":
+        if (reservationId)
+          router.push({
+            pathname: "/(modals)/reservation-qr",
+            params: { id: reservationId },
+          });
+        break;
+      case "host-reservation-detail":
+        if (reservationId)
+          router.push({
+            pathname: "/(modals)/host-reservation-detail",
+            params: { id: reservationId },
+          });
+        break;
+      case "my-reservations":
+        router.push("/(modals)/my-reservations");
+        break;
+      case "location-detail":
+        if (locationId)
+          router.push({
+            pathname: "/(modals)/location-detail",
+            params: { id: locationId },
+          } as any);
+        break;
+    }
+  };
+
   const handleMarkAllAsRead = async () => {
     try {
       await markAllAsRead();
@@ -104,7 +154,7 @@ export default function NotificationsScreen() {
     return (
       <TouchableOpacity
         style={[styles.card, !item.isRead && styles.cardUnread]}
-        onPress={() => !item.isRead && handleMarkAsRead(item.id)}
+        onPress={() => handleNotificationPress(item)}
         activeOpacity={0.7}
       >
         <View style={[styles.iconContainer, { backgroundColor: config.bg }]}>
@@ -220,14 +270,14 @@ const styles = StyleSheet.create({
     gap: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 0.5,
   },
   cardUnread: {
     backgroundColor: "#FFFAF8",
-    borderWidth: 1,
-    borderColor: "#FFE0D6",
+    // borderWidth: 1,
+    // borderColor: "#FFE0D6",
   },
   iconContainer: {
     width: 44,

@@ -136,14 +136,14 @@ export class NotificationsService {
         title: 'Booking Completed',
         message: `Your parking session at ${locationTitle} has been completed.`,
         type: 'BOOKING_COMPLETED',
-        data: { reservationId },
+        data: { reservationId, screen: 'reservation-qr' },
       }),
       this.send({
         userId: hostUserId,
         title: 'Booking Completed',
         message: `A parking session at ${locationTitle} has been completed.`,
         type: 'BOOKING_COMPLETED',
-        data: { reservationId },
+        data: { reservationId, screen: 'host-reservation-detail' },
       }),
     ]);
   }
@@ -162,7 +162,13 @@ export class NotificationsService {
           ? `A driver cancelled their booking at ${locationTitle}.`
           : `Your booking at ${locationTitle} has been cancelled by the host.`,
       type: 'BOOKING_CANCELLED',
-      data: { reservationId },
+      data: {
+        reservationId,
+        screen:
+          cancelledBy === 'driver'
+            ? 'host-reservation-detail'
+            : 'reservation-qr',
+      },
     });
   }
 
@@ -177,7 +183,7 @@ export class NotificationsService {
       title: 'New Booking Request',
       message: `${driverName} has requested to park at ${locationTitle}. Tap to approve or reject.`,
       type: 'BOOKING_PENDING',
-      data: { reservationId },
+      data: { reservationId, screen: 'host-reservation-detail' },
     });
   }
 
@@ -188,22 +194,28 @@ export class NotificationsService {
       message:
         'Your driver account has been verified! You can now book parking spots.',
       type: 'DRIVER_VERIFIED',
+      data: { screen: 'my-reservations' },
     });
   }
 
-  async notifyLocationApproved(hostUserId: string, locationTitle: string) {
+  async notifyLocationApproved(
+    hostUserId: string,
+    locationTitle: string,
+    locationId: string,
+  ) {
     await this.send({
       userId: hostUserId,
       title: 'Location Approved',
       message: `Your parking location "${locationTitle}" has been approved and is now visible to drivers.`,
       type: 'LOCATION_APPROVED',
-      data: { locationTitle },
+      data: { locationId, screen: 'location-detail' },
     });
   }
 
   async notifyLocationRejected(
     hostUserId: string,
     locationTitle: string,
+    locationId: string,
     reason?: string,
   ) {
     await this.send({
@@ -213,7 +225,7 @@ export class NotificationsService {
         ? `Your parking location "${locationTitle}" was rejected: ${reason}`
         : `Your parking location "${locationTitle}" was rejected.`,
       type: 'LOCATION_REJECTED',
-      data: { locationTitle },
+      data: { locationId, screen: 'location-detail' },
     });
   }
 
@@ -227,7 +239,7 @@ export class NotificationsService {
       title: 'Booking Approved',
       message: `Your booking at ${locationTitle} has been approved! You have 60 minutes to arrive.`,
       type: 'BOOKING_APPROVED',
-      data: { reservationId },
+      data: { reservationId, screen: 'reservation-qr' },
     });
   }
 
@@ -244,14 +256,14 @@ export class NotificationsService {
         title: 'Driver Approaching',
         message: `${driverName} is near ${locationTitle}. Get ready!`,
         type: 'DRIVER_NEARBY',
-        data: { reservationId },
+        data: { reservationId, screen: 'host-reservation-detail' },
       }),
       this.send({
         userId: driverUserId,
         title: 'Almost There!',
         message: `You're close to ${locationTitle}. Your parking spot is nearby!`,
         type: 'DRIVER_NEARBY',
-        data: { reservationId },
+        data: { reservationId, screen: 'reservation-qr' },
       }),
     ]);
   }

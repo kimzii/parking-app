@@ -1324,6 +1324,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       parkingLocation: {
         id: r.parkingSpace.parkingLocation.id,
         title: r.parkingSpace.parkingLocation.title,
+        address: r.parkingSpace.parkingLocation.address,
+        basePricePerHour: r.parkingSpace.parkingLocation.basePricePerHour,
       },
       driver: {
         name: `${r.driver.user.firstName || ''} ${r.driver.user.lastName || ''}`.trim(),
