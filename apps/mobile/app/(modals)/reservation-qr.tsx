@@ -205,6 +205,7 @@ export default function ReservationQRScreen() {
         title: reservation.parkingLocation.title,
         address: reservation.parkingLocation.address,
         vehicleType: reservation.vehicle?.vehicleType ?? "",
+        reservationId: reservation.id,
       },
     });
   };

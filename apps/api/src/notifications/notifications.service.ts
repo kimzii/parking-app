@@ -252,6 +252,20 @@ export class NotificationsService {
     });
   }
 
+  async notifyDriverArrived(
+    driverUserId: string,
+    locationTitle: string,
+    reservationId: string,
+  ) {
+    await this.send({
+      userId: driverUserId,
+      title: 'You Have Arrived!',
+      message: `You've reached ${locationTitle}. Please proceed to your parking spot.`,
+      type: 'DRIVER_ARRIVED',
+      data: { reservationId, screen: 'reservation-qr' },
+    });
+  }
+
   async notifyDriverNearby(
     hostUserId: string,
     driverUserId: string,

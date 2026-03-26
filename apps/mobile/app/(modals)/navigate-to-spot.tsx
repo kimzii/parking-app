@@ -6,12 +6,14 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useLocalSearchParams, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
+import { notifyDriverNearby, notifyDriverArrived } from "../../src/services/notifications";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -19,6 +21,9 @@ const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 const REROUTE_THRESHOLD_METERS = 50;
 // Minimum interval between reroute requests (ms)
 const REROUTE_COOLDOWN_MS = 10000;
+// Proximity thresholds for notifications
+const NEARBY_THRESHOLD_METERS = 500;
+const ARRIVED_THRESHOLD_METERS = 12;
 
 interface StepInfo {
   instruction: string;
@@ -101,11 +106,17 @@ function minDistanceToRoute(
   return min;
 }
 
-/** Find the index of the closest point on the route to the user's position */
-function closestRouteIndex(
+/**
+ * Find the route start index ahead of the driver's position.
+ * Uses a dot-product check to determine if the driver has passed the closest
+ * point, so the polyline never draws backward behind the icon.
+ */
+function routeStartIndex(
   point: { latitude: number; longitude: number },
   route: { latitude: number; longitude: number }[],
 ): number {
+  if (route.length < 2) return 0;
+
   let minDist = Infinity;
   let minIdx = 0;
   for (let i = 0; i < route.length; i++) {
@@ -115,17 +126,34 @@ function closestRouteIndex(
       minIdx = i;
     }
   }
+
+  // Check if the driver has passed the closest point using a dot-product
+  if (minIdx < route.length - 1) {
+    const A = route[minIdx];
+    const B = route[minIdx + 1];
+    const abLat = B.latitude - A.latitude;
+    const abLng = B.longitude - A.longitude;
+    const apLat = point.latitude - A.latitude;
+    const apLng = point.longitude - A.longitude;
+    if (abLat * apLat + abLng * apLng > 0) {
+      // Driver is past point A heading toward B — start from B
+      return minIdx + 1;
+    }
+  }
+
   return minIdx;
 }
 
 export default function NavigateToSpotScreen() {
-  const { lat, lng, title, address, vehicleType } = useLocalSearchParams<{
-    lat: string;
-    lng: string;
-    title: string;
-    address: string;
-    vehicleType?: string;
-  }>();
+  const { lat, lng, title, address, vehicleType, reservationId } =
+    useLocalSearchParams<{
+      lat: string;
+      lng: string;
+      title: string;
+      address: string;
+      vehicleType?: string;
+      reservationId?: string;
+    }>();
 
   const isMoto = /motor|moto|bike|motorcycle/i.test(vehicleType ?? "");
   const vehicleIcon: keyof typeof MaterialIcons.glyphMap = isMoto
@@ -138,6 +166,8 @@ export default function NavigateToSpotScreen() {
   const mapRef = useRef<MapView>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const lastRerouteRef = useRef<number>(0);
+  const nearbyNotifiedRef = useRef(false);
+  const arrivedNotifiedRef = useRef(false);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -248,12 +278,12 @@ export default function NavigateToSpotScreen() {
           fetchDirections(initial);
         }
 
-        // Start continuous tracking
+        // Start continuous tracking — tight intervals for smooth icon movement
         const sub = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 10, // update every 10 meters
-            timeInterval: 3000, // or every 3 seconds
+            accuracy: Location.Accuracy.BestForNavigation,
+            distanceInterval: 5, // update every 5 meters
+            timeInterval: 1000, // or every 1 second
           },
           (location) => {
             if (cancelled) return;
@@ -316,6 +346,58 @@ export default function NavigateToSpotScreen() {
       setCurrentStepIndex((prev) => prev + 1);
     }
   }, [userLocation, directions, currentStepIndex]);
+
+  // ── Proximity notifications (500m "Almost There" + 12m "Arrived") ──
+  useEffect(() => {
+    if (!userLocation || !reservationId) return;
+
+    const dest = { latitude: destLat, longitude: destLng };
+    const distToDest = getDistanceMeters(userLocation, dest);
+
+    // 500m — "Almost There" notification to both driver and host
+    if (
+      distToDest <= NEARBY_THRESHOLD_METERS &&
+      !nearbyNotifiedRef.current
+    ) {
+      nearbyNotifiedRef.current = true;
+      notifyDriverNearby(reservationId).catch((err) =>
+        console.error("Failed to send nearby notification:", err),
+      );
+    }
+
+    // 12m — "Arrived" notification to driver, then redirect
+    if (
+      distToDest <= ARRIVED_THRESHOLD_METERS &&
+      !arrivedNotifiedRef.current
+    ) {
+      arrivedNotifiedRef.current = true;
+      notifyDriverArrived(reservationId)
+        .then(() => {
+          Alert.alert(
+            "You've Arrived!",
+            "You have reached your parking destination. Redirecting to your booking session...",
+            [
+              {
+                text: "OK",
+                onPress: () =>
+                  router.replace({
+                    pathname: "/(modals)/reservation-qr",
+                    params: { id: reservationId },
+                  }),
+              },
+            ],
+          );
+        })
+        .catch((err: unknown) => {
+          console.error("Failed to send arrived notification:", err);
+          // Still redirect even if notification fails
+          router.replace({
+            pathname: "/(modals)/reservation-qr",
+            params: { id: reservationId },
+          });
+        });
+    }
+  }, [userLocation, reservationId, destLat, destLng]);
 
   const handleRecenter = () => {
     if (!mapRef.current || !userLocation) return;
@@ -392,7 +474,7 @@ export default function NavigateToSpotScreen() {
             coordinates={[
               userLocation,
               ...directions.routeCoords.slice(
-                closestRouteIndex(userLocation, directions.routeCoords),
+                routeStartIndex(userLocation, directions.routeCoords),
               ),
             ]}
             strokeColor="#D4501E"

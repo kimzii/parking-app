@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "198447742710",
+    "project_id": "parkingapp-f507f",
+    "storage_bucket": "parkingapp-f507f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:198447742710:android:c3c52c627402e79d1c76d7",
+        "android_client_info": {
+          "package_name": "com.kimzie123.parklink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAkIG-T3f5HAhRQvfE_jHjXRdSza-UPFgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
