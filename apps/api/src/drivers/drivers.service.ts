@@ -13,10 +13,14 @@ import { CreateDriverVehicleDto } from './dto/create-driver-vehicle.dto';
 import { UpdateDriverVehicleDto } from './dto/update-driver-vehicle.dto';
 import { QueryDriverVehiclesDto } from './dto/query-driver-vehicles.dto';
 import { Prisma, VerificationStatus, RoleName } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DriversService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // ========== DRIVER PROFILE MANAGEMENT ==========
 
@@ -35,6 +39,8 @@ export class DriversService {
       },
     });
 
+    let shouldNotifyAdmin = false;
+
     if (!userRole) {
       const driverRole = await this.prisma.role.findUnique({
         where: { name: RoleName.DRIVER },
@@ -52,6 +58,20 @@ export class DriversService {
           role: true,
         },
       });
+
+      shouldNotifyAdmin = true;
+    } else if (userRole.status !== VerificationStatus.VERIFIED) {
+      await this.prisma.userRole.update({
+        where: {
+          userId_roleId: {
+            userId,
+            roleId: userRole.roleId,
+          },
+        },
+        data: { status: VerificationStatus.PENDING },
+      });
+
+      shouldNotifyAdmin = userRole.status !== VerificationStatus.PENDING;
     }
 
     // Check if driver profile already exists
@@ -59,9 +79,11 @@ export class DriversService {
       where: { userId },
     });
 
+    let driverProfile;
+
     if (existingDriver) {
       // Update existing driver profile
-      return this.prisma.driver.update({
+      driverProfile = await this.prisma.driver.update({
         where: { userId },
         data: {
           ...createDriverDto,
@@ -82,30 +104,38 @@ export class DriversService {
           },
         },
       });
-    }
-
-    // Create new driver profile
-    return this.prisma.driver.create({
-      data: {
-        userId,
-        ...createDriverDto,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            phoneNumber: true,
+    } else {
+      // Create new driver profile
+      driverProfile = await this.prisma.driver.create({
+        data: {
+          userId,
+          ...createDriverDto,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phoneNumber: true,
+            },
+          },
+          vehicles: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'desc' },
           },
         },
-        vehicles: {
-          where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
+      });
+    }
+
+    if (shouldNotifyAdmin && driverProfile?.id) {
+      this.notificationsService
+        .notifyAdminsPendingDriver(driverProfile.id)
+        .catch(() => {});
+    }
+
+    return driverProfile;
   }
 
   // Get driver profile
@@ -348,11 +378,24 @@ export class DriversService {
   async getAllDrivers(queryDto: QueryDriversDto) {
     const { page = 1, limit = 10, search, status } = queryDto;
     const skip = (page - 1) * limit;
+    const isUuidSearch =
+      !!search &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        search,
+      );
 
     const where: Prisma.DriverWhereInput = {
       ...(search && {
         OR: [
+          ...(isUuidSearch ? [{ id: search }] : []),
           { licenseNumber: { contains: search, mode: 'insensitive' } },
+          {
+            vehicles: {
+              some: {
+                plateNumber: { contains: search, mode: 'insensitive' },
+              },
+            },
+          },
           { user: { email: { contains: search, mode: 'insensitive' } } },
           { user: { firstName: { contains: search, mode: 'insensitive' } } },
           { user: { lastName: { contains: search, mode: 'insensitive' } } },

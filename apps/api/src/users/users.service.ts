@@ -136,12 +136,18 @@ export class UsersService {
   async getAllUsers(queryDto: QueryUsersDto) {
     const { role, status, search, page = 1, limit = 10 } = queryDto;
     const skip = (page - 1) * limit;
+    const isUuidSearch =
+      !!search &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        search,
+      );
 
     // Build where clause
     const where: Prisma.UserWhereInput = {};
 
     if (search) {
       where.OR = [
+        ...(isUuidSearch ? [{ id: search }] : []),
         { email: { contains: search, mode: 'insensitive' } },
         { firstName: { contains: search, mode: 'insensitive' } },
         { lastName: { contains: search, mode: 'insensitive' } },
@@ -175,6 +181,7 @@ export class UsersService {
           firstName: true,
           lastName: true,
           phoneNumber: true,
+          profilePicture: true,
           emailVerified: true,
           lastLoginAt: true,
           createdAt: true,
@@ -410,6 +417,7 @@ export class UsersService {
                 title: true,
                 address: true,
                 status: true,
+                createdAt: true,
               },
             },
           },
@@ -427,8 +435,12 @@ export class UsersService {
       arrivalDeadline: Date;
       sessionStartedAt: Date | null;
       sessionEndedAt: Date | null;
+      startTime: Date;
+      endTime: Date | null;
       status: string;
       totalAmount: number;
+      hostName: string;
+      propertyTitle: string;
       parkingLocation: { title: string; address: string } | null;
     }[] = [];
 
@@ -450,6 +462,17 @@ export class UsersService {
                 select: {
                   title: true,
                   address: true,
+                  host: {
+                    select: {
+                      user: {
+                        select: {
+                          firstName: true,
+                          lastName: true,
+                          email: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -462,9 +485,65 @@ export class UsersService {
         arrivalDeadline: r.arrivalDeadline,
         sessionStartedAt: r.sessionStartedAt,
         sessionEndedAt: r.sessionEndedAt,
+        startTime: r.sessionStartedAt ?? r.arrivalDeadline,
+        endTime: r.sessionEndedAt,
         status: r.status,
         totalAmount: r.totalAmount ? r.totalAmount.toNumber() : 0,
+        hostName:
+          r.parkingSpace.parkingLocation.host.user.firstName &&
+          r.parkingSpace.parkingLocation.host.user.lastName
+            ? `${r.parkingSpace.parkingLocation.host.user.firstName} ${r.parkingSpace.parkingLocation.host.user.lastName}`
+            : r.parkingSpace.parkingLocation.host.user.email,
+        propertyTitle: r.parkingSpace.parkingLocation.title,
         parkingLocation: r.parkingSpace?.parkingLocation || null,
+      }));
+    }
+
+    // Fetch host parking location revenue separately if user is a host
+    let hostParkingLocations: {
+      id: string;
+      title: string;
+      address: string;
+      status: string;
+      createdAt: Date;
+      revenueTotal: number;
+    }[] = [];
+
+    if (user.host) {
+      const hostLocations = await this.prisma.parkingLocation.findMany({
+        where: { hostId: user.host.id },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          address: true,
+          status: true,
+          createdAt: true,
+          parkingSpaces: {
+            select: {
+              reservations: {
+                where: { status: 'COMPLETED' },
+                select: { totalAmount: true },
+              },
+            },
+          },
+        },
+      });
+
+      hostParkingLocations = hostLocations.map((location) => ({
+        id: location.id,
+        title: location.title,
+        address: location.address,
+        status: location.status,
+        createdAt: location.createdAt,
+        revenueTotal: location.parkingSpaces.reduce((locationTotal, space) => {
+          const spaceTotal = space.reservations.reduce(
+            (reservationTotal, reservation) =>
+              reservationTotal + reservation.totalAmount.toNumber(),
+            0,
+          );
+          return locationTotal + spaceTotal;
+        }, 0),
       }));
     }
 
@@ -479,6 +558,12 @@ export class UsersService {
         ? {
             ...user.driver,
             reservations,
+          }
+        : undefined,
+      host: user.host
+        ? {
+            ...user.host,
+            parkingLocations: hostParkingLocations,
           }
         : undefined,
     };

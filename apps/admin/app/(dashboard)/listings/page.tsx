@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -41,6 +42,12 @@ type UserModel = {
   email: string;
   phoneNumber?: string | null;
   profilePicture?: string | null;
+  userRoles?: Array<{
+    status: "PENDING" | "VERIFIED" | "REJECTED" | "SUSPENDED";
+    role?: {
+      name: string;
+    } | null;
+  }>;
 };
 
 type Host = {
@@ -70,8 +77,15 @@ type ParkingLocation = {
   };
 };
 
+type RawParkingLocation = Omit<ParkingLocation, "latitude" | "longitude"> & {
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
+};
+
 interface ListingsResponse {
-  data: ParkingLocation[];
+  data: RawParkingLocation[];
   pagination: {
     page: number;
     limit: number;
@@ -128,6 +142,9 @@ interface DriversResponse {
 }
 
 export default function PendingListings() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const listingId = searchParams.get("listingId");
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const { isLoaded: isMapLoaded, loadError } = useJsApiLoader({
     id: "parking-admin-google-map-script",
@@ -159,6 +176,28 @@ export default function PendingListings() {
   const [driversTotalPages, setDriversTotalPages] = useState(1);
   const [driversTotal, setDriversTotal] = useState(0);
 
+  const toCoordinate = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const normalizeLocation = (location: RawParkingLocation): ParkingLocation => {
+    const latitude =
+      toCoordinate(location.latitude) ?? toCoordinate(location.lat) ?? 0;
+    const longitude =
+      toCoordinate(location.longitude) ?? toCoordinate(location.lng) ?? 0;
+
+    return {
+      ...location,
+      latitude,
+      longitude,
+    };
+  };
+
   // Fetch pending listings from API
   const fetchListings = useCallback(async () => {
     try {
@@ -169,7 +208,7 @@ export default function PendingListings() {
         `/hosts/admin/locations?status=PENDING&page=${page}&limit=10`
       );
 
-      setListings(response.data.data);
+      setListings(response.data.data.map(normalizeLocation));
       setTotalPages(response.data.pagination.totalPages);
       setTotal(response.data.pagination.total);
     } catch (err) {
@@ -200,7 +239,9 @@ export default function PendingListings() {
       const combinedListings = [
         ...approvedResponse.data.data,
         ...rejectedResponse.data.data,
-      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      ]
+        .map(normalizeLocation)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setRecentListings(combinedListings);
       setRecentTotalPages(Math.max(
@@ -261,9 +302,50 @@ export default function PendingListings() {
   }, [fetchListings]);
 
   useEffect(() => {
+    if (tabParam === "pending" || tabParam === "recent" || tabParam === "recentDrivers") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  useEffect(() => {
+    const fetchListingFromQuery = async () => {
+      if (!listingId) {
+        return;
+      }
+
+      try {
+        const encodedListingId = encodeURIComponent(listingId);
+        const [pendingRes, approvedRes, rejectedRes, fallbackRes] = await Promise.all([
+          api.get<ListingsResponse>(`/hosts/admin/locations?status=PENDING&page=1&limit=1&search=${encodedListingId}`),
+          api.get<ListingsResponse>(`/hosts/admin/locations?status=APPROVED&page=1&limit=1&search=${encodedListingId}`),
+          api.get<ListingsResponse>(`/hosts/admin/locations?status=REJECTED&page=1&limit=1&search=${encodedListingId}`),
+          api.get<ListingsResponse>(`/hosts/admin/locations?page=1&limit=1&search=${encodedListingId}`),
+        ]);
+
+        const matchedListing =
+          pendingRes.data.data[0] ||
+          approvedRes.data.data[0] ||
+          rejectedRes.data.data[0] ||
+          fallbackRes.data.data[0];
+
+        if (matchedListing) {
+          const normalizedListing = normalizeLocation(matchedListing);
+          setSelectedListing(normalizedListing);
+          setActiveTab(normalizedListing.status === "PENDING" ? "pending" : "recent");
+        }
+      } catch (err) {
+        console.error("Error loading listing from query:", err);
+      }
+    };
+
+    fetchListingFromQuery();
+  }, [listingId]);
+
+  useEffect(() => {
     if (activeTab === "recent") {
       fetchRecentListings();
     }
+
     if (activeTab === "recentDrivers") {
       fetchRecentDrivers();
     }
@@ -329,14 +411,30 @@ export default function PendingListings() {
 
   // --- 1. DETAILED VIEW RENDER ---
   if (selectedListing) {
+    const listingLatitude = toCoordinate(selectedListing.latitude);
+    const listingLongitude = toCoordinate(selectedListing.longitude);
+    const hasValidCoordinates =
+      listingLatitude !== null && listingLongitude !== null;
+    const hostVerificationStatus =
+      selectedListing.host.user.userRoles?.find((userRole) => userRole.role?.name === "HOST")
+        ?.status ?? selectedListing.host.user.userRoles?.[0]?.status ?? "PENDING";
+
     const isPending = selectedListing.status === "PENDING";
     const statusConfig = {
       PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
       APPROVED: { bg: "bg-green-100", text: "text-green-800", icon: CheckCircle },
       REJECTED: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
     };
+    const hostVerificationConfig = {
+      PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
+      VERIFIED: { bg: "bg-green-100", text: "text-green-800", icon: CheckCircle },
+      REJECTED: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
+      SUSPENDED: { bg: "bg-orange-100", text: "text-orange-800", icon: AlertCircle },
+    };
     const statusStyle = statusConfig[selectedListing.status];
+    const hostVerificationStyle = hostVerificationConfig[hostVerificationStatus];
     const StatusIcon = statusStyle.icon;
+    const HostVerificationIcon = hostVerificationStyle.icon;
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
@@ -404,9 +502,11 @@ export default function PendingListings() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-700">Verification Status:</span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    <CheckCircle className="w-3 h-3" />
-                    Verified
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${hostVerificationStyle.bg} ${hostVerificationStyle.text}`}
+                  >
+                    <HostVerificationIcon className="w-3 h-3" />
+                    {hostVerificationStatus}
                   </span>
                 </div>
 
@@ -471,12 +571,19 @@ export default function PendingListings() {
                           <p className="text-sm text-gray-500">Loading map...</p>
                         </div>
                       </div>
+                    ) : !hasValidCoordinates ? (
+                      <div className="h-full flex items-center justify-center text-center px-4">
+                        <div>
+                          <MapPin className="w-10 h-10 mx-auto mb-2 text-amber-500" />
+                          <p className="text-sm text-amber-700">Location coordinates are unavailable from API</p>
+                        </div>
+                      </div>
                     ) : (
                       <GoogleMap
                         mapContainerStyle={{ width: "100%", height: "100%" }}
                         center={{
-                          lat: Number(selectedListing.latitude),
-                          lng: Number(selectedListing.longitude),
+                          lat: listingLatitude,
+                          lng: listingLongitude,
                         }}
                         zoom={16}
                         options={{
@@ -487,8 +594,8 @@ export default function PendingListings() {
                       >
                         <MarkerF
                           position={{
-                            lat: Number(selectedListing.latitude),
-                            lng: Number(selectedListing.longitude),
+                            lat: listingLatitude,
+                            lng: listingLongitude,
                           }}
                           title={`${selectedListing.title} - ${selectedListing.address}`}
                         />
@@ -496,9 +603,11 @@ export default function PendingListings() {
                     )}
                   </div>
 
-                  <p className="text-xs text-gray-400 -mt-2">
-                    {Number(selectedListing.latitude).toFixed(4)}, {Number(selectedListing.longitude).toFixed(4)}
-                  </p>
+                  {hasValidCoordinates && (
+                    <p className="text-xs text-gray-400 -mt-2">
+                      {listingLatitude.toFixed(4)}, {listingLongitude.toFixed(4)}
+                    </p>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import api from "@/lib/api";
 import {
   Search,
   Bell,
@@ -29,51 +30,116 @@ interface HeaderProps {
   onLogout: () => void;
 }
 
-// Mock notifications - in production, fetch from API
-const mockNotifications = [
-  {
-    id: "1",
-    type: "pending_listing",
-    title: "New Listing Pending",
-    message: "Airport Terminal Parking needs approval",
-    time: "5 minutes ago",
-    read: false,
-    link: "/listings",
-  },
-  {
-    id: "2",
-    type: "pending_driver",
-    title: "Driver Verification",
-    message: "John Driver submitted a license for verification",
-    time: "1 hour ago",
-    read: false,
-    link: "/users",
-  },
-  {
-    id: "3",
-    type: "completed",
-    title: "Listing Approved",
-    message: "Downtown Shopping Mall Parking was approved",
-    time: "2 hours ago",
-    read: true,
-    link: "/listings",
-  },
-  {
-    id: "4",
-    type: "alert",
-    title: "Suspicious Activity",
-    message: "Multiple failed login attempts detected",
-    time: "1 day ago",
-    read: true,
-    link: "/reports",
-  },
-];
+type NotificationType =
+  | "GENERAL"
+  | "BOOKING_COMPLETED"
+  | "BOOKING_CANCELLED"
+  | "BOOKING_PENDING"
+  | "BOOKING_APPROVED"
+  | "DRIVER_NEARBY"
+  | "DRIVER_VERIFIED"
+  | "LOCATION_APPROVED"
+  | "LOCATION_REJECTED";
+
+interface ApiNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  isRead: boolean;
+  createdAt: string;
+  data?: Record<string, unknown> | null;
+}
+
+interface UiNotification {
+  id: string;
+  type: NotificationType | "PENDING_LISTING" | "PENDING_DRIVER";
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  link: string;
+  persisted: boolean;
+}
+
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return "Just now";
+  }
+
+  if (seconds < 60) return "Just now";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+};
+
+const mapNotificationLink = (notification: ApiNotification): string => {
+  const reservationId =
+    notification.data && typeof notification.data === "object" && "reservationId" in notification.data
+      ? String(notification.data.reservationId)
+      : null;
+
+  switch (notification.type) {
+    case "LOCATION_APPROVED":
+    case "LOCATION_REJECTED":
+      return "/listings";
+    case "DRIVER_VERIFIED":
+      return "/users";
+    case "BOOKING_PENDING":
+    case "BOOKING_APPROVED":
+    case "BOOKING_CANCELLED":
+    case "BOOKING_COMPLETED":
+    case "DRIVER_NEARBY":
+      return reservationId ? `/reservations?reservationId=${reservationId}` : "/reservations";
+    case "GENERAL":
+      if (
+        notification.data &&
+        typeof notification.data === "object" &&
+        "kind" in notification.data
+      ) {
+        const kind = String(notification.data.kind);
+        if (kind === "PENDING_LISTING") {
+          return "/listings";
+        }
+        if (kind === "PENDING_DRIVER") {
+          return "/users";
+        }
+      }
+
+      return "/dashboard";
+    default:
+      return "/dashboard";
+  }
+};
+
+const toUiNotification = (notification: ApiNotification): UiNotification => ({
+  id: notification.id,
+  type: notification.type,
+  title: notification.title,
+  message: notification.message,
+  time: formatTimeAgo(notification.createdAt),
+  read: notification.isRead,
+  link: mapNotificationLink(notification),
+  persisted: true,
+});
 
 export default function Header({ user, onLogout }: HeaderProps) {
   const router = useRouter();
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<UiNotification[]>([]);
+  const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const quickActionsRef = useRef<HTMLDivElement>(null);
@@ -94,6 +160,52 @@ export default function Header({ user, onLogout }: HeaderProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        setIsNotificationsLoading(true);
+        const [notificationsRes, unreadCountRes] = await Promise.all([
+          api.get<ApiNotification[]>("/notifications"),
+          api.get<{ count: number }>("/notifications/unread-count"),
+        ]);
+
+        const unreadIds = new Set(
+          notificationsRes.data
+            .filter((n) => !n.isRead)
+            .map((n) => n.id)
+        );
+
+        if (unreadCountRes.data.count > unreadIds.size) {
+          notificationsRes.data.forEach((n) => {
+            if (!n.isRead) {
+              unreadIds.add(n.id);
+            }
+          });
+        }
+
+        const apiNotifications = notificationsRes.data.map((n) => ({
+          ...toUiNotification(n),
+          read: !unreadIds.has(n.id),
+        }));
+
+        setNotifications(apiNotifications);
+        setNotificationsError(null);
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+        setNotificationsError("Failed to load notifications");
+      } finally {
+        setIsNotificationsLoading(false);
+      }
+    };
+
+    fetchNotifications();
+    const intervalId = window.setInterval(fetchNotifications, 30000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   // Helper to format name from email
   const formatName = (email: string) => {
     if (!email) return "User";
@@ -110,31 +222,59 @@ export default function Header({ user, onLogout }: HeaderProps) {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = (notificationId: string) => {
+  const markAsRead = async (notificationId: string) => {
+    const target = notifications.find((n) => n.id === notificationId);
+
+    if (target && !target.persisted) {
+      return;
+    }
+
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
+
+    try {
+      await api.patch(`/notifications/${notificationId}/read`);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
+      );
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    setNotifications(prev => prev.map(n => (n.persisted ? { ...n, read: true } : n)));
+
+    try {
+      await api.patch("/notifications/read-all");
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      setNotificationsError("Failed to update notifications");
+    }
   };
 
-  const handleNotificationClick = (notification: typeof mockNotifications[0]) => {
-    markAsRead(notification.id);
+  const handleNotificationClick = async (notification: UiNotification) => {
+    await markAsRead(notification.id);
     setShowNotifications(false);
     router.push(notification.link);
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "pending_listing":
+      case "LOCATION_APPROVED":
+      case "LOCATION_REJECTED":
+      case "PENDING_LISTING":
         return <MapPin size={16} className="text-yellow-500" />;
-      case "pending_driver":
+      case "BOOKING_PENDING":
+      case "BOOKING_APPROVED":
+      case "BOOKING_COMPLETED":
+      case "BOOKING_CANCELLED":
         return <Clock size={16} className="text-blue-500" />;
-      case "completed":
+      case "DRIVER_VERIFIED":
+      case "PENDING_DRIVER":
         return <CheckCircle size={16} className="text-green-500" />;
-      case "alert":
+      case "DRIVER_NEARBY":
         return <AlertCircle size={16} className="text-red-500" />;
       default:
         return <Bell size={16} className="text-gray-500" />;
@@ -151,8 +291,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Search for users by default
-      router.push(`/users?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
       setSearchQuery("");
     }
   };
@@ -171,7 +310,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search users, listings..."
+            placeholder="Search users, listings, drivers, reservations, IDs..."
             className="w-full bg-gray-50 pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#005f56] focus:border-transparent focus:bg-white outline-none text-gray-700 transition-all"
           />
         </form>
@@ -255,7 +394,17 @@ export default function Header({ user, onLogout }: HeaderProps) {
                 </div>
 
                 <div className="max-h-[400px] overflow-y-auto">
-                  {notifications.length === 0 ? (
+                  {notificationsError && (
+                    <div className="px-4 py-2 text-xs text-red-600 bg-red-50 border-b border-red-100">
+                      {notificationsError}
+                    </div>
+                  )}
+
+                  {isNotificationsLoading && notifications.length === 0 ? (
+                    <div className="py-8 text-center text-gray-500">
+                      <p className="text-sm">Loading notifications...</p>
+                    </div>
+                  ) : notifications.length === 0 ? (
                     <div className="py-8 text-center text-gray-500">
                       <Bell size={32} className="mx-auto mb-2 opacity-30" />
                       <p className="text-sm">No notifications</p>
@@ -264,8 +413,8 @@ export default function Header({ user, onLogout }: HeaderProps) {
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`px-4 py-3 flex items-start gap-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 ${
+                        onClick={() => void handleNotificationClick(notification)}
+                        className={`group px-4 py-3 flex items-start gap-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 ${
                           !notification.read ? "bg-blue-50/50" : ""
                         }`}
                       >
@@ -287,7 +436,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            markAsRead(notification.id);
+                            void markAsRead(notification.id);
                           }}
                           className="p-1 hover:bg-gray-200 rounded transition-colors opacity-0 group-hover:opacity-100"
                         >

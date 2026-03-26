@@ -1,9 +1,11 @@
 import {
   Controller,
   Get,
+  Delete,
   UseGuards,
   Query,
   Param,
+  ParseUUIDPipe,
   NotFoundException,
 } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
@@ -98,5 +100,11 @@ export class DashboardController {
       throw new NotFoundException('Reservation not found');
     }
     return reservation;
+  }
+
+  @Delete('reservations/:id')
+  @Roles(RoleName.ADMIN)
+  async deleteReservation(@Param('id', ParseUUIDPipe) id: string) {
+    return this.dashboardService.deleteReservationById(id);
   }
 }

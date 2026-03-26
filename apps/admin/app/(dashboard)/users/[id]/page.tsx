@@ -57,31 +57,30 @@ interface UserProfile {
       isActive: boolean;
       createdAt: string;
     }[];
-    reservations: { id: string; startTime: string; totalAmount: number; status: string; parkingLocation?: { title: string; } }[];
+    reservations: {
+      id: string;
+      startTime?: string | null;
+      endTime?: string | null;
+      arrivalDeadline?: string;
+      totalAmount: number;
+      status: string;
+      hostName?: string;
+      propertyTitle?: string;
+      parkingLocation?: { title: string; address?: string } | null;
+    }[];
   };
   host?: {
     id: string;
-    parkingLocations: { id: string; title: string; address: string; status: string; }[];
+    parkingLocations: {
+      id: string;
+      title: string;
+      address: string;
+      status: string;
+      createdAt?: string;
+      revenueTotal?: number;
+    }[];
   };
 }
-
-// --- Mock Data (used as fallback until API is ready) ---
-const recentBookings = [
-  { id: "BKG-001", date: "Oct 24, 2026", host: "Host A", amount: "₱500.00", status: "Completed" },
-  { id: "BKG-002", date: "Oct 25, 2026", host: "Host B", amount: "₱350.00", status: "Active" },
-  { id: "BKG-003", date: "Oct 28, 2026", host: "Host C", amount: "₱450.00", status: "Completed" },
-  { id: "BKG-004", date: "Nov 02, 2026", host: "Host A", amount: "₱500.00", status: "Cancelled" },
-  { id: "BKG-005", date: "Nov 05, 2026", host: "Host D", amount: "₱200.00", status: "Completed" },
-  { id: "BKG-006", date: "Nov 10, 2026", host: "Host B", amount: "₱350.00", status: "Completed" },
-];
-
-const recentListings = [
-  { id: "LST-001", name: "Downtown Apartment", date: "Oct 24, 2026", status: "Active", revenue: "₱15,000.00" },
-  { id: "LST-002", name: "Suburban Garage Space", date: "Oct 25, 2026", status: "Active", revenue: "₱4,500.00" },
-  { id: "LST-003", name: "City Center Parking", date: "Oct 28, 2026", status: "Pending", revenue: "₱0.00" },
-  { id: "LST-004", name: "Airport Long-term", date: "Nov 02, 2026", status: "Inactive", revenue: "₱12,000.00" },
-  { id: "LST-005", name: "Mall Adjacent Lot", date: "Nov 05, 2026", status: "Active", revenue: "₱8,200.00" },
-];
 
 const getVerificationIcon = (status: VerificationStatus) => {
   switch (status) {
@@ -101,6 +100,54 @@ const getStatusColor = (status: VerificationStatus) => {
     case "SUSPENDED": return "text-gray-600";
     default: return "text-gray-600";
   }
+};
+
+const formatBookingDate = (reservation: {
+  startTime?: string | null;
+  arrivalDeadline?: string;
+}) => {
+  const sourceDate = reservation.startTime || reservation.arrivalDeadline;
+  if (!sourceDate) return "N/A";
+
+  const parsed = new Date(sourceDate);
+  if (Number.isNaN(parsed.getTime())) return "N/A";
+
+  return parsed.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatBookingAmount = (amount: number) => {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 2,
+  }).format(amount || 0);
+};
+
+const formatBookingStatus = (status: string) => {
+  return status.charAt(0) + status.slice(1).toLowerCase();
+};
+
+const formatListingDate = (value?: string) => {
+  if (!value) return "N/A";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "N/A";
+  return parsed.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatListingRevenue = (amount?: number) => {
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 2,
+  }).format(amount || 0);
 };
 
 export default function UserProfileView() {
@@ -159,17 +206,15 @@ export default function UserProfileView() {
     return driverRole?.status ?? null;
   };
 
+  const getHostStatus = (): VerificationStatus | null => {
+    if (!user) return null;
+    const hostRole = user.roleStatuses.find(rs => rs.role === "HOST");
+    return hostRole?.status ?? null;
+  };
+
   // Determine user roles from fetched data
   const isDriver = user?.roles.includes("DRIVER") ?? false;
   const isHost = user?.roles.includes("HOST") ?? false;
-
-  // Get primary verification status
-  const getPrimaryStatus = (roleStatuses: RoleStatus[]): VerificationStatus => {
-    if (roleStatuses.some(rs => rs.status === "SUSPENDED")) return "SUSPENDED";
-    if (roleStatuses.some(rs => rs.status === "REJECTED")) return "REJECTED";
-    if (roleStatuses.some(rs => rs.status === "PENDING")) return "PENDING";
-    return "VERIFIED";
-  };
 
   const getUserDisplayName = (user: UserProfile) => {
     if (user.firstName || user.lastName) {
@@ -208,9 +253,14 @@ export default function UserProfileView() {
     );
   }
 
-  const primaryStatus = getPrimaryStatus(user.roleStatuses);
   const displayName = getUserDisplayName(user);
   const primaryRole = isHost ? "Host" : isDriver ? "Driver" : "User";
+  const driverStatus = getDriverStatus();
+  const hostStatus = getHostStatus();
+  const profileStatus = driverStatus ?? hostStatus ?? "PENDING";
+  const showSecondaryRoleStatus = Boolean(
+    driverStatus && hostStatus && driverStatus !== hostStatus
+  );
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
@@ -287,109 +337,169 @@ export default function UserProfileView() {
 
         {/* Tab Content */}
         <div className="p-8">
-          {isDriver && user?.driver && (
+          {(isDriver && user?.driver) || isHost ? (
             <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-8">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <ShieldCheck size={20} className="text-[#005f56]" />
                 Verification Actions
               </h3>
 
-              {getDriverStatus() === "PENDING" ? (
-                <div className="space-y-6">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-yellow-800">Pending Verification</p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          This driver is awaiting verification. Please review the license information and take action.
-                        </p>
+              <div className={`grid gap-4 ${isDriver && user?.driver && isHost ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+                {isDriver && user?.driver && (
+                  <div>
+                    {getDriverStatus() === "PENDING" ? (
+                      <div className="space-y-6">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold text-yellow-800">Pending Driver Verification</p>
+                              <p className="text-sm text-yellow-700 mt-1">
+                                This driver is awaiting verification. Please review the license information and take action.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
+                            disabled={actionLoading}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                          >
+                            {actionLoading ? (
+                              <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={20} />
+                            )}
+                            Approve Driver Verification
+                          </button>
+
+                          <button
+                            onClick={() => user.driver && handleDriverVerification(user.driver.id, "REJECTED", "Driver license verification failed")}
+                            disabled={actionLoading}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors"
+                          >
+                            {actionLoading ? (
+                              <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                              <XCircle size={20} />
+                            )}
+                            Reject Driver Verification
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
-                      disabled={actionLoading}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
-                    >
-                      {actionLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <CheckCircle size={20} />
-                      )}
-                      Approve Driver Verification
-                    </button>
-
-                    <button
-                      onClick={() => user.driver && handleDriverVerification(user.driver.id, "REJECTED", "Driver license verification failed")}
-                      disabled={actionLoading}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors"
-                    >
-                      {actionLoading ? (
-                        <Loader2 size={20} className="animate-spin" />
-                      ) : (
-                        <XCircle size={20} />
-                      )}
-                      Reject Driver Verification
-                    </button>
-                  </div>
-                </div>
-              ) : getDriverStatus() === "VERIFIED" ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-green-800">Verified Driver</p>
-                      <p className="text-sm text-green-700 mt-1">
-                        This driver has been verified and can access all driver features.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : getDriverStatus() === "REJECTED" ? (
-                <div className="space-y-6">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-semibold text-red-800">Verification Rejected</p>
-                        <p className="text-sm text-red-700 mt-1">
-                          This driver&apos;s verification was rejected. You can re-approve if needed.
-                        </p>
+                    ) : getDriverStatus() === "VERIFIED" ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-green-800">Verified Driver</p>
+                            <p className="text-sm text-green-700 mt-1">
+                              This driver has been verified and can access all driver features.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    ) : getDriverStatus() === "REJECTED" ? (
+                      <div className="space-y-6">
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold text-red-800">Driver Verification Rejected</p>
+                              <p className="text-sm text-red-700 mt-1">
+                                This driver&apos;s verification was rejected. You can re-approve if needed.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
 
-                  <button
-                    onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
-                    disabled={actionLoading}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
-                  >
-                    {actionLoading ? (
-                      <Loader2 size={20} className="animate-spin" />
+                        <button
+                          onClick={() => user.driver && handleDriverVerification(user.driver.id, "VERIFIED")}
+                          disabled={actionLoading}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                        >
+                          {actionLoading ? (
+                            <Loader2 size={20} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={20} />
+                          )}
+                          Re-approve Driver
+                        </button>
+                      </div>
                     ) : (
-                      <CheckCircle size={20} />
+                      <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle size={20} className="text-gray-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-gray-700">Driver Account Suspended</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              This driver account is currently suspended.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     )}
-                    Re-approve Driver
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle size={20} className="text-gray-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-700">Account Suspended</p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        This driver account is currently suspended.
-                      </p>
-                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {isHost && (
+                  <div>
+                    {hostStatus === "VERIFIED" ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle size={20} className="text-green-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-green-800">Verified Host</p>
+                            <p className="text-sm text-green-700 mt-1">
+                              This host has been verified and can publish approved listings.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : hostStatus === "PENDING" ? (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-yellow-800">Pending Host Verification</p>
+                            <p className="text-sm text-yellow-700 mt-1">
+                              This host role is pending verification.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : hostStatus === "REJECTED" ? (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-red-800">Host Verification Rejected</p>
+                            <p className="text-sm text-red-700 mt-1">
+                              This host role has been rejected and cannot create active listings.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle size={20} className="text-gray-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-gray-700">Host Account Suspended</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              This host role is currently suspended.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          ) : null}
 
           {activeTab === "profile" && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -435,10 +545,15 @@ export default function UserProfileView() {
                   </div>
 
                   <div className="flex items-center gap-3 text-gray-600">
-                    {getVerificationIcon(primaryStatus)}
+                    {getVerificationIcon(profileStatus)}
                     <div>
                       <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Verification Status</p>
-                      <p className={`font-medium ${getStatusColor(primaryStatus)}`}>{primaryStatus}</p>
+                      <p className={`font-medium ${getStatusColor(profileStatus)}`}>{profileStatus}</p>
+                      {showSecondaryRoleStatus && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Host status: {hostStatus}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -528,23 +643,32 @@ export default function UserProfileView() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 text-sm">
-                          {recentListings.map((listing, index) => (
-                            <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-4 py-3 font-medium text-gray-900">{listing.id}</td>
-                              <td className="px-4 py-3 text-gray-600">{listing.name}</td>
-                              <td className="px-4 py-3 text-gray-600">{listing.date}</td>
-                              <td className="px-4 py-3 font-medium text-gray-900">{listing.revenue}</td>
-                              <td className="px-4 py-3 text-right">
-                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                  listing.status === "Active" ? "bg-green-100 text-green-700" :
-                                  listing.status === "Pending" ? "bg-yellow-100 text-yellow-700" :
-                                  "bg-gray-100 text-gray-700"
-                                }`}>
-                                  {listing.status}
-                                </span>
+                          {user.host?.parkingLocations && user.host.parkingLocations.length > 0 ? (
+                            user.host.parkingLocations.map((listing) => (
+                              <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-4 py-3 font-medium text-gray-900">{listing.id.slice(0, 8).toUpperCase()}</td>
+                                <td className="px-4 py-3 text-gray-600">{listing.title}</td>
+                                <td className="px-4 py-3 text-gray-600">{formatListingDate(listing.createdAt)}</td>
+                                <td className="px-4 py-3 font-medium text-gray-900">{formatListingRevenue(listing.revenueTotal)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                    listing.status === "APPROVED" ? "bg-green-100 text-green-700" :
+                                    listing.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                                    listing.status === "REJECTED" ? "bg-red-100 text-red-700" :
+                                    "bg-gray-100 text-gray-700"
+                                  }`}>
+                                    {listing.status.charAt(0) + listing.status.slice(1).toLowerCase()}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                                No recent listings found.
                               </td>
                             </tr>
-                          ))}
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -567,23 +691,32 @@ export default function UserProfileView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm">
-                  {recentBookings.map((booking, index) => (
-                    <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{booking.id}</td>
-                      <td className="px-4 py-3 text-gray-600">{booking.date}</td>
-                      <td className="px-4 py-3 text-gray-600">{booking.host}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{booking.amount}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          booking.status === "Completed" ? "bg-green-100 text-green-700" :
-                          booking.status === "Active" ? "bg-blue-100 text-blue-700" :
-                          "bg-gray-100 text-gray-700"
-                        }`}>
-                          {booking.status}
-                        </span>
+                  {user.driver?.reservations && user.driver.reservations.length > 0 ? (
+                    user.driver.reservations.map((booking) => (
+                      <tr key={booking.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900">{booking.id.slice(0, 8).toUpperCase()}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatBookingDate(booking)}</td>
+                        <td className="px-4 py-3 text-gray-600">{booking.hostName || booking.propertyTitle || booking.parkingLocation?.title || "N/A"}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{formatBookingAmount(booking.totalAmount)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            booking.status === "COMPLETED" ? "bg-green-100 text-green-700" :
+                            booking.status === "ACTIVE" || booking.status === "CONFIRMED" ? "bg-blue-100 text-blue-700" :
+                            booking.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                            "bg-gray-100 text-gray-700"
+                          }`}>
+                            {formatBookingStatus(booking.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                        No recent bookings found.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   LocationStatus,
@@ -516,6 +516,11 @@ export class DashboardService {
     search?: string,
   ): Promise<{ reservations: ReservationListItem[]; total: number }> {
     const skip = (page - 1) * limit;
+    const isUuidSearch =
+      !!search &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        search,
+      );
 
     const where: Prisma.ReservationWhereInput = {};
 
@@ -525,6 +530,7 @@ export class DashboardService {
 
     if (search) {
       where.OR = [
+        ...(isUuidSearch ? [{ id: search }] : []),
         {
           driver: {
             user: {
@@ -726,5 +732,22 @@ export class DashboardService {
         createdAt: r.createdAt,
       })),
     };
+  }
+
+  async deleteReservationById(id: string) {
+    const existingReservation = await this.prisma.reservation.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existingReservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    await this.prisma.reservation.delete({
+      where: { id },
+    });
+
+    return { message: 'Reservation deleted successfully' };
   }
 }

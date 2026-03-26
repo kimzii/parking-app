@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent } from "@/components/ui/tabs";
 import {
   Settings,
   DollarSign,
@@ -135,7 +135,6 @@ const SettingToggle = ({
 
 export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -319,16 +318,6 @@ export default function SettingsPage() {
     }
   };
 
-  const tabs = [
-    { id: "general", label: "General", icon: Settings },
-    { id: "pricing", label: "Pricing & Commission", icon: DollarSign },
-    { id: "user", label: "User & Verification", icon: Users },
-    { id: "parking", label: "Parking Location", icon: MapPin },
-    { id: "reservation", label: "Reservation", icon: Calendar },
-    { id: "wallet", label: "E-Wallet & Payment", icon: Wallet },
-    { id: "notification", label: "Notification", icon: Bell },
-  ];
-
   return (
     <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
       {/* Header */}
@@ -358,30 +347,11 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      {/* Tabs Layout */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* Horizontal Navigation */}
-        <Card className="shadow-sm border-gray-100">
-          <CardContent className="p-2">
-            <TabsList className="flex flex-wrap w-full h-auto bg-transparent gap-1">
-              {tabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex-1 min-w-fit justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-lg transition-colors"
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </CardContent>
-        </Card>
-
-        {/* Content Area */}
+      {/* Settings Content */}
+      <div className="space-y-6">
         <div>
           {/* General Settings */}
-          <TabsContent value="general" className="mt-0">
+          <div>
             <Card className="shadow-sm border-gray-100">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -583,7 +553,117 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+
+            {/* Create Admin Card */}
+            <Card className="shadow-sm border-gray-100 mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-gray-600" />
+                  Create Admin Account
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  Create a new admin account. Login credentials will be automatically generated and sent to the provided email address.
+                </p>
+
+                {adminError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {adminError}
+                  </div>
+                )}
+
+                {adminSuccess && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                      {adminSuccessMessage}
+                    </div>
+                    {adminTempPassword && (
+                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
+                        <p className="font-medium">Temporary Password (share this manually):</p>
+                        <code className="block mt-1 p-2 bg-white rounded border font-mono text-sm select-all">
+                          {adminTempPassword}
+                        </code>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adminFirstName">First Name *</Label>
+                    <Input
+                      id="adminFirstName"
+                      value={adminFirstName}
+                      onChange={(e) => setAdminFirstName(e.target.value)}
+                      placeholder="John"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="adminLastName">Last Name *</Label>
+                    <Input
+                      id="adminLastName"
+                      value={adminLastName}
+                      onChange={(e) => setAdminLastName(e.target.value)}
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="adminEmail">Email Address *</Label>
+                  <Input
+                    id="adminEmail"
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="admin@example.com"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Login credentials will be sent to this email address
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="adminPhoneNumber">Phone Number (Optional)</Label>
+                  <Input
+                    id="adminPhoneNumber"
+                    type="tel"
+                    value={adminPhoneNumber}
+                    onChange={(e) => setAdminPhoneNumber(e.target.value)}
+                    placeholder="+1234567890"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    onClick={handleCreateAdmin}
+                    disabled={adminCreating}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {adminCreating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating Admin...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Create & Send Credentials
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Future settings tabs are preserved below and temporarily disabled */}
+          {false && (
+            <>
 
           {/* Pricing & Commission Settings */}
           <TabsContent value="pricing" className="mt-0">
@@ -788,111 +868,6 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Create Admin Card */}
-            <Card className="shadow-sm border-gray-100 mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="w-5 h-5 text-gray-600" />
-                  Create Admin Account
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  Create a new admin account. Login credentials will be automatically generated and sent to the provided email address.
-                </p>
-
-                {adminError && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    {adminError}
-                  </div>
-                )}
-
-                {adminSuccess && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                      {adminSuccessMessage}
-                    </div>
-                    {adminTempPassword && (
-                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
-                        <p className="font-medium">Temporary Password (share this manually):</p>
-                        <code className="block mt-1 p-2 bg-white rounded border font-mono text-sm select-all">
-                          {adminTempPassword}
-                        </code>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="adminFirstName">First Name *</Label>
-                    <Input
-                      id="adminFirstName"
-                      value={adminFirstName}
-                      onChange={(e) => setAdminFirstName(e.target.value)}
-                      placeholder="John"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="adminLastName">Last Name *</Label>
-                    <Input
-                      id="adminLastName"
-                      value={adminLastName}
-                      onChange={(e) => setAdminLastName(e.target.value)}
-                      placeholder="Doe"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="adminEmail">Email Address *</Label>
-                  <Input
-                    id="adminEmail"
-                    type="email"
-                    value={adminEmail}
-                    onChange={(e) => setAdminEmail(e.target.value)}
-                    placeholder="admin@example.com"
-                  />
-                  <p className="text-xs text-gray-500">
-                    Login credentials will be sent to this email address
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="adminPhoneNumber">Phone Number (Optional)</Label>
-                  <Input
-                    id="adminPhoneNumber"
-                    type="tel"
-                    value={adminPhoneNumber}
-                    onChange={(e) => setAdminPhoneNumber(e.target.value)}
-                    placeholder="+1234567890"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    onClick={handleCreateAdmin}
-                    disabled={adminCreating}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {adminCreating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating Admin...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="w-4 h-4 mr-2" />
-                        Create & Send Credentials
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Parking Location Settings */}
@@ -1263,8 +1238,10 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
+            </>
+          )}
         </div>
-      </Tabs>
+      </div>
     </div>
   );
 }

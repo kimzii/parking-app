@@ -140,6 +140,7 @@ export default function LoginPage() {
 }
 
 function LoginPageContent() {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -202,7 +203,7 @@ function LoginPageContent() {
       clearAuthCookies();
 
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        `${apiBaseUrl}/auth/login`,
         {
           email: data.email,
           password: data.password,

@@ -184,7 +184,7 @@ export class HostsService {
       ? levelSlots.reduce((sum, n) => sum + n, 0)
       : createLocationDto.totalSlots;
 
-    return this.prisma.$transaction(async (tx) => {
+    const createdLocation = await this.prisma.$transaction(async (tx) => {
       // Create parking location
       const location = await tx.parkingLocation.create({
         data: {
@@ -250,8 +250,61 @@ export class HostsService {
         await tx.parkingSpace.createMany({ data: spaces });
       }
 
-      return location;
+      return tx.parkingLocation.findUnique({
+        where: { id: location.id },
+        include: {
+          images: true,
+          parkingSpaces: true,
+          host: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
+
+    if (createdLocation?.id && createdLocation.title) {
+      try {
+        const admins = await this.prisma.user.findMany({
+          where: {
+            userRoles: {
+              some: {
+                role: { name: 'ADMIN' },
+                status: 'VERIFIED',
+              },
+            },
+          },
+          select: { id: true },
+        });
+
+        await Promise.all(
+          admins.map((admin) =>
+            this.notificationsService.send({
+              userId: admin.id,
+              title: 'New Listing For Approval',
+              message: `A new listing "${createdLocation.title}" is waiting for approval.`,
+              type: 'GENERAL',
+              data: {
+                kind: 'PENDING_LISTING',
+                locationId: createdLocation.id,
+              },
+            }),
+          ),
+        );
+      } catch {
+        // Do not block location creation when notification dispatch fails.
+      }
+    }
+
+    return createdLocation;
   }
 
   // Get host's parking locations
@@ -680,11 +733,17 @@ export class HostsService {
   async getAllParkingLocations(queryDto: QueryParkingLocationsDto) {
     const { page = 1, limit = 10, search, status } = queryDto;
     const skip = (page - 1) * limit;
+    const isUuidSearch =
+      !!search &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        search,
+      );
 
     const where: Prisma.ParkingLocationWhereInput = {};
 
     if (search) {
       where.OR = [
+        ...(isUuidSearch ? [{ id: search }] : []),
         { title: { contains: search, mode: 'insensitive' } },
         { address: { contains: search, mode: 'insensitive' } },
         {
@@ -713,6 +772,21 @@ export class HostsService {
                   lastName: true,
                   phoneNumber: true,
                   profilePicture: true,
+                  userRoles: {
+                    where: {
+                      role: {
+                        name: 'HOST',
+                      },
+                    },
+                    select: {
+                      status: true,
+                      role: {
+                        select: {
+                          name: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
