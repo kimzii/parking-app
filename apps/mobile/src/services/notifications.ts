@@ -54,8 +54,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     // Get Expo push token
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const Constants = await import("expo-constants");
+    const projectId =
+      Constants.default.expoConfig?.extra?.eas?.projectId ??
+      "acc0c135-3a0e-4177-9eef-0a3c06f896f6";
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const pushToken = tokenData.data;
+    console.log("Push token registered:", pushToken);
 
     // Send token to our API
     await api.post("/notifications/register-token", { pushToken });
