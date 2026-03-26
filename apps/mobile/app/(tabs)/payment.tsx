@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     color: "#1A1A2E",
   },
   modalBalanceCard: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 16,
     padding: 18,
     marginBottom: 20,
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
   modalCurrencySymbol: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: "#11796F",
+    color: "#D4501E",
   },
   modalAmountInput: {
     flex: 1,
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   modalActionBtn: {
-    backgroundColor: "#11796F",
+    backgroundColor: "#D4501E",
     borderRadius: 14,
     paddingVertical: 16,
     flexDirection: "row" as const,
