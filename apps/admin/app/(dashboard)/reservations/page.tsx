@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Search,
-  MoreHorizontal,
   Eye,
+  Trash2,
   Calendar,
   Zap,
   CheckCircle,
@@ -29,11 +29,51 @@ interface Reservation {
   guestProfilePicture: string | null;
   hostName: string;
   propertyTitle: string;
-  startTime: string;
-  endTime: string;
+  startTime: string | null;
+  endTime: string | null;
   status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
   totalAmount: number;
 }
+
+interface ReservationDetails {
+  id: string;
+  status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+  createdAt: string;
+  arrivalDeadline: string | null;
+  sessionStartedAt: string | null;
+  sessionEndedAt: string | null;
+  totalAmount: number;
+  guest: {
+    name: string;
+    email: string;
+    phone: string | null;
+  };
+  host: {
+    name: string;
+    email: string;
+    phone: string | null;
+  };
+  property: {
+    title: string;
+    address: string;
+    slotNumber: number;
+  };
+}
+
+type RawReservation = {
+  id: string;
+  guestName?: string | null;
+  guestProfilePicture?: string | null;
+  hostName?: string | null;
+  propertyTitle?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  arrivalDeadline?: string | null;
+  sessionStartedAt?: string | null;
+  sessionEndedAt?: string | null;
+  status?: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+  totalAmount?: number | string | null;
+};
 
 // --- Components ---
 const StatCard = ({ title, value, icon, iconBg, iconColor, loading }: {
@@ -62,13 +102,53 @@ const StatCard = ({ title, value, icon, iconBg, iconColor, loading }: {
 export default function ReservationsOverviewPage() {
   const [stats, setStats] = useState<ReservationStats | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [selectedReservation, setSelectedReservation] = useState<ReservationDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [reservationToDelete, setReservationToDelete] = useState<Reservation | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const limit = 10;
+
+  const parseAmount = (value: number | string | null | undefined) => {
+    if (value === null || value === undefined || value === "") {
+      return 0;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const toValidDate = (value: string | null | undefined) => {
+    if (!value) {
+      return null;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const normalizeReservation = (reservation: RawReservation): Reservation => {
+    const startTime = reservation.startTime || reservation.sessionStartedAt || reservation.arrivalDeadline || null;
+    const endTime = reservation.endTime || reservation.sessionEndedAt || reservation.arrivalDeadline || null;
+
+    return {
+      id: reservation.id,
+      guestName: reservation.guestName || "Unknown Guest",
+      guestProfilePicture: reservation.guestProfilePicture || null,
+      hostName: reservation.hostName || "Unknown Host",
+      propertyTitle: reservation.propertyTitle || "Untitled Property",
+      startTime,
+      endTime,
+      status: reservation.status === "EXPIRED" ? "CANCELLED" : (reservation.status || "PENDING"),
+      totalAmount: parseAmount(reservation.totalAmount),
+    };
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -83,13 +163,13 @@ export default function ReservationsOverviewPage() {
 
       const [statsRes, reservationsRes] = await Promise.all([
         api.get<ReservationStats>("/dashboard/reservations/stats"),
-        api.get<{ reservations: Reservation[]; total: number }>(
+        api.get<{ reservations: RawReservation[]; total: number }>(
           `/dashboard/reservations?${params.toString()}`
         ),
       ]);
 
       setStats(statsRes.data);
-      setReservations(reservationsRes.data.reservations);
+      setReservations(reservationsRes.data.reservations.map(normalizeReservation));
       setTotal(reservationsRes.data.total);
     } catch (err) {
       console.error("Error fetching reservations:", err);
@@ -103,24 +183,60 @@ export default function ReservationsOverviewPage() {
     fetchData();
   }, [fetchData]);
 
-  const formatDateRange = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const startStr = startDate.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-    const endStr = endDate.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+  const formatDateRange = (start: string | null, end: string | null) => {
+    const startDate = toValidDate(start);
+    const endDate = toValidDate(end);
 
-    if (startDate.toDateString() === endDate.toDateString()) {
-      return startStr + ", " + startDate.getFullYear();
+    if (!startDate && !endDate) {
+      return "Date unavailable";
+    }
+
+    if (!startDate && endDate) {
+      return endDate.toLocaleDateString("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+
+    if (startDate && !endDate) {
+      return startDate.toLocaleDateString("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+
+    const safeStartDate = startDate as Date;
+    const safeEndDate = endDate as Date;
+    const startStr = safeStartDate.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+    const endStr = safeEndDate.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+
+    if (safeStartDate.toDateString() === safeEndDate.toDateString()) {
+      return startStr + ", " + safeStartDate.getFullYear();
     }
     return `${startStr} - ${endStr}`;
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string | null | undefined) => {
     return new Intl.NumberFormat("en-PH", {
       style: "currency",
       currency: "PHP",
       minimumFractionDigits: 2,
-    }).format(amount);
+    }).format(parseAmount(amount));
+  };
+
+  const formatDateTime = (value: string | null) => {
+    const date = toValidDate(value);
+    if (!date) return "N/A";
+
+    return date.toLocaleString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   };
 
   const getStatusStyles = (status: string) => {
@@ -141,6 +257,46 @@ export default function ReservationsOverviewPage() {
 
   const formatStatus = (status: string) => {
     return status.charAt(0) + status.slice(1).toLowerCase();
+  };
+
+  const handleViewReservation = async (reservationId: string) => {
+    try {
+      setDetailsLoading(true);
+      const response = await api.get<ReservationDetails>(`/dashboard/reservations/${reservationId}`);
+      setSelectedReservation(response.data);
+    } catch (err) {
+      console.error("Error fetching reservation details:", err);
+      alert("Failed to load reservation details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (reservation: Reservation) => {
+    setReservationToDelete(reservation);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!reservationToDelete) return;
+
+    try {
+      setDeleting(true);
+      await api.delete(`/dashboard/reservations/${reservationToDelete.id}`);
+      setReservations((prev) => prev.filter((r) => r.id !== reservationToDelete.id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      setDeleteModalOpen(false);
+      setReservationToDelete(null);
+    } catch (err: unknown) {
+      console.error("Error deleting reservation:", err);
+      const message =
+        typeof err === "object" && err !== null
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Failed to delete reservation")
+          : "Failed to delete reservation";
+      alert(message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -300,7 +456,7 @@ export default function ReservationsOverviewPage() {
                           />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-medium">
-                            {reservation.guestName.charAt(0)}
+                            {(reservation.guestName || "?").charAt(0)}
                           </div>
                         )}
                         <span className="text-gray-700 font-medium">{reservation.guestName}</span>
@@ -337,11 +493,19 @@ export default function ReservationsOverviewPage() {
                     {/* Actions */}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 text-gray-400 hover:text-[#005f56] hover:bg-green-50 rounded-full transition-colors" title="View Details">
+                        <button
+                          onClick={() => handleViewReservation(reservation.id)}
+                          className="p-2 text-gray-400 hover:text-[#005f56] hover:bg-green-50 rounded-full transition-colors"
+                          title="View Details"
+                        >
                           <Eye size={18} />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors" title="More Options">
-                          <MoreHorizontal size={18} />
+                        <button
+                          onClick={() => handleDeleteClick(reservation)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                          title="Delete Reservation"
+                        >
+                          <Trash2 size={18} />
                         </button>
                       </div>
                     </td>
@@ -377,6 +541,121 @@ export default function ReservationsOverviewPage() {
         </div>
 
       </div>
+
+      {selectedReservation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Reservation Details</h3>
+              <button
+                onClick={() => setSelectedReservation(null)}
+                className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+
+            {detailsLoading ? (
+              <div className="py-10 flex items-center justify-center gap-2 text-gray-500">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading reservation details...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Booking</p>
+                  <p className="font-semibold text-gray-900 mb-1">{selectedReservation.id}</p>
+                  <p className="text-gray-600">Status: {formatStatus(selectedReservation.status)}</p>
+                  <p className="text-gray-600">Created: {formatDateTime(selectedReservation.createdAt)}</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Guest</p>
+                  <p className="font-semibold text-gray-900 mb-1">{selectedReservation.guest.name}</p>
+                  <p className="text-gray-600">{selectedReservation.guest.email}</p>
+                  <p className="text-gray-600">{selectedReservation.guest.phone || "No phone number"}</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Host</p>
+                  <p className="font-semibold text-gray-900 mb-1">{selectedReservation.host.name}</p>
+                  <p className="text-gray-600">{selectedReservation.host.email}</p>
+                  <p className="text-gray-600">{selectedReservation.host.phone || "No phone number"}</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Property</p>
+                  <p className="font-semibold text-gray-900 mb-1">{selectedReservation.property.title}</p>
+                  <p className="text-gray-600">{selectedReservation.property.address}</p>
+                  <p className="text-gray-600">Slot #{selectedReservation.property.slotNumber}</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 md:col-span-2">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Session Timeline</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <p className="text-gray-600">Arrival: {formatDateTime(selectedReservation.arrivalDeadline)}</p>
+                    <p className="text-gray-600">Started: {formatDateTime(selectedReservation.sessionStartedAt)}</p>
+                    <p className="text-gray-600">Ended: {formatDateTime(selectedReservation.sessionEndedAt)}</p>
+                  </div>
+                  <p className="text-gray-900 font-semibold mt-3">
+                    Total Amount: {formatCurrency(selectedReservation.totalAmount)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {deleteModalOpen && reservationToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Reservation</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete reservation <span className="font-semibold">{reservationToDelete.id.slice(0, 8).toUpperCase()}</span>?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setReservationToDelete(null);
+                }}
+                disabled={deleting}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Reservation
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

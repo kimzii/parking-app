@@ -10,7 +10,6 @@ import {
   Search,
   ChevronDown,
   Eye,
-  UserCircle,
   Loader2,
   AlertCircle,
   CheckCircle,
@@ -237,8 +236,14 @@ export default function UsersPage() {
       // Refresh the users list and statistics
       fetchUsers();
       fetchStatistics();
-    } catch (err: any) {
-      const message = err.response?.data?.message || "Failed to delete user";
+    } catch (err: unknown) {
+      const message: string =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response?.data?.message === "string"
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Failed to delete user")
+          : "Failed to delete user";
       setError(message);
     } finally {
       setDeleting(false);
@@ -252,12 +257,8 @@ export default function UsersPage() {
     return user.email.split("@")[0];
   };
 
-  // Get primary verification status (most severe/important)
-  const getPrimaryStatus = (roleStatuses: RoleStatus[]): VerificationStatus => {
-    if (roleStatuses.some(rs => rs.status === "SUSPENDED")) return "SUSPENDED";
-    if (roleStatuses.some(rs => rs.status === "REJECTED")) return "REJECTED";
-    if (roleStatuses.some(rs => rs.status === "PENDING")) return "PENDING";
-    return "VERIFIED";
+  const getRoleStatus = (roleStatuses: RoleStatus[], role: RoleName): VerificationStatus | null => {
+    return roleStatuses.find((rs) => rs.role === role)?.status ?? null;
   };
 
   const startIndex = (page - 1) * limit + 1;
@@ -485,7 +486,8 @@ export default function UsersPage() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((user) => (
+                  users.map((user) => {
+                    return (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                       {/* Avatar & Name */}
                       <td className="px-6 py-4">
@@ -499,8 +501,8 @@ export default function UsersPage() {
                               className="w-10 h-10 rounded-full object-cover shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 shrink-0">
-                              <UserCircle size={24} />
+                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm font-medium shrink-0">
+                              {(getUserDisplayName(user) || "?").charAt(0)}
                             </div>
                           )}
                           <div className="flex flex-col">
@@ -541,7 +543,24 @@ export default function UsersPage() {
 
                       {/* Role Verification Status */}
                       <td className="px-6 py-4">
-                        {getVerificationBadge(getPrimaryStatus(user.roleStatuses))}
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-medium text-gray-500 min-w-[44px]">Driver</span>
+                            {getRoleStatus(user.roleStatuses, "DRIVER") ? (
+                              getVerificationBadge(getRoleStatus(user.roleStatuses, "DRIVER") as VerificationStatus)
+                            ) : (
+                              <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">N/A</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-medium text-gray-500 min-w-[44px]">Host</span>
+                            {getRoleStatus(user.roleStatuses, "HOST") ? (
+                              getVerificationBadge(getRoleStatus(user.roleStatuses, "HOST") as VerificationStatus)
+                            ) : (
+                              <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">N/A</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Actions */}
@@ -564,7 +583,8 @@ export default function UsersPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

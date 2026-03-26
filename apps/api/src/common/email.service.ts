@@ -1,20 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
-  private resend: Resend;
+  private readonly logger = new Logger(EmailService.name);
+  private resend: Resend | null;
   private from: string;
 
   constructor(private configService: ConfigService) {
-    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
+    this.resend = resendApiKey ? new Resend(resendApiKey) : null;
     this.from =
       this.configService.get<string>('EMAIL_FROM') ||
       'ParkLink <noreply@kimzie.me>';
+
+    if (!this.resend) {
+      this.logger.warn(
+        'RESEND_API_KEY is not set. Email sending is disabled until configured.',
+      );
+    }
   }
 
   async sendVerificationEmail(email: string, code: string) {
+    if (!this.resend) {
+      this.logger.warn(
+        `Skipping verification email to ${email}: RESEND_API_KEY is not configured.`,
+      );
+      return;
+    }
+
     await this.resend.emails.send({
       from: this.from,
       to: email,
@@ -24,6 +39,13 @@ export class EmailService {
   }
 
   async sendPasswordResetEmail(email: string, code: string) {
+    if (!this.resend) {
+      this.logger.warn(
+        `Skipping password reset email to ${email}: RESEND_API_KEY is not configured.`,
+      );
+      return;
+    }
+
     await this.resend.emails.send({
       from: this.from,
       to: email,
@@ -37,6 +59,13 @@ export class EmailService {
     firstName: string,
     temporaryPassword: string,
   ) {
+    if (!this.resend) {
+      this.logger.warn(
+        `Skipping admin credentials email to ${email}: RESEND_API_KEY is not configured.`,
+      );
+      return;
+    }
+
     await this.resend.emails.send({
       from: this.from,
       to: email,

@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   Users,
   ArrowUpRight,
@@ -9,8 +12,8 @@ import {
   List,
   Info,
   DollarSign,
-  MoreVertical,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import api from "../../../src/lib/api";
@@ -80,8 +83,10 @@ interface RecentListing {
   id: string;
   title: string;
   address: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
   hostName: string;
   status: string;
   createdAt: string;
@@ -94,11 +99,35 @@ interface RecentActivity {
   time: string;
 }
 
-const DAVAO_OBRERO_PINS = [
-  { lat: 7.0739, lng: 125.6123 },
-  { lat: 7.0761, lng: 125.6105 },
-  { lat: 7.0718, lng: 125.6142 },
-];
+interface AdminListingsResponse {
+  data: RecentListing[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+type MappableListing = RecentListing & {
+  latitude: number;
+  longitude: number;
+};
+
+const DEFAULT_MAP_CENTER = { lat: 7.0739, lng: 125.6123 };
+
+const parseCoordinate = (value: number | string | null | undefined): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
 
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
@@ -115,36 +144,37 @@ const formatTimeAgo = (dateString: string) => {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentListings, setRecentListings] = useState<RecentListing[]>([]);
+  const [allListings, setAllListings] = useState<RecentListing[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMapListing, setSelectedMapListing] = useState<MappableListing | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  const pinnedListings = DAVAO_OBRERO_PINS.map((pin, index) => {
-    const listing = recentListings[index];
-    if (listing) {
+  const mappableListings: MappableListing[] = allListings
+    .map((listing) => {
+      const latitude = parseCoordinate(listing.latitude ?? listing.lat);
+      const longitude = parseCoordinate(listing.longitude ?? listing.lng);
+
+      if (latitude === null || longitude === null) {
+        return null;
+      }
+
       return {
         ...listing,
-        latitude: pin.lat,
-        longitude: pin.lng,
+        latitude,
+        longitude,
       };
-    }
+    })
+    .filter((listing): listing is MappableListing => listing !== null);
 
-    return {
-      id: `obrero-fallback-${index}`,
-      title: `Obrero Listing ${index + 1}`,
-      address: "Obrero, Davao City",
-      latitude: pin.lat,
-      longitude: pin.lng,
-      hostName: "Demo Host",
-      status: "APPROVED",
-      createdAt: new Date().toISOString(),
-    };
-  });
-
-  const mapCenter = { lat: 7.0739, lng: 125.6123 };
+  const mapCenter = mappableListings.length > 0
+    ? { lat: mappableListings[0].latitude, lng: mappableListings[0].longitude }
+    : DEFAULT_MAP_CENTER;
 
   const { isLoaded: isMapLoaded, loadError } = useJsApiLoader({
     id: "parking-admin-google-map-script",
@@ -152,18 +182,50 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     const fetchDashboardData = async () => {
+      const fetchAllListings = async (): Promise<RecentListing[]> => {
+        const limit = 100;
+        const firstPage = await api.get<AdminListingsResponse>(
+          `/hosts/admin/locations?page=1&limit=${limit}`
+        );
+
+        const totalPages = firstPage.data.pagination?.totalPages ?? 1;
+        const all = [...firstPage.data.data];
+
+        if (totalPages > 1) {
+          const pageRequests: Promise<{ data: AdminListingsResponse }>[] = [];
+          for (let page = 2; page <= totalPages; page += 1) {
+            pageRequests.push(
+              api.get<AdminListingsResponse>(`/hosts/admin/locations?page=${page}&limit=${limit}`)
+            );
+          }
+
+          const remainingPages = await Promise.all(pageRequests);
+          remainingPages.forEach((response) => {
+            all.push(...response.data.data);
+          });
+        }
+
+        return all;
+      };
+
       try {
         setLoading(true);
-        const [statsRes, listingsRes, activityRes] = await Promise.all([
+        const [statsRes, listingsRes, activityRes, allListingsRes] = await Promise.all([
           api.get('/dashboard/stats'),
           api.get('/dashboard/recent-listings?limit=4'),
           api.get('/dashboard/recent-activity?limit=5'),
+          fetchAllListings(),
         ]);
 
         setStats(statsRes.data);
         setRecentListings(listingsRes.data);
         setRecentActivity(activityRes.data);
+        setAllListings(allListingsRes);
         setError(null);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -257,7 +319,9 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
               <div className="p-6 border-b border-gray-50 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900">Recent Listings</h2>
-                <button className="text-sm text-[#005f56] font-medium hover:underline">View All</button>
+                <Link href="/listings" className="text-sm text-[#005f56] font-medium hover:underline">
+                  View All
+                </Link>
               </div>
 
               <div className="overflow-x-auto">
@@ -268,13 +332,12 @@ export default function DashboardPage() {
                       <th className="px-6 py-4">Host</th>
                       <th className="px-6 py-4">Status</th>
                       <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-sm">
                     {recentListings.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                        <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                           No recent listings found
                         </td>
                       </tr>
@@ -311,11 +374,6 @@ export default function DashboardPage() {
                               year: 'numeric'
                             })}
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <button className="text-gray-400 hover:text-gray-600">
-                              <MoreVertical size={18} />
-                            </button>
-                          </td>
                         </tr>
                       ))
                     )}
@@ -327,12 +385,16 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-50 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900">Listings Map</h2>
-                <span className="text-xs text-gray-500">{pinnedListings.length} pinned locations</span>
+                <span className="text-xs text-gray-500">{mappableListings.length} pinned locations</span>
               </div>
               <div className="h-[340px]">
                 {!googleMapsApiKey ? (
                   <div className="h-full flex items-center justify-center text-sm text-gray-500 px-6 text-center">
                     Google Maps key is missing. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in admin .env.local.
+                  </div>
+                ) : mappableListings.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-gray-500 px-6 text-center">
+                    No listing coordinates are available from the backend yet.
                   </div>
                 ) : loadError ? (
                   <div className="h-full flex items-center justify-center text-sm text-red-600 px-6 text-center">
@@ -347,23 +409,68 @@ export default function DashboardPage() {
                     mapContainerStyle={{ width: "100%", height: "100%" }}
                     center={mapCenter}
                     zoom={13}
+                    onClick={() => setSelectedMapListing(null)}
                     options={{
                       streetViewControl: false,
                       mapTypeControl: false,
                       fullscreenControl: false,
                     }}
                   >
-                    {pinnedListings.map((listing) => (
+                    {mappableListings.map((listing) => (
                       <MarkerF
                         key={listing.id}
                         position={{ lat: listing.latitude, lng: listing.longitude }}
                         title={`${listing.title} - ${listing.address}`}
+                        onClick={() => setSelectedMapListing(listing)}
                       />
                     ))}
                   </GoogleMap>
                 )}
               </div>
             </div>
+
+            {isClient && selectedMapListing && createPortal(
+              <div className="fixed inset-0 z-[9999] m-0 flex items-center justify-center bg-black/55 p-4">
+                <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-gray-100">
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <h3 className="text-base font-semibold text-gray-900">Listing Quick Info</h3>
+                    <button
+                      onClick={() => setSelectedMapListing(null)}
+                      className="p-1 rounded-md text-gray-500 hover:bg-gray-100"
+                      aria-label="Close listing info modal"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="px-5 py-4 space-y-2">
+                    <p className="text-sm font-semibold text-gray-900">{selectedMapListing.title}</p>
+                    <p className="text-sm text-gray-600">{selectedMapListing.address}</p>
+                    <p className="text-xs text-gray-500">Host: {selectedMapListing.hostName}</p>
+                    <p className="text-xs text-gray-500">Status: {selectedMapListing.status}</p>
+                  </div>
+
+                  <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setSelectedMapListing(null)}
+                      className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => {
+                        router.push(`/listings?listingId=${selectedMapListing.id}`);
+                        setSelectedMapListing(null);
+                      }}
+                      className="px-3 py-2 text-sm font-medium text-white bg-[#005f56] rounded-md hover:bg-[#004a43]"
+                    >
+                      View Listing Details
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
           </div>
 
           {/* Recent Activity Timeline */}

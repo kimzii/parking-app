@@ -276,4 +276,63 @@ export class NotificationsService {
       }),
     ]);
   }
+
+  private async getAdminUserIds(): Promise<string[]> {
+    const admins = await this.prisma.user.findMany({
+      where: {
+        userRoles: {
+          some: {
+            role: { name: 'ADMIN' },
+            status: 'VERIFIED',
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    return admins.map((admin) => admin.id);
+  }
+
+  async notifyAdminsPendingListing(
+    locationId: string,
+    locationTitle: string,
+  ): Promise<void> {
+    const adminIds = await this.getAdminUserIds();
+
+    if (adminIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      adminIds.map((adminId) =>
+        this.send({
+          userId: adminId,
+          title: 'New Listing For Approval',
+          message: `A new listing "${locationTitle}" is waiting for approval.`,
+          type: 'GENERAL',
+          data: { kind: 'PENDING_LISTING', locationId },
+        }),
+      ),
+    );
+  }
+
+  async notifyAdminsPendingDriver(driverId: string): Promise<void> {
+    const adminIds = await this.getAdminUserIds();
+
+    if (adminIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      adminIds.map((adminId) =>
+        this.send({
+          userId: adminId,
+          title: 'New Driver For Approval',
+          message: 'A new driver application is waiting for approval.',
+          type: 'GENERAL',
+          data: { kind: 'PENDING_DRIVER', driverId },
+        }),
+      ),
+    );
+  }
 }
