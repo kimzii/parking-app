@@ -89,7 +89,7 @@ export class WalletController {
   async uploadTopUpProof(
     @Request() req: { user: { id: string } },
     @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: { originalname: string; buffer: Buffer; mimetype: string },
   ) {
     const ext = file.originalname.split('.').pop() || 'jpg';
     const key = `topup-proofs/${uuid()}.${ext}`;

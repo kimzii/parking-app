@@ -107,11 +107,11 @@ export default function EarningsScreen() {
     }
     setWithdrawing(true);
     try {
-      await walletService.withdraw(amount);
+      await walletService.createWithdraw(amount);
       setShowWithdraw(false);
       setWithdrawAmount("");
       await fetchData();
-      Alert.alert("Success", `₱${amount.toFixed(2)} has been withdrawn.`);
+      Alert.alert("Success", "Withdrawal request submitted. You'll be notified once it's processed.");
     } catch {
       Alert.alert("Error", "Withdrawal failed. Please try again.");
     } finally {
