@@ -21,7 +21,10 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "typeRoots": ["./node_modules/@types", "./src/auth/types"]
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/auth/types"
+    ]
   },
   "include": [
     "src/**/*",
@@ -29,5 +32,12 @@
     "*.js",
     "*.ts"
   ],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts", "test"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts",
+    "test"
+  ],
+  "extends": "expo/tsconfig.base"
 }
