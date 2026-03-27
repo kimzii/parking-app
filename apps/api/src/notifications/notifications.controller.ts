@@ -101,4 +101,35 @@ export class NotificationsController {
 
     return { success: true };
   }
+
+  /** Driver arrived — called from mobile proximity detection */
+  @Post('driver-arrived')
+  async driverArrived(@Req() req: any, @Body() body: { reservationId: string }) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: body.reservationId },
+      include: {
+        parkingSpace: {
+          include: {
+            parkingLocation: true,
+          },
+        },
+        driver: { include: { user: true } },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    const driverUserId = reservation.driver.user.id;
+    const locationTitle = reservation.parkingSpace.parkingLocation.title;
+
+    await this.notificationsService.notifyDriverArrived(
+      driverUserId,
+      locationTitle,
+      body.reservationId,
+    );
+
+    return { success: true };
+  }
 }

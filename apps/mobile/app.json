@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.kimzie123.parklink",
+      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBoBwscEd2USQ5RXlGQHk-R6a4X_6heNPM"
@@ -56,6 +57,14 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#D4501E",
+          "defaultChannel": "default"
+        }
+      ],
       [
         "expo-camera",
         {

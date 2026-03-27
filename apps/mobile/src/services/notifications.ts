@@ -20,16 +20,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
     const Notifications = await import("expo-notifications");
     const Device = await import("expo-device");
 
-    // Configure foreground behaviour
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+    // Note: setNotificationHandler is configured in useNotificationSetup hook
+    // (root _layout.tsx) so it runs early for both foreground and tap handling.
 
     if (!Device.isDevice) {
       console.log("Push notifications require a physical device");
@@ -62,8 +54,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     // Get Expo push token
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const Constants = await import("expo-constants");
+    const projectId =
+      Constants.default.expoConfig?.extra?.eas?.projectId ??
+      "acc0c135-3a0e-4177-9eef-0a3c06f896f6";
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const pushToken = tokenData.data;
+    console.log("Push token registered:", pushToken);
 
     // Send token to our API
     await api.post("/notifications/register-token", { pushToken });
@@ -105,4 +102,9 @@ export async function clearAll(): Promise<void> {
 /** Notify API that driver is near a parking location (geofence trigger) */
 export async function notifyDriverNearby(reservationId: string): Promise<void> {
   await api.post("/notifications/driver-nearby", { reservationId });
+}
+
+/** Notify API that driver has arrived at the parking location */
+export async function notifyDriverArrived(reservationId: string): Promise<void> {
+  await api.post("/notifications/driver-arrived", { reservationId });
 }
