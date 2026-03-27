@@ -846,7 +846,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Valet/Host: Scan QR code for entry — starts the parking session
    */
-  async verifyEntryQR(hostUserId: string, qrCode: string) {
+  async verifyEntryQR(hostUserId: string, qrCode: string, force = false) {
     await this.processReservationTimeouts();
 
     const host = await this.prisma.host.findUnique({
@@ -903,19 +903,24 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    // Verify driver is nearby before allowing entry
-    const driverNearby = await this.prisma.notification.findFirst({
-      where: {
-        userId: reservation.driver.user.id,
-        type: { in: ['DRIVER_NEARBY', 'DRIVER_ARRIVED'] },
-        data: { path: ['reservationId'], equals: reservation.id },
-      },
-    });
+    // Soft proximity check — warn host if driver hasn't been detected nearby
+    if (!force) {
+      const driverNearby = await this.prisma.notification.findFirst({
+        where: {
+          userId: reservation.driver.user.id,
+          type: { in: ['DRIVER_NEARBY', 'DRIVER_ARRIVED'] },
+          data: { path: ['reservationId'], equals: reservation.id },
+        },
+      });
 
-    if (!driverNearby) {
-      throw new BadRequestException(
-        'Driver has not arrived in the vicinity yet. Entry scan is only allowed when the driver is nearby.',
-      );
+      if (!driverNearby) {
+        return {
+          success: false,
+          warning: true,
+          message:
+            'Driver has not been detected nearby yet. Are you sure you want to proceed with check-in?',
+        };
+      }
     }
 
     // Check arrival window

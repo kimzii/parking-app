@@ -107,15 +107,33 @@ export default function ScanQRScreen() {
     await processQRCode(data);
   };
 
-  const processQRCode = async (code: string) => {
+  const processQRCode = async (code: string, force = false) => {
     setProcessing(true);
     try {
       let result: reservationsService.ScanResponse;
 
       if (scanMode === "entry") {
-        result = await reservationsService.scanEntry(code);
+        result = await reservationsService.scanEntry(code, force);
       } else {
         result = await reservationsService.scanExit(code);
+      }
+
+      // Soft proximity warning — ask host to confirm
+      if (result.warning) {
+        setProcessing(false);
+        Alert.alert(
+          "Driver Not Detected Nearby",
+          result.message,
+          [
+            { text: "Cancel", style: "cancel", onPress: () => resetScanner() },
+            {
+              text: "Proceed Anyway",
+              style: "destructive",
+              onPress: () => processQRCode(code, true),
+            },
+          ],
+        );
+        return;
       }
 
       // Fetch full reservation then navigate to detail

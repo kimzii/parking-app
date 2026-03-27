@@ -102,7 +102,7 @@ export class ReservationsController {
     @Request() req: { user: { id: string } },
     @Body() dto: VerifyScanDto,
   ) {
-    return this.reservationsService.verifyEntryQR(req.user.id, dto.qrCode);
+    return this.reservationsService.verifyEntryQR(req.user.id, dto.qrCode, dto.force);
   }
 
   /**
