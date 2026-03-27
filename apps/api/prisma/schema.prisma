@@ -31,13 +31,15 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  userRoles     UserRole[]
-  wallet        Wallet?
-  driver        Driver?
-  host          Host?
-  notifications Notification[]
-  adminLogs     AdminLog[]
-  reviews       Review[]
+  userRoles        UserRole[]
+  wallet           Wallet?
+  driver           Driver?
+  host             Host?
+  notifications    Notification[]
+  adminLogs        AdminLog[]
+  reviews          Review[]
+  topUpRequests    TopUpRequest[]
+  withdrawRequests WithdrawRequest[]
 
   @@map("users")
 }
@@ -270,6 +272,10 @@ enum NotificationType {
   DRIVER_VERIFIED
   LOCATION_APPROVED
   LOCATION_REJECTED
+  TOPUP_APPROVED
+  TOPUP_REJECTED
+  WITHDRAW_APPROVED
+  WITHDRAW_REJECTED
 }
 
 model AdminLog {
@@ -287,6 +293,42 @@ enum RoleName {
   DRIVER
   HOST
   ADMIN
+}
+
+model TopUpRequest {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  amount        Decimal       @db.Decimal(10, 2)
+  referenceCode String        @unique @map("reference_code")
+  proofImageUrl String?       @map("proof_image_url")
+  status        RequestStatus @default(PENDING)
+  reviewedBy    String?       @map("reviewed_by") @db.Uuid
+  reviewedAt    DateTime?     @map("reviewed_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("top_up_requests")
+}
+
+model WithdrawRequest {
+  id         String        @id @default(uuid()) @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  amount     Decimal       @db.Decimal(10, 2)
+  status     RequestStatus @default(PENDING)
+  reviewedBy String?       @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime?     @map("reviewed_at")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdraw_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum WalletStatus {

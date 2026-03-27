@@ -20,6 +20,7 @@ import {
   clearAll,
   type AppNotification,
 } from "../../src/services/notifications";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 const NOTIFICATION_ICONS: Record<
   string,
@@ -72,6 +73,11 @@ export default function NotificationsScreen() {
       setRefreshing(false);
     }
   }, []);
+
+  // Real-time: prepend new notifications as they arrive
+  useSocketEvent("notification", (newNotif: AppNotification) => {
+    setNotifications((prev) => [newNotif, ...prev]);
+  });
 
   useFocusEffect(
     useCallback(() => {
