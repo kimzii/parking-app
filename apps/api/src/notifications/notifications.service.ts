@@ -55,9 +55,14 @@ export class NotificationsService {
       select: { pushToken: true },
     });
 
-    if (!user?.pushToken || !Expo.isExpoPushToken(user.pushToken)) {
-      this.logger.debug(
-        `No valid push token for user ${userId}, skipping push`,
+    if (!user?.pushToken) {
+      this.logger.warn(`No push token for user ${userId}, skipping push`);
+      return;
+    }
+
+    if (!Expo.isExpoPushToken(user.pushToken)) {
+      this.logger.warn(
+        `Invalid push token for user ${userId}: ${user.pushToken}`,
       );
       return;
     }
@@ -70,9 +75,13 @@ export class NotificationsService {
       data: data ?? {},
     };
 
+    this.logger.log(
+      `Sending push to ${userId} (token: ${user.pushToken}): "${title}"`,
+    );
+
     try {
       const [ticket] = await this.expo.sendPushNotificationsAsync([message]);
-      this.logger.debug(`Push sent to ${userId}: ${JSON.stringify(ticket)}`);
+      this.logger.log(`Push ticket for ${userId}: ${JSON.stringify(ticket)}`);
     } catch (error) {
       this.logger.error(`Failed to send push to ${userId}:`, error);
     }
