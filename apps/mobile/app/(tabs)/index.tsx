@@ -13,9 +13,11 @@ import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
 import { getUnreadCount } from "../../src/services/notifications";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 interface ParkingSpot {
   id: string;
@@ -39,6 +41,23 @@ export default function HomeScreen() {
   >([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userLocation = useRef<{ latitude: number; longitude: number } | null>(null);
+
+  // Real-time: bump unread badge when a new notification arrives
+  useSocketEvent("notification", () => {
+    setUnreadCount((prev) => prev + 1);
+  });
+
+  const getUserLocation = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      userLocation.current = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+    } catch {
+      // Location unavailable — will fetch without sorting by distance
+    }
+  }, []);
 
   const fetchUnread = useCallback(async () => {
     try {
@@ -54,6 +73,7 @@ export default function HomeScreen() {
       const data = await hostService.getNearbyLocations({
         limit: 20,
         search: search || undefined,
+        ...userLocation.current,
       });
       setSpots(data || []);
     } catch (err) {
@@ -79,10 +99,10 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchSpots();
+      getUserLocation().then(() => fetchSpots());
       fetchActiveBookings();
       fetchUnread();
-    }, [fetchSpots, fetchActiveBookings, fetchUnread]),
+    }, [getUserLocation, fetchSpots, fetchActiveBookings, fetchUnread]),
   );
 
   const onRefresh = () => {
@@ -312,7 +332,7 @@ export default function HomeScreen() {
           <MaterialIcons name="search" size={20} color="#A09A94" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search parking spaces..."
+            placeholder="Search by location or address..."
             placeholderTextColor="#C7C7CC"
             value={searchQuery}
             onChangeText={handleSearch}

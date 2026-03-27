@@ -1,14 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { NotificationType } from '@prisma/client';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly expo = new Expo();
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => NotificationsGateway))
+    private gateway: NotificationsGateway,
+  ) {}
 
   /**
    * Send a push notification + persist it in the database
@@ -26,6 +31,9 @@ export class NotificationsService {
     const notification = await this.prisma.notification.create({
       data: { userId, title, message, type, data: data ?? undefined },
     });
+
+    // Send real-time via Socket.IO
+    this.gateway.sendToUser(userId, notification);
 
     // Send push notification
     await this.sendPush(userId, title, message, data);

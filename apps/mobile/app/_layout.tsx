@@ -4,12 +4,14 @@ import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { ViewModeProvider } from "../src/contexts/ViewModeContext";
 import { useNotificationSetup } from "../src/hooks/useNotificationSetup";
+import { useSocket } from "../src/hooks/useSocket";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useNotificationSetup();
+  useSocket();
 
   useEffect(() => {
     // Hide splash screen after layout is ready

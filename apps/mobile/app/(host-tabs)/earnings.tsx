@@ -76,7 +76,7 @@ export default function EarningsScreen() {
       setRefreshing(false);
     }
   }, []);
-
+      
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
