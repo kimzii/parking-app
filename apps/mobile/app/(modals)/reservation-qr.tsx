@@ -112,16 +112,14 @@ export default function ReservationQRScreen() {
   // Start/stop geofencing based on reservation status
   useEffect(() => {
     if (!reservation) return;
-    if (
-      reservationStatus === "CONFIRMED" ||
-      reservationStatus === "ACTIVE"
-    ) {
+    if (reservationStatus === "CONFIRMED") {
       startGeofencing(
         reservation.id,
         reservation.parkingLocation.latitude,
         reservation.parkingLocation.longitude,
       ).catch(() => {});
     } else if (
+      reservationStatus === "ACTIVE" ||
       reservationStatus === "COMPLETED" ||
       reservationStatus === "CANCELLED" ||
       reservationStatus === "EXPIRED"

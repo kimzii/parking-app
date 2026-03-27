@@ -869,6 +869,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           include: {
             user: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
                 phoneNumber: true,
@@ -899,6 +900,21 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     if (reservation.status !== 'CONFIRMED') {
       throw new BadRequestException(
         `Cannot check in. Reservation status is: ${reservation.status}`,
+      );
+    }
+
+    // Verify driver is nearby before allowing entry
+    const driverNearby = await this.prisma.notification.findFirst({
+      where: {
+        userId: reservation.driver.user.id,
+        type: { in: ['DRIVER_NEARBY', 'DRIVER_ARRIVED'] },
+        data: { path: ['reservationId'], equals: reservation.id },
+      },
+    });
+
+    if (!driverNearby) {
+      throw new BadRequestException(
+        'Driver has not arrived in the vicinity yet. Entry scan is only allowed when the driver is nearby.',
       );
     }
 
