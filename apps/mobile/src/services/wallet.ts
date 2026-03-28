@@ -15,7 +15,8 @@ export interface TopUpRequest {
   amount: string;
   referenceCode: string;
   proofImageUrl: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "ACCEPTED" | "APPROVED" | "REJECTED" | "EXPIRED";
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -35,6 +36,10 @@ export const walletService = {
   // Top-Up
   createTopUp: async (amount: number): Promise<TopUpRequest> => {
     const res = await api.post("/wallet/top-up", { amount });
+    return res.data;
+  },
+  getTopUpStatus: async (requestId: string): Promise<TopUpRequest> => {
+    const res = await api.get(`/wallet/top-up/${requestId}/status`);
     return res.data;
   },
   uploadTopUpProof: async (requestId: string, imageUri: string) => {

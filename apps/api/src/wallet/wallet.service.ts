@@ -8,6 +8,8 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
+const TOP_UP_EXPIRY_MINUTES = 5;
+
 function generateReferenceCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'TOPUP-';
@@ -50,7 +52,11 @@ export class WalletService {
   }
 
   // ──────────────────────────────────────────────
-  // Top-Up Request Flow
+  // Top-Up Request Flow (NEW)
+  // 1. User creates request → PENDING (5 min window)
+  // 2. Admin accepts → ACCEPTED (user sees QR)
+  // 3. User pays via GCash, uploads proof
+  // 4. Admin verifies sender number + amount → releases credits (APPROVED)
   // ──────────────────────────────────────────────
 
   async createTopUpRequest(userId: string, amount: number) {
@@ -60,22 +66,74 @@ export class WalletService {
     }
 
     const referenceCode = generateReferenceCode();
+    const expiresAt = new Date(Date.now() + TOP_UP_EXPIRY_MINUTES * 60 * 1000);
 
     const request = await this.prisma.topUpRequest.create({
       data: {
         userId,
         amount,
         referenceCode,
+        expiresAt,
       },
     });
+
+    // Notify admins about new top-up request
+    await this.notifyAdminsNewTopUp(request.id, amount, userId);
 
     return {
       id: request.id,
       amount: request.amount,
       referenceCode: request.referenceCode,
       status: request.status,
+      expiresAt: request.expiresAt,
       createdAt: request.createdAt,
     };
+  }
+
+  /** Admin accepts a top-up request (within the 5-min window) */
+  async acceptTopUp(requestId: string, adminUserId: string) {
+    const request = await this.prisma.topUpRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) throw new NotFoundException('Top-up request not found');
+    if (request.status !== 'PENDING') {
+      throw new BadRequestException('This request is no longer pending');
+    }
+
+    // Check if expired
+    if (request.expiresAt && new Date() > request.expiresAt) {
+      await this.prisma.topUpRequest.update({
+        where: { id: requestId },
+        data: { status: 'EXPIRED' },
+      });
+      throw new BadRequestException('This top-up request has expired');
+    }
+
+    await this.prisma.topUpRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'ACCEPTED',
+        reviewedBy: adminUserId,
+      },
+    });
+
+    // Notify user that admin accepted — they can now pay via QR
+    await this.notificationsService.send({
+      userId: request.userId,
+      title: 'Top-Up Accepted',
+      message: `Your top-up request for ₱${new Decimal(request.amount).toFixed(2)} has been accepted. Please pay via GCash now.`,
+      type: 'TOPUP_APPROVED',
+      data: { topUpRequestId: requestId, action: 'SHOW_QR' },
+    });
+
+    // Real-time event so mobile can transition to QR step
+    this.gateway.sendToUser(request.userId, {
+      type: 'topup-accepted',
+      topUpRequestId: requestId,
+    });
+
+    return { success: true };
   }
 
   async uploadTopUpProof(requestId: string, userId: string, imageUrl: string) {
@@ -84,8 +142,8 @@ export class WalletService {
     });
 
     if (!request) throw new NotFoundException('Top-up request not found');
-    if (request.status !== 'PENDING') {
-      throw new BadRequestException('This request has already been processed');
+    if (request.status !== 'ACCEPTED') {
+      throw new BadRequestException('This request must be accepted by admin before uploading proof');
     }
 
     return this.prisma.topUpRequest.update({
@@ -94,40 +152,18 @@ export class WalletService {
     });
   }
 
-  async getMyTopUpRequests(userId: string) {
-    return this.prisma.topUpRequest.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-  }
-
-  async getPendingTopUpRequests() {
-    return this.prisma.topUpRequest.findMany({
-      where: { status: 'PENDING' },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-      },
-    });
-  }
-
-  async approveTopUp(requestId: string, adminUserId: string) {
+  /** Admin releases credits after verifying GCash sender number + amount */
+  async releaseTopUpCredits(requestId: string, adminUserId: string) {
     const request = await this.prisma.topUpRequest.findUnique({
       where: { id: requestId },
+      include: {
+        user: { select: { phoneNumber: true } },
+      },
     });
 
     if (!request) throw new NotFoundException('Top-up request not found');
-    if (request.status !== 'PENDING') {
-      throw new BadRequestException('This request has already been processed');
+    if (request.status !== 'ACCEPTED') {
+      throw new BadRequestException('This request must be in ACCEPTED status to release credits');
     }
 
     const wallet = await this.getOrCreateWallet(request.userId);
@@ -168,7 +204,6 @@ export class WalletService {
       data: { topUpRequestId: requestId },
     });
 
-    // Real-time balance update
     this.gateway.sendBalanceUpdate(request.userId, balanceAfter.toFixed(2));
 
     return { success: true };
@@ -180,7 +215,7 @@ export class WalletService {
     });
 
     if (!request) throw new NotFoundException('Top-up request not found');
-    if (request.status !== 'PENDING') {
+    if (request.status !== 'PENDING' && request.status !== 'ACCEPTED') {
       throw new BadRequestException('This request has already been processed');
     }
 
@@ -204,6 +239,107 @@ export class WalletService {
     return { success: true };
   }
 
+  /** Check and expire old pending top-up requests */
+  async expireOldTopUpRequests() {
+    const now = new Date();
+    const expired = await this.prisma.topUpRequest.findMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { lt: now },
+      },
+    });
+
+    if (expired.length === 0) return;
+
+    await this.prisma.topUpRequest.updateMany({
+      where: {
+        status: 'PENDING',
+        expiresAt: { lt: now },
+      },
+      data: { status: 'EXPIRED' },
+    });
+
+    for (const req of expired) {
+      await this.notificationsService.send({
+        userId: req.userId,
+        title: 'Top-Up Expired',
+        message: `Your top-up request for ₱${new Decimal(req.amount).toFixed(2)} has expired.`,
+        type: 'TOPUP_REJECTED',
+        data: { topUpRequestId: req.id },
+      });
+    }
+  }
+
+  async getMyTopUpRequests(userId: string) {
+    return this.prisma.topUpRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async getPendingTopUpRequests() {
+    // Expire any old ones first
+    await this.expireOldTopUpRequests();
+
+    return this.prisma.topUpRequest.findMany({
+      where: { status: { in: ['PENDING', 'ACCEPTED'] } },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+  }
+
+  /** Get a single top-up request with user details (for admin) */
+  async getTopUpRequest(requestId: string) {
+    const request = await this.prisma.topUpRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+
+    if (!request) throw new NotFoundException('Top-up request not found');
+    return request;
+  }
+
+  /** Get top-up request status (for mobile polling) */
+  async getTopUpStatus(requestId: string, userId: string) {
+    const request = await this.prisma.topUpRequest.findFirst({
+      where: { id: requestId, userId },
+    });
+
+    if (!request) throw new NotFoundException('Top-up request not found');
+
+    // Auto-expire if needed
+    if (request.status === 'PENDING' && request.expiresAt && new Date() > request.expiresAt) {
+      await this.prisma.topUpRequest.update({
+        where: { id: requestId },
+        data: { status: 'EXPIRED' },
+      });
+      return { ...request, status: 'EXPIRED' };
+    }
+
+    return request;
+  }
+
   // ──────────────────────────────────────────────
   // Withdraw Request Flow
   // ──────────────────────────────────────────────
@@ -221,12 +357,27 @@ export class WalletService {
       );
     }
 
+    // Verify user has a phone number (GCash number)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phoneNumber: true },
+    });
+
+    if (!user?.phoneNumber) {
+      throw new BadRequestException(
+        'Please add your GCash number to your profile before requesting a withdrawal.',
+      );
+    }
+
     const request = await this.prisma.withdrawRequest.create({
       data: {
         userId,
         amount,
       },
     });
+
+    // Notify admins
+    await this.notifyAdminsNewWithdraw(request.id, amount, userId);
 
     return {
       id: request.id,
@@ -322,7 +473,6 @@ export class WalletService {
       data: { withdrawRequestId: requestId },
     });
 
-    // Real-time balance update
     this.gateway.sendBalanceUpdate(request.userId, balanceAfter.toFixed(2));
 
     return { success: true };
@@ -359,7 +509,7 @@ export class WalletService {
   }
 
   // ──────────────────────────────────────────────
-  // Transaction History (unchanged)
+  // Transaction History
   // ──────────────────────────────────────────────
 
   async getTransactions(userId: string, limit = 20) {
@@ -380,5 +530,66 @@ export class WalletService {
       balanceAfter: t.balanceAfter,
       createdAt: t.createdAt,
     }));
+  }
+
+  // ──────────────────────────────────────────────
+  // Admin Notification Helpers
+  // ──────────────────────────────────────────────
+
+  private async getAdminUserIds(): Promise<string[]> {
+    const admins = await this.prisma.user.findMany({
+      where: {
+        userRoles: {
+          some: {
+            role: { name: 'ADMIN' },
+            status: 'VERIFIED',
+          },
+        },
+      },
+      select: { id: true },
+    });
+    return admins.map((a) => a.id);
+  }
+
+  private async notifyAdminsNewTopUp(requestId: string, amount: number, userId: string) {
+    const adminIds = await this.getAdminUserIds();
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'A user';
+
+    await Promise.all(
+      adminIds.map((adminId) =>
+        this.notificationsService.send({
+          userId: adminId,
+          title: 'New Top-Up Request',
+          message: `${name} requested a top-up of ₱${amount.toFixed(2)}. You have 5 minutes to accept.`,
+          type: 'GENERAL',
+          data: { kind: 'TOPUP_REQUEST', topUpRequestId: requestId },
+        }),
+      ),
+    );
+  }
+
+  private async notifyAdminsNewWithdraw(requestId: string, amount: number, userId: string) {
+    const adminIds = await this.getAdminUserIds();
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'A user';
+
+    await Promise.all(
+      adminIds.map((adminId) =>
+        this.notificationsService.send({
+          userId: adminId,
+          title: 'New Withdrawal Request',
+          message: `${name} requested a withdrawal of ₱${amount.toFixed(2)}.`,
+          type: 'GENERAL',
+          data: { kind: 'WITHDRAW_REQUEST', withdrawRequestId: requestId },
+        }),
+      ),
+    );
   }
 }

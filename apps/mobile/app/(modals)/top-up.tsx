@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -19,10 +19,10 @@ import * as ImagePicker from "expo-image-picker";
 import { walletService, TopUpRequest } from "../../src/services/wallet";
 
 const PRESET_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
-
 const GCASH_QR = require("../../assets/images/gcash-image.jpg");
+const POLL_INTERVAL = 3000;
 
-type Step = "amount" | "qr" | "proof" | "done";
+type Step = "amount" | "waiting" | "qr" | "proof" | "done";
 
 export default function TopUpScreen() {
   const [step, setStep] = useState<Step>("amount");
@@ -32,9 +32,16 @@ export default function TopUpScreen() {
   const [fetchingBalance, setFetchingBalance] = useState(true);
   const [currentRequest, setCurrentRequest] = useState<TopUpRequest | null>(null);
   const [proofUri, setProofUri] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetchBalance();
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const fetchBalance = async () => {
@@ -63,12 +70,60 @@ export default function TopUpScreen() {
     try {
       const request = await walletService.createTopUp(numAmount);
       setCurrentRequest(request);
-      setStep("qr");
+      setStep("waiting");
+      startPolling(request.id);
+      startCountdown(request.expiresAt);
     } catch {
       Alert.alert("Error", "Failed to create top-up request. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const startCountdown = (expiresAt: string | null) => {
+    if (!expiresAt) return;
+    const expiryTime = new Date(expiresAt).getTime();
+
+    const update = () => {
+      const remaining = Math.max(0, Math.floor((expiryTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (pollRef.current) clearInterval(pollRef.current);
+        setStep("amount");
+        Alert.alert("Request Expired", "Your top-up request has expired. Please try again.");
+      }
+    };
+
+    update();
+    timerRef.current = setInterval(update, 1000);
+  };
+
+  const startPolling = (requestId: string) => {
+    pollRef.current = setInterval(async () => {
+      try {
+        const updated = await walletService.getTopUpStatus(requestId);
+        setCurrentRequest(updated);
+
+        if (updated.status === "ACCEPTED") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (timerRef.current) clearInterval(timerRef.current);
+          setStep("qr");
+        } else if (updated.status === "REJECTED") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (timerRef.current) clearInterval(timerRef.current);
+          setStep("amount");
+          Alert.alert("Request Rejected", "Your top-up request was rejected by the admin.");
+        } else if (updated.status === "EXPIRED") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (timerRef.current) clearInterval(timerRef.current);
+          setStep("amount");
+          Alert.alert("Request Expired", "Your top-up request has expired. Please try again.");
+        }
+      } catch {
+        // Silently retry on next poll
+      }
+    }, POLL_INTERVAL);
   };
 
   const handlePickProof = async () => {
@@ -96,13 +151,16 @@ export default function TopUpScreen() {
     }
   };
 
-  const handleSkipProof = () => {
-    setStep("done");
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
+
+  // ─── Step Renders ─────────────────────────────
 
   const renderAmountStep = () => (
     <>
-      {/* Balance Card */}
       <View style={styles.balanceCard}>
         <View style={styles.balanceIconRow}>
           <View style={styles.walletIconBg}>
@@ -117,7 +175,6 @@ export default function TopUpScreen() {
         )}
       </View>
 
-      {/* Amount Input */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Enter Amount</Text>
         <View style={styles.inputCard}>
@@ -135,7 +192,6 @@ export default function TopUpScreen() {
         </View>
       </View>
 
-      {/* Preset Amounts */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Select</Text>
         <View style={styles.presetGrid}>
@@ -157,43 +213,67 @@ export default function TopUpScreen() {
         </View>
       </View>
 
-      {/* Info Notice */}
       <View style={styles.noticeCard}>
         <MaterialIcons name="info-outline" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          You'll be shown a GCash QR code to pay. After payment, upload a screenshot as proof. Your credits will be added once verified.
+          Your request will be sent to an admin for approval. You have a 5-minute window. Once accepted, you'll be shown a GCash QR code to pay.
         </Text>
       </View>
     </>
+  );
+
+  const renderWaitingStep = () => (
+    <View style={styles.waitingContainer}>
+      <ActivityIndicator size="large" color="#D4501E" />
+      <Text style={styles.waitingTitle}>Waiting for Admin</Text>
+      <Text style={styles.waitingSubtitle}>
+        Your top-up request for ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been sent to admin for approval.
+      </Text>
+
+      <View style={styles.timerCard}>
+        <MaterialIcons name="timer" size={28} color="#D4501E" />
+        <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+        <Text style={styles.timerLabel}>remaining</Text>
+      </View>
+
+      <View style={styles.refCard}>
+        <Text style={styles.refLabel}>Reference Code</Text>
+        <Text style={styles.refCode}>{currentRequest?.referenceCode}</Text>
+      </View>
+
+      <View style={styles.noticeCard}>
+        <MaterialIcons name="info-outline" size={18} color="#D4501E" />
+        <Text style={styles.noticeText}>
+          Please wait while an admin reviews your request. The request will expire if not accepted within the time limit.
+        </Text>
+      </View>
+    </View>
   );
 
   const renderQrStep = () => (
     <>
       <View style={styles.stepHeader}>
         <View style={styles.stepBadge}>
-          <Text style={styles.stepBadgeText}>Step 1</Text>
+          <Text style={styles.stepBadgeText}>Accepted</Text>
         </View>
         <Text style={styles.stepTitle}>Pay via GCash</Text>
         <Text style={styles.stepSubtitle}>
-          Scan the QR code below using your GCash app and pay exactly:
+          Your request has been accepted! Scan the QR code below using your GCash app and pay exactly:
         </Text>
       </View>
 
-      {/* Amount Highlight */}
       <View style={styles.amountHighlight}>
         <Text style={styles.amountHighlightText}>
           ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)}
         </Text>
       </View>
 
-      {/* Reference Code */}
       <View style={styles.refCard}>
         <Text style={styles.refLabel}>Reference Code</Text>
         <Text style={styles.refCode}>{currentRequest?.referenceCode}</Text>
         <Text style={styles.refHint}>Include this as message when paying</Text>
       </View>
 
-      {/* GCash QR */}
       <View style={styles.qrContainer}>
         <Image
           source={GCASH_QR}
@@ -205,7 +285,7 @@ export default function TopUpScreen() {
       <View style={styles.noticeCard}>
         <MaterialIcons name="warning" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          After paying, tap "I've Paid" below to upload your proof of payment.
+          Make sure you pay using the GCash number linked to your account. Admin will verify the sender's number matches your profile.
         </Text>
       </View>
     </>
@@ -233,10 +313,6 @@ export default function TopUpScreen() {
           </View>
         )}
       </TouchableOpacity>
-
-      <TouchableOpacity onPress={handleSkipProof} style={styles.skipBtn}>
-        <Text style={styles.skipText}>Skip — I'll upload later</Text>
-      </TouchableOpacity>
     </>
   );
 
@@ -245,9 +321,9 @@ export default function TopUpScreen() {
       <View style={styles.doneIconBg}>
         <MaterialIcons name="check-circle" size={56} color="#D4501E" />
       </View>
-      <Text style={styles.doneTitle}>Request Submitted!</Text>
+      <Text style={styles.doneTitle}>Proof Submitted!</Text>
       <Text style={styles.doneText}>
-        Your top-up request for ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} is being reviewed. You'll be notified once approved.
+        Your payment proof for ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been uploaded. The admin will verify your payment and release your credits shortly.
       </Text>
       <View style={styles.refCard}>
         <Text style={styles.refLabel}>Reference Code</Text>
@@ -270,12 +346,26 @@ export default function TopUpScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <MaterialIcons name="qr-code" size={22} color="#fff" />
+                <MaterialIcons name="send" size={22} color="#fff" />
                 <Text style={styles.primaryBtnText}>
-                  Continue{amount ? ` — ₱${parseFloat(amount).toLocaleString()}` : ""}
+                  Send Request{amount ? ` — ₱${parseFloat(amount).toLocaleString()}` : ""}
                 </Text>
               </>
             )}
+          </TouchableOpacity>
+        );
+      case "waiting":
+        return (
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: "#B0BEC5" }]}
+            onPress={() => {
+              if (pollRef.current) clearInterval(pollRef.current);
+              if (timerRef.current) clearInterval(timerRef.current);
+              router.back();
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryBtnText}>Cancel & Go Back</Text>
           </TouchableOpacity>
         );
       case "qr":
@@ -286,7 +376,7 @@ export default function TopUpScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="check" size={22} color="#fff" />
-            <Text style={styles.primaryBtnText}>I've Paid</Text>
+            <Text style={styles.primaryBtnText}>I've Paid — Upload Proof</Text>
           </TouchableOpacity>
         );
       case "proof":
@@ -332,6 +422,7 @@ export default function TopUpScreen() {
           showsVerticalScrollIndicator={false}
         >
           {step === "amount" && renderAmountStep()}
+          {step === "waiting" && renderWaitingStep()}
           {step === "qr" && renderQrStep()}
           {step === "proof" && renderProofStep()}
           {step === "done" && renderDoneStep()}
@@ -401,6 +492,20 @@ const styles = StyleSheet.create({
   },
   noticeText: { flex: 1, fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
 
+  // Waiting
+  waitingContainer: { alignItems: "center", paddingTop: 40, gap: 20 },
+  waitingTitle: { fontSize: 24, fontWeight: "800", color: "#232230" },
+  waitingSubtitle: {
+    fontSize: 15, color: "#A09A94", textAlign: "center", lineHeight: 22, paddingHorizontal: 20,
+  },
+  timerCard: {
+    alignItems: "center", backgroundColor: "#FFF0EC", borderRadius: 20,
+    paddingVertical: 24, paddingHorizontal: 40, gap: 4,
+    borderWidth: 2, borderColor: "#D4501E",
+  },
+  timerText: { fontSize: 42, fontWeight: "800", color: "#D4501E", letterSpacing: 2 },
+  timerLabel: { fontSize: 13, fontWeight: "600", color: "#A09A94" },
+
   // Step header
   stepHeader: { alignItems: "center", gap: 8 },
   stepBadge: {
@@ -442,8 +547,6 @@ const styles = StyleSheet.create({
   uploadPlaceholder: { alignItems: "center", gap: 8, padding: 30 },
   uploadText: { fontSize: 14, fontWeight: "600", color: "#D4501E" },
   proofImage: { width: "100%", height: 300 },
-  skipBtn: { alignItems: "center", paddingVertical: 8 },
-  skipText: { fontSize: 14, color: "#A09A94", fontWeight: "500" },
 
   // Done
   doneContainer: { alignItems: "center", paddingTop: 40, gap: 16 },

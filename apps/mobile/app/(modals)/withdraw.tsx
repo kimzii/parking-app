@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { walletService, WithdrawRequest } from "../../src/services/wallet";
+import api from "../../src/services/api";
 
 const PRESET_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 
@@ -27,10 +28,12 @@ export default function WithdrawScreen() {
   const [loading, setLoading] = useState(false);
   const [fetchingBalance, setFetchingBalance] = useState(true);
   const [currentRequest, setCurrentRequest] = useState<WithdrawRequest | null>(null);
-  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   useEffect(() => {
     fetchBalance();
+    fetchProfile();
   }, []);
 
   const fetchBalance = async () => {
@@ -44,11 +47,30 @@ export default function WithdrawScreen() {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get("/auth/profile");
+      setPhoneNumber(res.data.phoneNumber || null);
+    } catch {
+      console.error("Failed to fetch profile");
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
   const handlePresetSelect = (value: number) => {
     setAmount(value.toString());
   };
 
   const handleContinue = () => {
+    if (!phoneNumber) {
+      Alert.alert(
+        "GCash Number Required",
+        "Please add your GCash number to your profile before requesting a withdrawal. Your account phone number must be your GCash number.",
+      );
+      return;
+    }
+
     const numAmount = parseFloat(amount);
     if (!numAmount || numAmount < 1) {
       Alert.alert("Invalid Amount", "Please enter an amount of at least ₱1.");
@@ -90,6 +112,29 @@ export default function WithdrawScreen() {
         ) : (
           <Text style={styles.balanceAmount}>₱ {balance.toFixed(2)}</Text>
         )}
+      </View>
+
+      {/* GCash Number Info */}
+      <View style={[styles.gcashCard, !phoneNumber && styles.gcashCardWarning]}>
+        <MaterialIcons
+          name={phoneNumber ? "phone-android" : "warning"}
+          size={22}
+          color={phoneNumber ? "#005f56" : "#D4501E"}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.gcashLabel, !phoneNumber && { color: "#D4501E" }]}>
+            GCash Number
+          </Text>
+          {loadingProfile ? (
+            <ActivityIndicator size="small" color="#A09A94" />
+          ) : phoneNumber ? (
+            <Text style={styles.gcashNumber}>{phoneNumber}</Text>
+          ) : (
+            <Text style={styles.gcashMissing}>
+              No phone number on file. Please update your profile with your verified GCash number.
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Amount Input */}
@@ -145,9 +190,9 @@ export default function WithdrawScreen() {
 
       {/* Info Notice */}
       <View style={styles.noticeCard}>
-        <MaterialIcons name="info-outline" size={18} color="#D4501E" />
+        <MaterialIcons name="schedule" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          The withdrawal will be sent to the GCash number linked to your account. An admin will process it manually.
+          Withdrawals are processed within 3 business days. The amount will be sent to your GCash number on file. Ensure your account number is a verified GCash account.
         </Text>
       </View>
     </>
@@ -173,19 +218,24 @@ export default function WithdrawScreen() {
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Send to GCash</Text>
-            <Text style={styles.summaryValue}>Phone on file</Text>
+            <Text style={styles.summaryValue}>{phoneNumber}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Remaining Balance</Text>
             <Text style={styles.summaryValue}>₱{(balance - numAmount).toFixed(2)}</Text>
           </View>
+          <View style={styles.divider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Processing Time</Text>
+            <Text style={[styles.summaryValue, { color: "#D4501E" }]}>Up to 3 business days</Text>
+          </View>
         </View>
 
         <View style={styles.noticeCard}>
-          <MaterialIcons name="schedule" size={18} color="#D4501E" />
+          <MaterialIcons name="verified-user" size={18} color="#D4501E" />
           <Text style={styles.noticeText}>
-            Withdrawals are processed manually and may take up to 24 hours.
+            Make sure your GCash number ({phoneNumber}) is correct and verified. The withdrawal cannot be reversed once processed.
           </Text>
         </View>
       </>
@@ -199,7 +249,10 @@ export default function WithdrawScreen() {
       </View>
       <Text style={styles.doneTitle}>Request Submitted!</Text>
       <Text style={styles.doneText}>
-        Your withdrawal of ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} is being processed. You'll receive a notification once it's been sent to your GCash.
+        Your withdrawal of ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} is being processed. Please allow up to 3 business days for the amount to be sent to your GCash ({phoneNumber}).
+      </Text>
+      <Text style={styles.doneText}>
+        You'll receive a notification once the withdrawal has been completed.
       </Text>
     </View>
   );
@@ -209,9 +262,9 @@ export default function WithdrawScreen() {
       case "amount":
         return (
           <TouchableOpacity
-            style={[styles.primaryBtn, (!amount || loading) && styles.primaryBtnDisabled]}
+            style={[styles.primaryBtn, (!amount || loading || !phoneNumber) && styles.primaryBtnDisabled]}
             onPress={handleContinue}
-            disabled={!amount || loading}
+            disabled={!amount || loading || !phoneNumber}
             activeOpacity={0.8}
           >
             <MaterialIcons name="arrow-forward" size={22} color="#fff" />
@@ -297,6 +350,19 @@ const styles = StyleSheet.create({
   },
   balanceLabel: { fontSize: 15, color: "rgba(255,255,255,0.7)", fontWeight: "600" },
   balanceAmount: { fontSize: 36, fontWeight: "800", color: "#fff", marginTop: 8, letterSpacing: -0.5 },
+
+  // GCash card
+  gcashCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#E6F4F1", borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: "#005f56",
+  },
+  gcashCardWarning: {
+    backgroundColor: "#FFF0EC", borderColor: "#D4501E",
+  },
+  gcashLabel: { fontSize: 12, fontWeight: "600", color: "#005f56", marginBottom: 2 },
+  gcashNumber: { fontSize: 18, fontWeight: "800", color: "#232230" },
+  gcashMissing: { fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
 
   // Sections
   section: { gap: 10 },

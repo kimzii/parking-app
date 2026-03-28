@@ -302,6 +302,7 @@ model TopUpRequest {
   referenceCode String        @unique @map("reference_code")
   proofImageUrl String?       @map("proof_image_url")
   status        RequestStatus @default(PENDING)
+  expiresAt     DateTime?     @map("expires_at")
   reviewedBy    String?       @map("reviewed_by") @db.Uuid
   reviewedAt    DateTime?     @map("reviewed_at")
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -327,8 +328,10 @@ model WithdrawRequest {
 
 enum RequestStatus {
   PENDING
+  ACCEPTED
   APPROVED
   REJECTED
+  EXPIRED
 }
 
 enum WalletStatus {
