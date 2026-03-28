@@ -100,8 +100,9 @@ export class WalletController {
     @Param('id') id: string,
     @UploadedFile() file: { originalname: string; buffer: Buffer; mimetype: string },
   ) {
+    const topUp = await this.walletService.getTopUpStatus(id, req.user.id);
     const ext = file.originalname.split('.').pop() || 'jpg';
-    const key = `topup-proofs/${uuid()}.${ext}`;
+    const key = `topup-proofs/${req.user.id}_${topUp.referenceCode}.${ext}`;
 
     await this.s3.send(
       new PutObjectCommand({
