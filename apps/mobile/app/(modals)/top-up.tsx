@@ -38,6 +38,7 @@ export default function TopUpScreen() {
 
   useEffect(() => {
     fetchBalance();
+    checkExistingRequest();
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -52,6 +53,28 @@ export default function TopUpScreen() {
       console.error("Failed to fetch balance");
     } finally {
       setFetchingBalance(false);
+    }
+  };
+
+  const checkExistingRequest = async () => {
+    try {
+      const requests = await walletService.getMyTopUpRequests();
+      const active = requests.find(
+        (r) => r.status === "PENDING" || r.status === "ACCEPTED"
+      );
+      if (active) {
+        setCurrentRequest(active);
+        setAmount(parseFloat(active.amount).toString());
+        if (active.status === "PENDING") {
+          setStep("waiting");
+          startPolling(active.id);
+          startCountdown(active.expiresAt);
+        } else if (active.status === "ACCEPTED") {
+          setStep("qr");
+        }
+      }
+    } catch {
+      // No existing request, stay on amount step
     }
   };
 
@@ -365,7 +388,7 @@ export default function TopUpScreen() {
             }}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryBtnText}>Cancel & Go Back</Text>
+            <Text style={styles.primaryBtnText}>Go Back</Text>
           </TouchableOpacity>
         );
       case "qr":

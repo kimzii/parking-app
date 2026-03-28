@@ -16,8 +16,9 @@ import {
   Phone,
   User,
   DollarSign,
-  Image as ImageIcon,
+  ImageIcon,
   ExternalLink,
+  History,
 } from "lucide-react";
 import api from "../../../src/lib/api";
 
@@ -98,10 +99,12 @@ function StatusBadge({ status }: { status: string }) {
 export default function TransactionsPage() {
   const [topUps, setTopUps] = useState<TopUpRequest[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawRequest[]>([]);
+  const [allTopUps, setAllTopUps] = useState<TopUpRequest[]>([]);
+  const [allWithdraws, setAllWithdraws] = useState<WithdrawRequest[]>([]);
   const [loadingTopUps, setLoadingTopUps] = useState(true);
   const [loadingWithdraws, setLoadingWithdraws] = useState(true);
+  const [loadingAll, setLoadingAll] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [selectedProof, setSelectedProof] = useState<string | null>(null);
   const [timerTick, setTimerTick] = useState(0);
 
   const fetchTopUps = useCallback(async () => {
@@ -126,16 +129,32 @@ export default function TransactionsPage() {
     }
   }, []);
 
+  const fetchAllTransactions = useCallback(async () => {
+    try {
+      const [topUpRes, withdrawRes] = await Promise.all([
+        api.get("/wallet/top-up/all"),
+        api.get("/wallet/withdraw/all"),
+      ]);
+      setAllTopUps(topUpRes.data);
+      setAllWithdraws(withdrawRes.data);
+    } catch (err) {
+      console.error("Failed to fetch all transactions:", err);
+    } finally {
+      setLoadingAll(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTopUps();
     fetchWithdrawals();
-    // Poll every 10 seconds for new requests
+    fetchAllTransactions();
     const interval = setInterval(() => {
       fetchTopUps();
       fetchWithdrawals();
+      fetchAllTransactions();
     }, 10000);
     return () => clearInterval(interval);
-  }, [fetchTopUps, fetchWithdrawals]);
+  }, [fetchTopUps, fetchWithdrawals, fetchAllTransactions]);
 
   // Timer tick for countdown display
   useEffect(() => {
@@ -229,7 +248,7 @@ export default function TransactionsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-yellow-50">
                 <Clock className="h-5 w-5 text-yellow-600" />
@@ -297,6 +316,10 @@ export default function TransactionsPage() {
             <ArrowDownCircle className="h-4 w-4 mr-1" />
             Withdrawals ({withdrawals.length})
           </TabsTrigger>
+          <TabsTrigger value="all">
+            <History className="h-4 w-4 mr-1" />
+            All Transactions ({allTopUps.length + allWithdraws.length})
+          </TabsTrigger>
         </TabsList>
 
         {/* ─── Top-Up Tab ─── */}
@@ -359,36 +382,30 @@ export default function TransactionsPage() {
                             </div>
                           </div>
 
-                          {/* Proof Image */}
-                          {req.proofImageUrl ? (
-                            <div className="mt-3">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Payment Proof</p>
-                              <a
-                                href={req.proofImageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <img
-                                  src={req.proofImageUrl}
-                                  alt="Payment proof"
-                                  className="rounded-lg border border-gray-200 shadow-sm max-w-[280px] max-h-[360px] object-contain hover:opacity-90 transition-opacity cursor-pointer"
-                                />
-                              </a>
-                              <a
-                                href={req.proofImageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
-                              >
-                                Open full size <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </div>
-                          ) : req.status === "ACCEPTED" ? (
-                            <div className="mt-3 flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                              <AlertCircle className="h-4 w-4" />
-                              <span>No proof uploaded yet — user may still be paying</span>
-                            </div>
-                          ) : null}
+                          {/* Proof Status */}
+                          <div className="mt-3 flex items-center gap-3">
+                            {req.proofImageUrl ? (
+                              <>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                  Proof Sent
+                                </span>
+                                <a
+                                  href={req.proofImageUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                                >
+                                  View Proof <ExternalLink className="h-3 w-3" />
+                                </a>
+                              </>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                No Proof Yet
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Right: Actions */}
@@ -538,6 +555,107 @@ export default function TransactionsPage() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ─── All Transactions Tab ─── */}
+        <TabsContent value="all" className="mt-4">
+          {loadingAll ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+          ) : allTopUps.length === 0 && allWithdraws.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-gray-500">
+                <History className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">No transactions yet</p>
+                <p className="text-sm">All top-up and withdrawal requests will appear here</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {[
+                ...allTopUps.map((t) => ({ ...t, _type: "topup" as const })),
+                ...allWithdraws.map((w) => ({ ...w, _type: "withdraw" as const })),
+              ]
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((req) => {
+                  const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.email;
+                  const isTopUp = req._type === "topup";
+
+                  return (
+                    <Card key={req.id} className={`border-l-4 ${
+                      isTopUp ? "border-l-blue-300" : "border-l-orange-300"
+                    }`}>
+                      <CardContent className="pt-5 pb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                                isTopUp ? "bg-blue-50 text-blue-700" : "bg-orange-50 text-orange-700"
+                              }`}>
+                                {isTopUp ? (
+                                  <><ArrowUpCircle className="h-3.5 w-3.5" /> Top-Up</>
+                                ) : (
+                                  <><ArrowDownCircle className="h-3.5 w-3.5" /> Withdrawal</>
+                                )}
+                              </span>
+                              <StatusBadge status={req.status} />
+                              <span className="text-xl font-bold text-gray-900">
+                                ₱{parseFloat(req.amount).toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <User className="h-4 w-4" />
+                                <span className="font-medium">{userName}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Phone className="h-4 w-4" />
+                                <span>{req.user.phoneNumber || "No phone"}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-500">
+                                <Clock className="h-4 w-4" />
+                                <span>{formatDate(req.createdAt)}</span>
+                              </div>
+                            </div>
+
+                            {isTopUp && "referenceCode" in req && (
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                  {(req as TopUpRequest).referenceCode}
+                                </span>
+                                {(req as TopUpRequest).proofImageUrl ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                                      <ImageIcon className="h-3 w-3" />
+                                      Proof Sent
+                                    </span>
+                                    <a
+                                      href={(req as TopUpRequest).proofImageUrl!}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800"
+                                    >
+                                      View Proof <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                                    <AlertCircle className="h-3 w-3" />
+                                    No Proof
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
             </div>
           )}
         </TabsContent>
