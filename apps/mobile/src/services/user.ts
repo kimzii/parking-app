@@ -8,6 +8,7 @@ export const userService = {
   async updateProfile(data: {
     firstName?: string;
     lastName?: string;
+    phoneNumber?: string;
     profilePicture?: string;
   }) {
     const response = await api.put("/users/profile", data);

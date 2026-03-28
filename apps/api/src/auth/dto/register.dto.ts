@@ -25,9 +25,33 @@ export class RegisterDto {
   @IsNotEmpty()
   @IsString()
   @MinLength(8)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])/, {
     message:
       'Password must contain uppercase, lowercase, number and special character',
   })
   password: string;
+
+  @ApiProperty({
+    example: 'John',
+    description: 'User first name',
+  })
+  @IsNotEmpty({ message: 'First name is required' })
+  @IsString()
+  firstName: string;
+
+  @ApiProperty({
+    example: 'Doe',
+    description: 'User last name',
+  })
+  @IsNotEmpty({ message: 'Last name is required' })
+  @IsString()
+  lastName: string;
+
+  @ApiProperty({
+    example: '09171234567',
+    description: 'Mobile/GCash number',
+  })
+  @IsNotEmpty({ message: 'Phone number is required' })
+  @IsString()
+  phoneNumber: string;
 }

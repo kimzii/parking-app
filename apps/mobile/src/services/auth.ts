@@ -13,12 +13,14 @@ export const authService = {
     return response.data;
   },
 
-  async register(email: string, password: string) {
-    // Adjusted to match your backend endpoint
-    const response = await api.post("/auth/register", {
-      email,
-      password,
-    });
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+  }) {
+    const response = await api.post("/auth/register", data);
     return response.data;
   },
 

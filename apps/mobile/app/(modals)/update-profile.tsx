@@ -22,6 +22,7 @@ import Feather from "@expo/vector-icons/Feather";
 export default function UpdateProfileScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +37,7 @@ export default function UpdateProfileScreen() {
           const data = await userService.getProfile();
           setFirstName(data.firstName || "");
           setLastName(data.lastName || "");
+          setPhoneNumber(data.phoneNumber || "");
           setProfilePicture(data.profilePicture || null);
         } catch {
           Alert.alert("Error", "Failed to load profile.");
@@ -72,6 +74,7 @@ export default function UpdateProfileScreen() {
       const profileData = {
         firstName,
         lastName,
+        phoneNumber,
         ...(uploadedUrl && { profilePicture: uploadedUrl }),
       };
       await userService.updateProfile(profileData);
@@ -149,6 +152,21 @@ export default function UpdateProfileScreen() {
               onChangeText={setLastName}
               autoCapitalize="words"
               autoCorrect={false}
+              editable={!saving}
+            />
+          </View>
+
+          <Text style={styles.label}>Mobile / GCash Number</Text>
+          <View style={styles.inputContainer}>
+            <Feather name="phone" size={18} color="#A09A94" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 09171234567"
+              placeholderTextColor="#aaa"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
               editable={!saving}
             />
           </View>
