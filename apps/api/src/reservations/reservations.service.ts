@@ -846,7 +846,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Valet/Host: Scan QR code for entry — starts the parking session
    */
-  async verifyEntryQR(hostUserId: string, qrCode: string) {
+  async verifyEntryQR(hostUserId: string, qrCode: string, force = false) {
     await this.processReservationTimeouts();
 
     const host = await this.prisma.host.findUnique({
@@ -869,6 +869,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           include: {
             user: {
               select: {
+                id: true,
                 firstName: true,
                 lastName: true,
                 phoneNumber: true,
@@ -900,6 +901,26 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException(
         `Cannot check in. Reservation status is: ${reservation.status}`,
       );
+    }
+
+    // Soft proximity check — warn host if driver hasn't been detected nearby
+    if (!force) {
+      const driverNearby = await this.prisma.notification.findFirst({
+        where: {
+          userId: reservation.driver.user.id,
+          type: { in: ['DRIVER_NEARBY', 'DRIVER_ARRIVED'] },
+          data: { path: ['reservationId'], equals: reservation.id },
+        },
+      });
+
+      if (!driverNearby) {
+        return {
+          success: false,
+          warning: true,
+          message:
+            'Driver has not been detected nearby yet. Are you sure you want to proceed with check-in?',
+        };
+      }
     }
 
     // Check arrival window

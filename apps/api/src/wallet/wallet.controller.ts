@@ -75,12 +75,21 @@ export class WalletController {
   // ─── Top-Up ────────────────────────────────────
 
   @Post('top-up')
-  @ApiOperation({ summary: 'Create a top-up request' })
+  @ApiOperation({ summary: 'Create a top-up request (5 min window for admin)' })
   async createTopUp(
     @Request() req: { user: { id: string } },
     @Body() dto: TopUpDto,
   ) {
     return this.walletService.createTopUpRequest(req.user.id, dto.amount);
+  }
+
+  @Get('top-up/:id/status')
+  @ApiOperation({ summary: 'Get top-up request status (for polling)' })
+  async getTopUpStatus(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.walletService.getTopUpStatus(id, req.user.id);
   }
 
   @Post('top-up/:id/upload-proof')
@@ -116,22 +125,41 @@ export class WalletController {
   }
 
   @Get('top-up/pending')
-  @ApiOperation({ summary: 'Admin: Get pending top-up requests' })
+  @ApiOperation({ summary: 'Admin: Get pending/accepted top-up requests' })
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   async getPendingTopUps() {
     return this.walletService.getPendingTopUpRequests();
   }
 
-  @Patch('top-up/:id/approve')
-  @ApiOperation({ summary: 'Admin: Approve a top-up request' })
+  @Get('top-up/:id')
+  @ApiOperation({ summary: 'Admin: Get single top-up request details' })
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
-  async approveTopUp(
+  async getTopUpRequest(@Param('id') id: string) {
+    return this.walletService.getTopUpRequest(id);
+  }
+
+  @Patch('top-up/:id/accept')
+  @ApiOperation({ summary: 'Admin: Accept a top-up request (user will see QR)' })
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async acceptTopUp(
     @Request() req: { user: { id: string } },
     @Param('id') id: string,
   ) {
-    return this.walletService.approveTopUp(id, req.user.id);
+    return this.walletService.acceptTopUp(id, req.user.id);
+  }
+
+  @Patch('top-up/:id/release')
+  @ApiOperation({ summary: 'Admin: Release credits after verifying payment' })
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async releaseTopUpCredits(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.walletService.releaseTopUpCredits(id, req.user.id);
   }
 
   @Patch('top-up/:id/reject')

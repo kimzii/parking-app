@@ -4,6 +4,7 @@ const GEOFENCE_TASK = "PARKING_GEOFENCE_TASK";
 
 let taskDefined = false;
 let nativeAvailable: boolean | null = null;
+const notifiedReservations = new Set<string>();
 
 /**
  * Check whether the native geofencing modules are available.
@@ -49,6 +50,8 @@ async function ensureTaskDefined() {
           longitude: number;
           radius: number;
         };
+        if (notifiedReservations.has(region.identifier)) return;
+        notifiedReservations.add(region.identifier);
         notifyDriverNearby(region.identifier).catch((err) =>
           console.error("Failed to notify driver nearby:", err),
         );
@@ -112,6 +115,7 @@ export async function stopGeofencing() {
     if (isRegistered) {
       await Location.stopGeofencingAsync(GEOFENCE_TASK);
     }
+    notifiedReservations.clear();
   } catch (err) {
     console.warn("stopGeofencing failed:", err);
   }

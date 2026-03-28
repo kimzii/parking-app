@@ -9,7 +9,8 @@ import {
   CalendarDays,
   BarChart3,
   Settings,
-  Crown
+  Crown,
+  ArrowLeftRight
 } from "lucide-react";
 
 const navigationItems = [
@@ -34,6 +35,12 @@ const navigationItems = [
     href: "/reservations",
     icon: CalendarDays,
     label: "Reservations",
+  },
+  {
+    href: "/transactions",
+    icon: ArrowLeftRight,
+    label: "Transactions",
+    badge: "Top-Up/Withdraw",
   },
   {
     href: "/reports",

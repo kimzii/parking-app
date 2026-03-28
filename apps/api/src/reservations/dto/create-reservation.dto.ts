@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateReservationDto {
   @IsUUID()
@@ -12,4 +12,8 @@ export class CreateReservationDto {
 export class VerifyScanDto {
   @IsString()
   qrCode: string;
+
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
 }

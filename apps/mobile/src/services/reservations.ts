@@ -69,6 +69,7 @@ export interface CreateReservationResponse extends Reservation {
 
 export interface ScanResponse {
   success: boolean;
+  warning?: boolean;
   message: string;
   reservation: {
     id: string;
@@ -191,8 +192,8 @@ export async function rejectReservation(id: string): Promise<{
 /**
  * Host: Scan QR code for entry — starts parking session
  */
-export async function scanEntry(qrCode: string): Promise<ScanResponse> {
-  const response = await api.post("/reservations/scan/entry", { qrCode });
+export async function scanEntry(qrCode: string, force = false): Promise<ScanResponse> {
+  const response = await api.post("/reservations/scan/entry", { qrCode, force });
   return response.data;
 }
 

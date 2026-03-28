@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,10 @@ import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
 
 export default function SignupScreen() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,8 +27,20 @@ export default function SignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignup = async () => {
+    if (!firstName.trim()) {
+      Alert.alert("Error", "Please enter your first name");
+      return;
+    }
+    if (!lastName.trim()) {
+      Alert.alert("Error", "Please enter your last name");
+      return;
+    }
     if (!email.trim()) {
       Alert.alert("Error", "Please enter your email");
+      return;
+    }
+    if (!phoneNumber.trim()) {
+      Alert.alert("Error", "Please enter your mobile/GCash number");
       return;
     }
     if (!password.trim()) {
@@ -47,17 +62,21 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      await authService.register(email.trim(), password);
+      await authService.register({
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phoneNumber: phoneNumber.trim(),
+      });
       Alert.alert("Verify your email First", "We sent a verification code to your email.");
       router.replace({
         pathname: "/(auth)/verify",
         params: { email: email.trim() },
       });
     } catch (error: any) {
-      const message =
-        error.response?.data?.message ||
-        error.message ||
-        "Signup failed. Please try again.";
+      const raw = error.response?.data?.message;
+      const message = Array.isArray(raw) ? raw.join("\n") : raw || error.message || "Signup failed. Please try again.";
       Alert.alert("Signup Failed", message);
       console.error("Signup error:", error);
     } finally {
@@ -84,6 +103,40 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.form}>
+          {/* Name Row */}
+          <View style={styles.nameRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>First Name</Text>
+              <View style={styles.inputContainer}>
+                <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="First Name"
+                  placeholderTextColor="#aaa"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Last Name</Text>
+              <View style={styles.inputContainer}>
+                <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Last Name"
+                  placeholderTextColor="#aaa"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+          </View>
+
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputContainer}>
             <Feather name="mail" size={18} color="#A09A94" style={styles.inputIcon} />
@@ -96,6 +149,20 @@ export default function SignupScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+            />
+          </View>
+
+          <Text style={styles.label}>Mobile / GCash Number</Text>
+          <View style={styles.inputContainer}>
+            <Feather name="phone" size={18} color="#A09A94" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 09171234567"
+              placeholderTextColor="#aaa"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
             />
           </View>
 
@@ -241,6 +308,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 16,
     elevation: 4,
+  },
+  nameRow: {
+    flexDirection: "row",
+    gap: 12,
   },
   label: {
     fontSize: 13,
