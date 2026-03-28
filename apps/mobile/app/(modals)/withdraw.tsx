@@ -34,6 +34,7 @@ export default function WithdrawScreen() {
   useEffect(() => {
     fetchBalance();
     fetchProfile();
+    checkExistingRequest();
   }, []);
 
   const fetchBalance = async () => {
@@ -55,6 +56,20 @@ export default function WithdrawScreen() {
       console.error("Failed to fetch profile");
     } finally {
       setLoadingProfile(false);
+    }
+  };
+
+  const checkExistingRequest = async () => {
+    try {
+      const requests = await walletService.getMyWithdrawRequests();
+      const pending = requests.find((r) => r.status === "PENDING");
+      if (pending) {
+        setCurrentRequest(pending);
+        setAmount(parseFloat(pending.amount).toString());
+        setStep("done");
+      }
+    } catch {
+      // No existing request
     }
   };
 

@@ -299,6 +299,46 @@ export class WalletService {
     });
   }
 
+  /** Get all top-up requests (admin) */
+  async getAllTopUpRequests() {
+    await this.expireOldTopUpRequests();
+
+    return this.prisma.topUpRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+  }
+
+  /** Get all withdraw requests (admin) */
+  async getAllWithdrawRequests() {
+    return this.prisma.withdrawRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+  }
+
   /** Get a single top-up request with user details (for admin) */
   async getTopUpRequest(requestId: string) {
     const request = await this.prisma.topUpRequest.findUnique({

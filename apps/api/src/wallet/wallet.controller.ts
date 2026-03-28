@@ -133,6 +133,14 @@ export class WalletController {
     return this.walletService.getPendingTopUpRequests();
   }
 
+  @Get('top-up/all')
+  @ApiOperation({ summary: 'Admin: Get all top-up requests' })
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getAllTopUps() {
+    return this.walletService.getAllTopUpRequests();
+  }
+
   @Get('top-up/:id')
   @ApiOperation({ summary: 'Admin: Get single top-up request details' })
   @UseGuards(RolesGuard)
@@ -197,6 +205,14 @@ export class WalletController {
   @Roles('ADMIN')
   async getPendingWithdrawals() {
     return this.walletService.getPendingWithdrawRequests();
+  }
+
+  @Get('withdraw/all')
+  @ApiOperation({ summary: 'Admin: Get all withdrawal requests' })
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getAllWithdrawals() {
+    return this.walletService.getAllWithdrawRequests();
   }
 
   @Patch('withdraw/:id/approve')
