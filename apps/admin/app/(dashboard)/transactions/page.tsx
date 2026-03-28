@@ -360,20 +360,35 @@ export default function TransactionsPage() {
                           </div>
 
                           {/* Proof Image */}
-                          {req.proofImageUrl && (
-                            <div className="mt-2">
+                          {req.proofImageUrl ? (
+                            <div className="mt-3">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Payment Proof</p>
                               <a
                                 href={req.proofImageUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
                               >
-                                <ImageIcon className="h-4 w-4" />
-                                View Payment Proof
-                                <ExternalLink className="h-3 w-3" />
+                                <img
+                                  src={req.proofImageUrl}
+                                  alt="Payment proof"
+                                  className="rounded-lg border border-gray-200 shadow-sm max-w-[280px] max-h-[360px] object-contain hover:opacity-90 transition-opacity cursor-pointer"
+                                />
+                              </a>
+                              <a
+                                href={req.proofImageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+                              >
+                                Open full size <ExternalLink className="h-3 w-3" />
                               </a>
                             </div>
-                          )}
+                          ) : req.status === "ACCEPTED" ? (
+                            <div className="mt-3 flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                              <AlertCircle className="h-4 w-4" />
+                              <span>No proof uploaded yet — user may still be paying</span>
+                            </div>
+                          ) : null}
                         </div>
 
                         {/* Right: Actions */}
