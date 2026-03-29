@@ -359,16 +359,25 @@ export default function TopUpScreen() {
       <ActivityIndicator size="large" color="#D4501E" style={{ marginBottom: 8 }} />
       <Text style={styles.doneTitle}>Proof Submitted!</Text>
       <Text style={styles.doneText}>
-        Your payment proof for ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been uploaded. The admin will verify your payment and release your credits shortly.
+        Your payment proof for ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been uploaded successfully.
       </Text>
+      <View style={styles.processingCard}>
+        <MaterialIcons name="hourglass-empty" size={22} color="#D4501E" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.processingTitle}>Processing your credits</Text>
+          <Text style={styles.processingText}>
+            Please wait while the admin verifies your payment and processes your credits. This may take a little while.
+          </Text>
+        </View>
+      </View>
       <View style={styles.refCard}>
         <Text style={styles.refLabel}>Reference Code</Text>
         <Text style={styles.refCode}>{currentRequest?.referenceCode}</Text>
       </View>
       <View style={styles.noticeCard}>
-        <MaterialIcons name="info-outline" size={18} color="#D4501E" />
+        <MaterialIcons name="notifications-active" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          You can safely go back — your request is being reviewed. You'll be notified once credits are released.
+          You'll be notified once your credits are released. You can safely go back and check back later.
         </Text>
       </View>
     </View>
@@ -527,6 +536,13 @@ const styles = StyleSheet.create({
   presetTextSelected: { color: "#D4501E" },
 
   // Notice
+  processingCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 12,
+    backgroundColor: "#FFF0EC", borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: "#D4501E",
+  },
+  processingTitle: { fontSize: 14, fontWeight: "700", color: "#D4501E", marginBottom: 4 },
+  processingText: { fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
   noticeCard: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: "#FFF8E1", borderRadius: 12, padding: 14,

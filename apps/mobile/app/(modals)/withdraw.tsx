@@ -265,11 +265,23 @@ export default function WithdrawScreen() {
       </View>
       <Text style={styles.doneTitle}>Request Submitted!</Text>
       <Text style={styles.doneText}>
-        Your withdrawal of ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} is being processed. Please allow up to 3 business days for the amount to be sent to your GCash ({phoneNumber}).
+        Your withdrawal of ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been received and is now being processed.
       </Text>
-      <Text style={styles.doneText}>
-        You'll receive a notification once the withdrawal has been completed.
-      </Text>
+      <View style={styles.processingCard}>
+        <MaterialIcons name="schedule" size={22} color="#D4501E" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.processingTitle}>3–5 Business Days</Text>
+          <Text style={styles.processingText}>
+            Please wait 3–5 business days for the amount to be sent to your GCash number{phoneNumber ? ` (${phoneNumber})` : ""}.
+          </Text>
+        </View>
+      </View>
+      <View style={styles.noticeCard}>
+        <MaterialIcons name="notifications-active" size={18} color="#D4501E" />
+        <Text style={styles.noticeText}>
+          You'll receive a notification once your withdrawal has been completed.
+        </Text>
+      </View>
     </View>
   );
 
@@ -409,6 +421,13 @@ const styles = StyleSheet.create({
   presetTextDisabled: { color: "#C7C7CC" },
 
   // Notice
+  processingCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 12,
+    backgroundColor: "#FFF0EC", borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: "#D4501E",
+  },
+  processingTitle: { fontSize: 14, fontWeight: "700", color: "#D4501E", marginBottom: 4 },
+  processingText: { fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
   noticeCard: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: "#FFF8E1", borderRadius: 12, padding: 14,
