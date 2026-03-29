@@ -245,8 +245,8 @@ export default function LiveSessionsPage() {
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
   const [selectedSession, setSelectedSession] = useState<SessionDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
-  const tickRef = useRef<NodeJS.Timeout | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchSessions = useCallback(async (showLoading = true) => {
     try {
