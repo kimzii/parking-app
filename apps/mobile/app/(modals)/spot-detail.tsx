@@ -10,6 +10,7 @@ import {
   Dimensions,
   Linking,
   Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useFocusEffect, router } from "expo-router";
@@ -19,6 +20,12 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { hostService } from "../../src/services/hosts";
 import { driversService } from "../../src/services/drivers";
+import {
+  getLocationReviews,
+  getLocationRating,
+  Review,
+  LocationRating,
+} from "../../src/services/reviews";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_HEIGHT = 220;
@@ -83,12 +90,20 @@ export default function SpotDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [checkingVehicles, setCheckingVehicles] = useState(false);
+  const [rating, setRating] = useState<LocationRating | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [showReviews, setShowReviews] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   const fetchSpot = useCallback(async () => {
     if (!id) return;
     try {
-      const data = await hostService.getPublicLocation(id);
+      const [data, ratingData] = await Promise.all([
+        hostService.getPublicLocation(id),
+        getLocationRating(id),
+      ]);
       setSpot(data);
+      setRating(ratingData);
     } catch (err) {
       console.error("Failed to fetch spot:", err);
     } finally {
@@ -96,6 +111,20 @@ export default function SpotDetailScreen() {
       setRefreshing(false);
     }
   }, [id]);
+
+  const handleViewAllReviews = async () => {
+    if (!id) return;
+    setLoadingReviews(true);
+    setShowReviews(true);
+    try {
+      const data = await getLocationReviews(id);
+      setReviews(data);
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -314,6 +343,46 @@ export default function SpotDetailScreen() {
             </View>
           </View>
 
+          {/* Rating Card */}
+          <View style={styles.ratingCard}>
+            <View style={styles.ratingCardLeft}>
+              <View style={styles.ratingStarsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <MaterialIcons
+                    key={star}
+                    name={
+                      rating &&
+                      rating.averageRating !== null &&
+                      star <= Math.round(rating.averageRating)
+                        ? "star"
+                        : "star-outline"
+                    }
+                    size={20}
+                    color="#FFD54F"
+                  />
+                ))}
+              </View>
+              <Text style={styles.ratingScore}>
+                {rating && rating.averageRating !== null
+                  ? `${Number(rating.averageRating).toFixed(1)} / 5.0`
+                  : "No ratings yet"}
+              </Text>
+              <Text style={styles.ratingCount}>
+                {rating
+                  ? `${rating.totalReviews} review${rating.totalReviews !== 1 ? "s" : ""}`
+                  : ""}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.viewAllBtn}
+              onPress={handleViewAllReviews}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewAllBtnText}>View All Ratings</Text>
+              <MaterialIcons name="chevron-right" size={18} color="#D4501E" />
+            </TouchableOpacity>
+          </View>
+
           {/* Parking Info */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Parking Info</Text>
@@ -344,8 +413,8 @@ export default function SpotDetailScreen() {
                   {spot.is24Hours
                     ? "Open 24 Hours"
                     : spot.openTime && spot.closeTime
-                        ? `${formatTime(spot.openTime)} - ${formatTime(spot.closeTime)}`
-                        : "Not specified"}
+                      ? `${formatTime(spot.openTime)} - ${formatTime(spot.closeTime)}`
+                      : "Not specified"}
                 </Text>
               </View>
               <View style={styles.infoRow}>
@@ -363,7 +432,9 @@ export default function SpotDetailScreen() {
                 {spot.description && (
                   <View style={{ gap: 8 }}>
                     <Text style={styles.sectionTitle}>Description</Text>
-                    <Text style={styles.descriptionText}>{spot.description}</Text>
+                    <Text style={styles.descriptionText}>
+                      {spot.description}
+                    </Text>
                   </View>
                 )}
 
@@ -389,7 +460,9 @@ export default function SpotDetailScreen() {
                               { backgroundColor: "#4CAF50" },
                             ]}
                           />
-                          <Text style={styles.legendText}>{available} Free</Text>
+                          <Text style={styles.legendText}>
+                            {available} Free
+                          </Text>
                         </View>
                         <View style={styles.legendItem}>
                           <View
@@ -458,6 +531,133 @@ export default function SpotDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Reviews Modal */}
+      <Modal
+        visible={showReviews}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowReviews(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: "80%" }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.reviewsModalHeader}>
+              <Text style={styles.reviewsModalTitle}>Ratings & Reviews</Text>
+              <TouchableOpacity onPress={() => setShowReviews(false)}>
+                <MaterialIcons name="close" size={24} color="#A09A94" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Summary row */}
+            <View style={styles.reviewsSummaryRow}>
+              <Text style={styles.reviewsSummaryScore}>
+                {rating?.averageRating !== null &&
+                rating?.averageRating !== undefined
+                  ? Number(rating.averageRating).toFixed(1)
+                  : "—"}
+              </Text>
+              <View>
+                <View style={{ flexDirection: "row", gap: 2 }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <MaterialIcons
+                      key={star}
+                      name={
+                        rating?.averageRating !== null &&
+                        rating?.averageRating !== undefined &&
+                        star <= Math.round(rating.averageRating!)
+                          ? "star"
+                          : "star-outline"
+                      }
+                      size={18}
+                      color="#FFD54F"
+                    />
+                  ))}
+                </View>
+                <Text style={styles.reviewsSummaryCount}>
+                  {rating?.totalReviews ?? 0} review
+                  {(rating?.totalReviews ?? 0) !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+
+            {loadingReviews ? (
+              <ActivityIndicator
+                size="large"
+                color="#D4501E"
+                style={{ marginVertical: 32 }}
+              />
+            ) : reviews.length === 0 ? (
+              <View style={styles.reviewsEmpty}>
+                <MaterialIcons name="star-outline" size={40} color="#C7C7CC" />
+                <Text style={styles.reviewsEmptyText}>No reviews yet</Text>
+              </View>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ marginTop: 12 }}
+              >
+                {reviews.map((review) => {
+                  const name =
+                    `${review.reviewer.firstName ?? ""} ${review.reviewer.lastName ?? ""}`.trim() ||
+                    "Anonymous";
+                  return (
+                    <View key={review.id} style={styles.reviewItem}>
+                      <View style={styles.reviewItemHeader}>
+                        <View style={styles.reviewAvatar}>
+                          {review.reviewer.profilePicture ? (
+                            <Image
+                              source={{ uri: review.reviewer.profilePicture }}
+                              style={StyleSheet.absoluteFillObject}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <MaterialIcons
+                              name="person"
+                              size={18}
+                              color="#fff"
+                            />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.reviewerName}>{name}</Text>
+                          <Text style={styles.reviewDate}>
+                            {new Date(review.createdAt).toLocaleDateString(
+                              "en-PH",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
+                          </Text>
+                        </View>
+                        <View style={styles.reviewStarsRow}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <MaterialIcons
+                              key={star}
+                              name={
+                                star <= review.rating ? "star" : "star-outline"
+                              }
+                              size={14}
+                              color="#FFD54F"
+                            />
+                          ))}
+                        </View>
+                      </View>
+                      {review.comment ? (
+                        <Text style={styles.reviewComment}>
+                          {review.comment}
+                        </Text>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -748,4 +948,106 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+
+  // Space Action Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end" as const,
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 60,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#D0D0D0",
+    alignSelf: "center" as const,
+    marginBottom: 20,
+  },
+
+  // Rating Card
+  ratingCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  ratingCardLeft: { gap: 4 },
+  ratingStarsRow: { flexDirection: "row", gap: 2 },
+  ratingScore: { fontSize: 18, fontWeight: "800", color: "#232230" },
+  ratingCount: { fontSize: 12, color: "#A09A94", fontWeight: "500" },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "#FFF0EC",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FFD5C8",
+  },
+  viewAllBtnText: { fontSize: 13, fontWeight: "700", color: "#D4501E" },
+
+  // Reviews Modal
+  reviewsModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  reviewsModalTitle: { fontSize: 18, fontWeight: "800", color: "#232230" },
+  reviewsSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "#FFF0EC",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 4,
+  },
+  reviewsSummaryScore: { fontSize: 40, fontWeight: "800", color: "#D4501E" },
+  reviewsSummaryCount: {
+    fontSize: 12,
+    color: "#A09A94",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  reviewsEmpty: { alignItems: "center", paddingVertical: 32, gap: 8 },
+  reviewsEmptyText: { fontSize: 14, color: "#A09A94", fontWeight: "500" },
+  reviewItem: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0EDE8",
+    gap: 8,
+  },
+  reviewItemHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  reviewAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#D4501E",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  reviewerName: { fontSize: 13, fontWeight: "700", color: "#232230" },
+  reviewDate: { fontSize: 11, color: "#A09A94", marginTop: 1 },
+  reviewStarsRow: { flexDirection: "row", gap: 1 },
+  reviewComment: {
+    fontSize: 13,
+    color: "#6B6B6B",
+    lineHeight: 18,
+    paddingLeft: 46,
+  },
 });
