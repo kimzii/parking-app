@@ -48,9 +48,6 @@ export default function HostProfileScreen() {
     }
   }, []);
 
-  const averageRating = Math.max(0, Math.min(5, profile?.averageRating ?? 0));
-  const totalReviews = profile?.totalReviews ?? 0;
-
   useFocusEffect(
     useCallback(() => {
       fetchUserIfToken();
@@ -89,24 +86,6 @@ export default function HostProfileScreen() {
             <View style={styles.hostBadge}>
               <MaterialIcons name="home-work" size={14} color="#fff" />
               <Text style={styles.badgeText}>Host</Text>
-            </View>
-
-            <View style={styles.ratingRow}>
-              <View style={styles.ratingStars}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <MaterialIcons
-                    key={star}
-                    name={star <= Math.round(averageRating) ? "star" : "star-outline"}
-                    size={16}
-                    color="#FFD54F"
-                  />
-                ))}
-              </View>
-              <Text style={styles.ratingText}>
-                {totalReviews > 0
-                  ? `${averageRating.toFixed(1)}/5 (${totalReviews})`
-                  : "No ratings yet"}
-              </Text>
             </View>
 
             <TouchableOpacity
