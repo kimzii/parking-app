@@ -79,6 +79,14 @@ export class ReviewsController {
     return this.reviewsService.getReviewsForReservation(reservationId);
   }
 
+  @Get('admin/user/:userId')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
+  async getUserReviews(@Param('userId') userId: string) {
+    return this.reviewsService.getUserReviewsAdmin(userId);
+  }
+
   @Get('admin/all')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)

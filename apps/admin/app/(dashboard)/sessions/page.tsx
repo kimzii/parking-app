@@ -12,6 +12,9 @@ import {
   Timer,
   CheckCircle,
   AlertCircle,
+  XCircle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import api from "../../../src/lib/api";
 import Image from "next/image";
@@ -25,18 +28,22 @@ type RawSession = {
   propertyTitle?: string | null;
   status?: string | null;
   sessionStartedAt?: string | null;
+  sessionEndedAt?: string | null;
   arrivalDeadline?: string | null;
   totalAmount?: number | string | null;
 };
 
-interface ActiveSession {
+type SessionStatus = "ACTIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+
+interface Session {
   id: string;
   guestName: string;
   guestProfilePicture: string | null;
   hostName: string;
   propertyTitle: string;
-  status: "ACTIVE" | "CONFIRMED";
+  status: SessionStatus;
   sessionStartedAt: string | null;
+  sessionEndedAt: string | null;
   arrivalDeadline: string | null;
   totalAmount: number;
 }
@@ -113,15 +120,19 @@ function parseAmount(value: number | string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function normalizeSession(raw: RawSession): ActiveSession {
+function normalizeSession(raw: RawSession): Session {
+  const status = (["ACTIVE", "CONFIRMED", "COMPLETED", "CANCELLED"].includes(raw.status ?? "")
+    ? raw.status
+    : "CONFIRMED") as SessionStatus;
   return {
     id: raw.id,
     guestName: raw.guestName || "Unknown Guest",
     guestProfilePicture: raw.guestProfilePicture || null,
     hostName: raw.hostName || "Unknown Host",
     propertyTitle: raw.propertyTitle || "Untitled Property",
-    status: (raw.status === "ACTIVE" ? "ACTIVE" : "CONFIRMED") as "ACTIVE" | "CONFIRMED",
+    status,
     sessionStartedAt: raw.sessionStartedAt || null,
+    sessionEndedAt: raw.sessionEndedAt || null,
     arrivalDeadline: raw.arrivalDeadline || null,
     totalAmount: parseAmount(raw.totalAmount),
   };
@@ -148,19 +159,28 @@ function formatDateTime(value: string | null) {
   });
 }
 
-// --- Session Card ---
+function formatDuration(startedAt: string | null, endedAt: string | null): string {
+  if (!startedAt || !endedAt) return "N/A";
+  const diffMs = new Date(endedAt).getTime() - new Date(startedAt).getTime();
+  if (diffMs <= 0) return "N/A";
+  const hours = Math.floor(diffMs / 3600000);
+  const minutes = Math.floor((diffMs % 3600000) / 60000);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+// --- Active/Confirmed Session Card ---
 function SessionCard({
   session,
   onViewDetails,
 }: {
-  session: ActiveSession;
+  session: Session;
   onViewDetails: (id: string) => void;
 }) {
   const isActive = session.status === "ACTIVE";
 
   return (
     <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${isActive ? "border-green-200" : "border-yellow-200"}`}>
-      {/* Card header */}
       <div className={`px-5 py-3 flex items-center justify-between ${isActive ? "bg-green-50" : "bg-yellow-50"}`}>
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-yellow-500 animate-pulse"}`} />
@@ -171,9 +191,7 @@ function SessionCard({
         <span className="text-xs text-gray-400 font-mono">{session.id.slice(0, 8).toUpperCase()}</span>
       </div>
 
-      {/* Card body */}
       <div className="p-5 flex flex-col gap-4">
-        {/* Guest */}
         <div className="flex items-center gap-3">
           {session.guestProfilePicture ? (
             <Image
@@ -194,13 +212,11 @@ function SessionCard({
           </div>
         </div>
 
-        {/* Location */}
         <div className="flex items-start gap-2 text-sm text-gray-600">
           <MapPin size={15} className="mt-0.5 shrink-0 text-gray-400" />
           <span className="leading-tight">{session.propertyTitle}</span>
         </div>
 
-        {/* Timer / countdown */}
         <div className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${isActive ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
           {isActive ? <Timer size={15} className="shrink-0" /> : <Clock size={15} className="shrink-0" />}
           <span className="text-xs">{isActive ? "Session duration:" : "Time to arrive:"}</span>
@@ -213,7 +229,6 @@ function SessionCard({
           )}
         </div>
 
-        {/* Escrow / amount */}
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1.5 text-gray-500">
             <Car size={14} />
@@ -222,7 +237,6 @@ function SessionCard({
           <span className="font-semibold text-gray-900">{formatCurrency(session.totalAmount)}</span>
         </div>
 
-        {/* Action */}
         <button
           onClick={() => onViewDetails(session.id)}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
@@ -235,10 +249,97 @@ function SessionCard({
   );
 }
 
+// --- Completed / Cancelled Session Card ---
+function HistoryCard({
+  session,
+  onViewDetails,
+}: {
+  session: Session;
+  onViewDetails: (id: string) => void;
+}) {
+  const isCompleted = session.status === "COMPLETED";
+  const duration = formatDuration(session.sessionStartedAt, session.sessionEndedAt);
+
+  return (
+    <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${isCompleted ? "border-blue-100" : "border-red-100"}`}>
+      <div className={`px-5 py-3 flex items-center justify-between ${isCompleted ? "bg-blue-50" : "bg-red-50"}`}>
+        <div className="flex items-center gap-2">
+          {isCompleted
+            ? <CheckCircle size={14} className="text-blue-500" />
+            : <XCircle size={14} className="text-red-400" />}
+          <span className={`text-xs font-semibold uppercase tracking-wide ${isCompleted ? "text-blue-700" : "text-red-500"}`}>
+            {isCompleted ? "Completed" : "Cancelled"}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 font-mono">{session.id.slice(0, 8).toUpperCase()}</span>
+      </div>
+
+      <div className="p-5 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          {session.guestProfilePicture ? (
+            <Image
+              src={session.guestProfilePicture}
+              alt={session.guestName}
+              width={36}
+              height={36}
+              className="rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm shrink-0">
+              {session.guestName.charAt(0)}
+            </div>
+          )}
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">{session.guestName}</p>
+            <p className="text-xs text-gray-500">Host: {session.hostName}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 text-sm text-gray-600">
+          <MapPin size={14} className="mt-0.5 shrink-0 text-gray-400" />
+          <span className="leading-tight text-xs">{session.propertyTitle}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {isCompleted && (
+            <div className="bg-blue-50 rounded-lg px-3 py-2">
+              <p className="text-gray-400 mb-0.5">Duration</p>
+              <p className="font-semibold text-blue-700">{duration}</p>
+            </div>
+          )}
+          <div className={`rounded-lg px-3 py-2 ${isCompleted ? "bg-gray-50 col-span-1" : "bg-red-50 col-span-2"}`}>
+            <p className="text-gray-400 mb-0.5">{isCompleted ? "Ended" : "Cancelled at"}</p>
+            <p className="font-medium text-gray-700">{formatDateTime(session.sessionEndedAt)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-xs text-gray-400">Amount</span>
+          <span className={`font-semibold text-sm ${isCompleted ? "text-gray-900" : "text-gray-400 line-through"}`}>
+            {formatCurrency(session.totalAmount)}
+          </span>
+        </div>
+
+        <button
+          onClick={() => onViewDetails(session.id)}
+          className="w-full flex items-center justify-center gap-2 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+        >
+          <Eye size={13} />
+          View Details
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // --- Main Page ---
 export default function LiveSessionsPage() {
-  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
-  const [confirmedSessions, setConfirmedSessions] = useState<ActiveSession[]>([]);
+  const [activeSessions, setActiveSessions] = useState<Session[]>([]);
+  const [confirmedSessions, setConfirmedSessions] = useState<Session[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<Session[]>([]);
+  const [cancelledSessions, setCancelledSessions] = useState<Session[]>([]);
+  const [completedOpen, setCompletedOpen] = useState(false);
+  const [cancelledOpen, setCancelledOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -253,21 +354,29 @@ export default function LiveSessionsPage() {
       if (showLoading) setLoading(true);
       setError(null);
 
-      const [activeRes, confirmedRes] = await Promise.all([
+      const [activeRes, confirmedRes, completedRes, cancelledRes] = await Promise.all([
         api.get<{ reservations: RawSession[]; total: number }>(
           "/dashboard/reservations?status=ACTIVE&limit=100"
         ),
         api.get<{ reservations: RawSession[]; total: number }>(
           "/dashboard/reservations?status=CONFIRMED&limit=100"
         ),
+        api.get<{ reservations: RawSession[]; total: number }>(
+          "/dashboard/reservations?status=COMPLETED&limit=50"
+        ),
+        api.get<{ reservations: RawSession[]; total: number }>(
+          "/dashboard/reservations?status=CANCELLED&limit=50"
+        ),
       ]);
 
       setActiveSessions(activeRes.data.reservations.map(normalizeSession));
       setConfirmedSessions(confirmedRes.data.reservations.map(normalizeSession));
+      setCompletedSessions(completedRes.data.reservations.map(normalizeSession));
+      setCancelledSessions(cancelledRes.data.reservations.map(normalizeSession));
       setLastUpdated(new Date());
       setSecondsSinceUpdate(0);
     } catch {
-      setError("Failed to load live sessions. Retrying automatically.");
+      setError("Failed to load sessions. Retrying automatically.");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -316,7 +425,7 @@ export default function LiveSessionsPage() {
       <div className="bg-[#F9FAFB] min-h-full font-sans p-8 flex items-center justify-center">
         <div className="flex items-center gap-3 text-gray-500">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading live sessions...</span>
+          <span>Loading sessions...</span>
         </div>
       </div>
     );
@@ -329,18 +438,17 @@ export default function LiveSessionsPage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-gray-900">Live Sessions</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Sessions</h1>
             <span className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               Live
             </span>
           </div>
           <p className="text-gray-500 text-sm">
-            Real-time view of all active and incoming parking sessions.
+            Real-time view of all parking sessions — active, incoming, completed, and cancelled.
           </p>
         </div>
 
-        {/* Refresh controls */}
         <div className="flex flex-col items-end gap-1">
           <button
             onClick={handleManualRefresh}
@@ -390,8 +498,17 @@ export default function LiveSessionsPage() {
             <CheckCircle size={20} className="text-blue-600" />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Total Active</p>
-            <p className="text-2xl font-bold text-gray-900">{activeSessions.length + confirmedSessions.length}</p>
+            <p className="text-xs text-gray-500 font-medium">Completed</p>
+            <p className="text-2xl font-bold text-gray-900">{completedSessions.length}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+          <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+            <XCircle size={20} className="text-red-400" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 font-medium">Cancelled</p>
+            <p className="text-2xl font-bold text-gray-900">{cancelledSessions.length}</p>
           </div>
         </div>
       </div>
@@ -419,7 +536,7 @@ export default function LiveSessionsPage() {
       </section>
 
       {/* Awaiting Arrival */}
-      <section>
+      <section className="mb-10">
         <div className="flex items-center gap-2 mb-4">
           <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
           <h2 className="text-lg font-semibold text-gray-800">Awaiting Arrival</h2>
@@ -437,6 +554,68 @@ export default function LiveSessionsPage() {
               <SessionCard key={session.id} session={session} onViewDetails={handleViewDetails} />
             ))}
           </div>
+        )}
+      </section>
+
+      {/* Completed */}
+      <section className="mb-10">
+        <button
+          onClick={() => setCompletedOpen((o) => !o)}
+          className="w-full flex items-center gap-2 mb-4 group"
+        >
+          <CheckCircle size={16} className="text-blue-500 shrink-0" />
+          <h2 className="text-lg font-semibold text-gray-800">Completed</h2>
+          <span className="text-sm text-gray-400">({completedSessions.length})</span>
+          <span className="text-xs text-gray-400 ml-1">· most recent 50</span>
+          <span className="ml-auto text-gray-400 group-hover:text-gray-600 transition-colors">
+            {completedOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          </span>
+        </button>
+
+        {completedOpen && (
+          completedSessions.length === 0 ? (
+            <div className="bg-white rounded-xl border border-dashed border-gray-200 py-12 text-center text-gray-400">
+              <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No completed sessions yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {completedSessions.map((session) => (
+                <HistoryCard key={session.id} session={session} onViewDetails={handleViewDetails} />
+              ))}
+            </div>
+          )
+        )}
+      </section>
+
+      {/* Cancelled */}
+      <section className="mb-10">
+        <button
+          onClick={() => setCancelledOpen((o) => !o)}
+          className="w-full flex items-center gap-2 mb-4 group"
+        >
+          <XCircle size={16} className="text-red-400 shrink-0" />
+          <h2 className="text-lg font-semibold text-gray-800">Cancelled</h2>
+          <span className="text-sm text-gray-400">({cancelledSessions.length})</span>
+          <span className="text-xs text-gray-400 ml-1">· most recent 50</span>
+          <span className="ml-auto text-gray-400 group-hover:text-gray-600 transition-colors">
+            {cancelledOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          </span>
+        </button>
+
+        {cancelledOpen && (
+          cancelledSessions.length === 0 ? (
+            <div className="bg-white rounded-xl border border-dashed border-gray-200 py-12 text-center text-gray-400">
+              <XCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No cancelled sessions.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {cancelledSessions.map((session) => (
+                <HistoryCard key={session.id} session={session} onViewDetails={handleViewDetails} />
+              ))}
+            </div>
+          )
         )}
       </section>
 
@@ -466,7 +645,12 @@ export default function LiveSessionsPage() {
                   <p className="font-semibold text-gray-900 mb-1">{selectedSession.id}</p>
                   <p className="text-gray-600">
                     Status:{" "}
-                    <span className={`font-medium ${selectedSession.status === "ACTIVE" ? "text-green-600" : "text-yellow-600"}`}>
+                    <span className={`font-medium ${
+                      selectedSession.status === "ACTIVE" ? "text-green-600" :
+                      selectedSession.status === "CONFIRMED" ? "text-yellow-600" :
+                      selectedSession.status === "COMPLETED" ? "text-blue-600" :
+                      "text-red-500"
+                    }`}>
                       {selectedSession.status}
                     </span>
                   </p>
@@ -515,6 +699,13 @@ export default function LiveSessionsPage() {
                       <Timer size={14} />
                       <span>Live duration:</span>
                       <ElapsedTimer startedAt={selectedSession.sessionStartedAt} />
+                    </div>
+                  )}
+                  {selectedSession.sessionStartedAt && selectedSession.sessionEndedAt && (
+                    <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-blue-50 rounded-lg text-blue-700 text-sm">
+                      <Timer size={14} />
+                      <span>Total duration:</span>
+                      <span className="font-semibold">{formatDuration(selectedSession.sessionStartedAt, selectedSession.sessionEndedAt)}</span>
                     </div>
                   )}
                   <p className="text-gray-900 font-semibold mt-3">

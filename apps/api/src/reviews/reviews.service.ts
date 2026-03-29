@@ -265,6 +265,70 @@ export class ReviewsService {
     return { reviews, total, page, limit };
   }
 
+  async getUserReviewsAdmin(userId: string) {
+    const [given, received] = await Promise.all([
+      // Reviews this user wrote (as reviewer)
+      this.prisma.review.findMany({
+        where: { reviewerId: userId },
+        include: {
+          reservation: {
+            select: {
+              parkingSpace: {
+                select: {
+                  parkingLocation: { select: { title: true } },
+                },
+              },
+              driver: {
+                select: {
+                  user: { select: { firstName: true, lastName: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      // Reviews others wrote about this user (as driver or host's location)
+      this.prisma.review.findMany({
+        where: {
+          OR: [
+            // Host-to-driver reviews received by this user as a driver
+            {
+              reviewType: ReviewType.HOST_TO_DRIVER,
+              reservation: { driver: { userId } },
+            },
+            // Driver-to-location reviews received by this user as a host
+            {
+              reviewType: ReviewType.DRIVER_TO_LOCATION,
+              reservation: {
+                parkingSpace: {
+                  parkingLocation: { host: { userId } },
+                },
+              },
+            },
+          ],
+        },
+        include: {
+          reviewer: {
+            select: { firstName: true, lastName: true, profilePicture: true },
+          },
+          reservation: {
+            select: {
+              parkingSpace: {
+                select: {
+                  parkingLocation: { select: { title: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return { given, received };
+  }
+
   async deleteReview(id: string) {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) throw new NotFoundException('Review not found');
