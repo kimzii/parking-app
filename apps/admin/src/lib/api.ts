@@ -3,9 +3,12 @@ import axios from "axios";
 
 // Helper to check if we're in the browser
 const isBrowser = typeof window !== "undefined";
+const apiBaseUrl = isBrowser
+  ? "/api/proxy"
+  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
+  baseURL: apiBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
@@ -93,8 +96,11 @@ api.interceptors.response.use(
       }
 
       try {
+        const refreshBaseUrl = isBrowser
+          ? "/api/proxy"
+          : process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
         const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/refresh`,
+          `${refreshBaseUrl}/auth/refresh`,
           { refreshToken },
         );
 

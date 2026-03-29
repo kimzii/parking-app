@@ -2,8 +2,10 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -75,5 +77,31 @@ export class ReviewsController {
     @Param('reservationId') reservationId: string,
   ) {
     return this.reviewsService.getReviewsForReservation(reservationId);
+  }
+
+  @Get('admin/all')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all reviews with filters' })
+  async getAllReviewsAdmin(
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('type') type?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.reviewsService.getAllReviewsAdmin({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      type,
+      search,
+    });
+  }
+
+  @Delete('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @ApiOperation({ summary: 'Admin: Delete a review' })
+  async deleteReview(@Param('id') id: string) {
+    return this.reviewsService.deleteReview(id);
   }
 }

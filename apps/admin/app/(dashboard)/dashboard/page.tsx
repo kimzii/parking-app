@@ -59,8 +59,8 @@ const StatCard = ({ title, value, footerLabel, footerColor, icon, iconBg, iconCo
 
 const ActivityItem = ({ user, action, time }: { user: string, action: string, time: string }) => (
   <div className="flex gap-4 relative pb-8 last:pb-0 group">
-    <div className="absolute left-[19px] top-8 bottom-0 w-[1px] bg-gray-200 group-last:hidden"></div>
-    <div className="relative z-10 w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 text-gray-500">
+    <div className="absolute left-[19px] top-8 bottom-0 w-[1px] bg-gray-200 z-0 group-last:hidden"></div>
+    <div className="relative z-[1] w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 text-gray-500">
       <Users size={18} />
     </div>
     <div className="pt-1">
@@ -343,7 +343,20 @@ export default function DashboardPage() {
                       </tr>
                     ) : (
                       recentListings.map((listing) => (
-                        <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
+                        <tr
+                          key={listing.id}
+                          className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                          onClick={() => router.push(`/listings?listingId=${encodeURIComponent(listing.id)}`)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              router.push(`/listings?listingId=${encodeURIComponent(listing.id)}`);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Open listing details for ${listing.title}`}
+                        >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-gray-100 rounded-md flex-shrink-0 flex items-center justify-center text-gray-400">

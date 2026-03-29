@@ -12,13 +12,14 @@ import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 
+import { hostService, HostProfile } from "../../src/services/hosts";
 import { userService } from "../../src/services/user";
-import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
 import MenuItem from "../../src/components/MenuItem";
 
 export default function HostProfileScreen() {
-  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<HostProfile | null>(null);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [infoHeight, setInfoHeight] = useState(0);
 
@@ -27,19 +28,28 @@ export default function HostProfileScreen() {
     const token = await SecureStore.getItemAsync("accessToken");
     if (token) {
       try {
-        const data = await userService.getProfile();
-        setUser(data);
+        const [hostProfile, userProfile] = await Promise.all([
+          hostService.getProfile(),
+          userService.getProfile(),
+        ]);
+        setProfile(hostProfile);
+        setWalletBalance(Number(userProfile?.walletBalance ?? 0));
       } catch (err) {
         console.error("Failed to fetch user profile:", err);
-        setUser(null);
+        setProfile(null);
+        setWalletBalance(0);
       } finally {
         setLoading(false);
       }
     } else {
-      setUser(null);
+      setProfile(null);
+      setWalletBalance(0);
       setLoading(false);
     }
   }, []);
+
+  const averageRating = Math.max(0, Math.min(5, profile?.averageRating ?? 0));
+  const totalReviews = profile?.totalReviews ?? 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -52,9 +62,9 @@ export default function HostProfileScreen() {
       <View style={styles.container}>
         <View style={styles.profileHeader}>
           <View style={[styles.avatar, infoHeight > 0 && { height: infoHeight }]}>
-            {user?.profilePicture ? (
+            {profile?.user.profilePicture ? (
               <Image
-                source={{ uri: user.profilePicture }}
+                source={{ uri: profile.user.profilePicture }}
                 style={StyleSheet.absoluteFillObject}
                 contentFit="cover"
               />
@@ -70,8 +80,8 @@ export default function HostProfileScreen() {
             <Text style={styles.userName}>
               {loading
                 ? "Loading..."
-                : user
-                  ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
+                : profile
+                  ? `${profile.user.firstName ?? ""} ${profile.user.lastName ?? ""}`.trim() ||
                     "-"
                   : "-"}
             </Text>
@@ -79,6 +89,24 @@ export default function HostProfileScreen() {
             <View style={styles.hostBadge}>
               <MaterialIcons name="home-work" size={14} color="#fff" />
               <Text style={styles.badgeText}>Host</Text>
+            </View>
+
+            <View style={styles.ratingRow}>
+              <View style={styles.ratingStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <MaterialIcons
+                    key={star}
+                    name={star <= Math.round(averageRating) ? "star" : "star-outline"}
+                    size={16}
+                    color="#FFD54F"
+                  />
+                ))}
+              </View>
+              <Text style={styles.ratingText}>
+                {totalReviews > 0
+                  ? `${averageRating.toFixed(1)}/5 (${totalReviews})`
+                  : "No ratings yet"}
+              </Text>
             </View>
 
             <TouchableOpacity
@@ -99,9 +127,8 @@ export default function HostProfileScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <EWallet
-              balance={Number(user?.walletBalance ?? 0)}
-              onTopUp={() => router.push("/(modals)/top-up")}
-              onWithdraw={() => {}}
+              balance={walletBalance}
+              onWithdraw={() => router.push("/(modals)/withdraw")}
             />
 
             <View style={styles.menuSection}>
@@ -164,6 +191,21 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   badgeText: { fontSize: 12, fontWeight: "600", color: "#fff" },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  ratingStars: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  ratingText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   editProfileBtn: {
     flexDirection: "row",
     alignItems: "center",

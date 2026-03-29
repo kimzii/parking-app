@@ -50,7 +50,7 @@ export default function WithdrawScreen() {
 
   const fetchProfile = async () => {
     try {
-      const res = await api.get("/auth/profile");
+      const res = await api.get("/users/profile");
       setPhoneNumber(res.data.phoneNumber || null);
     } catch {
       console.error("Failed to fetch profile");
@@ -62,6 +62,7 @@ export default function WithdrawScreen() {
   const checkExistingRequest = async () => {
     try {
       const requests = await walletService.getMyWithdrawRequests();
+      // Only resume if PENDING — APPROVED/REJECTED means the flow is fully done
       const pending = requests.find((r) => r.status === "PENDING");
       if (pending) {
         setCurrentRequest(pending);

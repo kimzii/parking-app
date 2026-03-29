@@ -21,6 +21,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
+import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import type { AuthenticatedRequest } from './types';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -165,6 +166,17 @@ export class UsersController {
   @Roles(RoleName.ADMIN)
   async getUserById(@Param('id') id: string) {
     return this.usersService.getUserById(id);
+  }
+
+  // Admin: Update user profile fields by ID
+  @Put(':id')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  async updateUserById(
+    @Param('id') id: string,
+    @Body() updateUserDto: AdminUpdateUserDto,
+  ) {
+    return this.usersService.updateUserByAdmin(id, updateUserDto);
   }
 
   // Admin: Delete user

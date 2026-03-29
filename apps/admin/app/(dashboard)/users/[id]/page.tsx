@@ -17,7 +17,8 @@ import {
   Clock,
   XCircle,
   CheckCircle,
-  UserCircle
+  UserCircle,
+  Star
 } from "lucide-react";
 import api from "../../../../src/lib/api";
 import Image from "next/image";
@@ -27,6 +28,7 @@ type RoleName = "DRIVER" | "HOST" | "ADMIN";
 type VerificationStatus = "PENDING" | "VERIFIED" | "REJECTED" | "SUSPENDED";
 
 interface RoleStatus {
+  roleId: string;
   role: RoleName;
   status: VerificationStatus;
 }
@@ -71,6 +73,8 @@ interface UserProfile {
   };
   host?: {
     id: string;
+    averageRating?: number | null;
+    totalReviews?: number;
     parkingLocations: {
       id: string;
       title: string;
@@ -81,6 +85,7 @@ interface UserProfile {
     }[];
   };
 }
+
 
 const getVerificationIcon = (status: VerificationStatus) => {
   switch (status) {
@@ -150,6 +155,7 @@ const formatListingRevenue = (amount?: number) => {
   }).format(amount || 0);
 };
 
+
 export default function UserProfileView() {
   const router = useRouter();
   const params = useParams();
@@ -160,6 +166,18 @@ export default function UserProfileView() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "vehicle" | "bookings" | "property">("profile");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+  });
+  const [suspensionForm, setSuspensionForm] = useState({
+    suspendDriverReservation: false,
+    suspendHostParkingManagement: false,
+  });
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -199,6 +217,29 @@ export default function UserProfileView() {
     }
   };
 
+  // Update host verification status
+  const handleHostVerification = async (status: "VERIFIED" | "REJECTED") => {
+    if (!user) return;
+
+    const hostRole = user.roleStatuses.find((rs) => rs.role === "HOST");
+
+    if (!hostRole?.roleId) {
+      alert("Host role ID is missing. Please refresh and try again.");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await api.put(`/users/${user.id}/roles/${hostRole.roleId}/status`, { status });
+      await fetchUserProfile();
+    } catch (err) {
+      console.error("Error updating host status:", err);
+      alert(`Failed to ${status.toLowerCase()} host. Please try again.`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Get driver role status
   const getDriverStatus = (): VerificationStatus | null => {
     if (!user) return null;
@@ -221,6 +262,109 @@ export default function UserProfileView() {
       return `${user.firstName || ""} ${user.lastName || ""}`.trim();
     }
     return user.email.split("@")[0];
+  };
+
+  const openEditModal = () => {
+    if (!user) return;
+
+    setEditForm({
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      phoneNumber: user.phoneNumber || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const openSuspendModal = () => {
+    if (!user) return;
+
+    const currentDriverStatus = getDriverStatus();
+    const currentHostStatus = getHostStatus();
+
+    setSuspensionForm({
+      suspendDriverReservation: currentDriverStatus === "SUSPENDED",
+      suspendHostParkingManagement: currentHostStatus === "SUSPENDED",
+    });
+
+    setShowSuspendModal(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!user) return;
+
+    try {
+      setActionLoading(true);
+      await api.put(`/users/${user.id}`, {
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
+        email: editForm.email.trim(),
+        phoneNumber: editForm.phoneNumber.trim() || null,
+      });
+
+      setShowEditModal(false);
+      await fetchUserProfile();
+    } catch (err) {
+      console.error("Error updating user:", err);
+      alert("Failed to update user details. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateSuspensions = async () => {
+    if (!user) return;
+
+    const updates: Promise<unknown>[] = [];
+    const driverRole = user.roleStatuses.find((rs) => rs.role === "DRIVER");
+    const hostRole = user.roleStatuses.find((rs) => rs.role === "HOST");
+
+    try {
+      setActionLoading(true);
+
+      if (driverRole?.roleId) {
+        const currentDriverStatus = driverRole.status;
+        const targetDriverStatus = suspensionForm.suspendDriverReservation
+          ? "SUSPENDED"
+          : currentDriverStatus === "SUSPENDED"
+          ? "VERIFIED"
+          : currentDriverStatus;
+
+        if (targetDriverStatus !== currentDriverStatus) {
+          updates.push(
+            api.put(`/users/${user.id}/roles/${driverRole.roleId}/status`, {
+              status: targetDriverStatus,
+            })
+          );
+        }
+      }
+
+      if (hostRole?.roleId) {
+        const currentHostStatus = hostRole.status;
+        const targetHostStatus = suspensionForm.suspendHostParkingManagement
+          ? "SUSPENDED"
+          : currentHostStatus === "SUSPENDED"
+          ? "VERIFIED"
+          : currentHostStatus;
+
+        if (targetHostStatus !== currentHostStatus) {
+          updates.push(
+            api.put(`/users/${user.id}/roles/${hostRole.roleId}/status`, {
+              status: targetHostStatus,
+            })
+          );
+        }
+      }
+
+      await Promise.all(updates);
+      setShowSuspendModal(false);
+      await fetchUserProfile();
+    } catch (err) {
+      console.error("Error updating user suspensions:", err);
+      alert("Failed to update suspension settings. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Loading state
@@ -261,6 +405,11 @@ export default function UserProfileView() {
   const showSecondaryRoleStatus = Boolean(
     driverStatus && hostStatus && driverStatus !== hostStatus
   );
+  const hostAverageRating = user.host?.averageRating ?? 0;
+  const hostTotalReviews = user.host?.totalReviews ?? 0;
+  const hostFilledStars = isHost && hostTotalReviews > 0
+    ? Math.max(0, Math.min(5, Math.round(hostAverageRating)))
+    : 0;
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
@@ -459,28 +608,73 @@ export default function UserProfileView() {
                         </div>
                       </div>
                     ) : hostStatus === "PENDING" ? (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-semibold text-yellow-800">Pending Host Verification</p>
-                            <p className="text-sm text-yellow-700 mt-1">
-                              This host role is pending verification.
-                            </p>
+                      <div className="space-y-6">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <Clock size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold text-yellow-800">Pending Host Verification</p>
+                              <p className="text-sm text-yellow-700 mt-1">
+                                This host role is pending verification.
+                              </p>
+                            </div>
                           </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => handleHostVerification("VERIFIED")}
+                            disabled={actionLoading}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                          >
+                            {actionLoading ? (
+                              <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={20} />
+                            )}
+                            Approve Host Verification
+                          </button>
+
+                          <button
+                            onClick={() => handleHostVerification("REJECTED")}
+                            disabled={actionLoading}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold rounded-lg transition-colors"
+                          >
+                            {actionLoading ? (
+                              <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                              <XCircle size={20} />
+                            )}
+                            Reject Host Verification
+                          </button>
                         </div>
                       </div>
                     ) : hostStatus === "REJECTED" ? (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-semibold text-red-800">Host Verification Rejected</p>
-                            <p className="text-sm text-red-700 mt-1">
-                              This host role has been rejected and cannot create active listings.
-                            </p>
+                      <div className="space-y-6">
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <XCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold text-red-800">Host Verification Rejected</p>
+                              <p className="text-sm text-red-700 mt-1">
+                                This host role has been rejected and cannot create active listings.
+                              </p>
+                            </div>
                           </div>
                         </div>
+
+                        <button
+                          onClick={() => handleHostVerification("VERIFIED")}
+                          disabled={actionLoading}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-lg transition-colors"
+                        >
+                          {actionLoading ? (
+                            <Loader2 size={20} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={20} />
+                          )}
+                          Re-approve Host
+                        </button>
                       </div>
                     ) : (
                       <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
@@ -519,13 +713,26 @@ export default function UserProfileView() {
                 </div>
 
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">{displayName}</h2>
-                <span className={`inline-block px-3 py-1 font-semibold text-sm rounded-full mb-8 ${
-                  isHost
-                    ? "bg-orange-100 text-orange-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}>
-                  {primaryRole}
-                </span>
+                <div className="mb-8 flex items-center gap-2">
+                  <span className={`inline-block px-3 py-1 font-semibold text-sm rounded-full ${
+                    isHost
+                      ? "bg-orange-100 text-orange-700"
+                      : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {primaryRole}
+                  </span>
+                  {isHost && (
+                    <div className="inline-flex items-center gap-1" title="Host rating">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={14}
+                          className={star <= hostFilledStars ? "text-yellow-500 fill-current" : "text-gray-300"}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <div className="w-full space-y-4 mb-8">
                   <div className="flex items-center gap-3 text-gray-600">
@@ -559,11 +766,17 @@ export default function UserProfileView() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full">
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg transition-colors border border-gray-200">
+                  <button
+                    onClick={openEditModal}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-lg transition-colors border border-gray-200"
+                  >
                     <Edit size={18} />
                     Edit User
                   </button>
-                  <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition-colors border border-red-100">
+                  <button
+                    onClick={openSuspendModal}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition-colors border border-red-100"
+                  >
                     <Ban size={18} />
                     Suspend User
                   </button>
@@ -824,33 +1037,51 @@ export default function UserProfileView() {
               </div>
 
               {user.host.parkingLocations && user.host.parkingLocations.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {user.host.parkingLocations.map((location) => (
-                    <div
-                      key={location.id}
-                      className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-semibold text-gray-900 line-clamp-1">{location.title}</h4>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          location.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                          location.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {location.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 line-clamp-2">{location.address}</p>
-                      {location.status === "PENDING" && (
-                        <button
-                          onClick={() => router.push("/listings")}
-                          className="mt-4 w-full px-4 py-2 bg-[#005f56] hover:bg-[#004a43] text-white text-sm font-medium rounded-lg transition-colors"
-                        >
-                          Review in Listings
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3">Listing ID</th>
+                        <th className="px-4 py-3">Property Name</th>
+                        <th className="px-4 py-3">Address</th>
+                        <th className="px-4 py-3">Date Added</th>
+                        <th className="px-4 py-3">Revenue</th>
+                        <th className="px-4 py-3 text-right">Status</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm">
+                      {user.host.parkingLocations.map((location) => (
+                        <tr key={location.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-gray-900">{location.id.slice(0, 8).toUpperCase()}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{location.title}</td>
+                          <td className="px-4 py-3 text-gray-600 truncate max-w-xs" title={location.address}>
+                            {location.address}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">{formatListingDate(location.createdAt)}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{formatListingRevenue(location.revenueTotal)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                              location.status === "APPROVED" ? "bg-green-100 text-green-700" :
+                              location.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                              location.status === "REJECTED" ? "bg-red-100 text-red-700" :
+                              "bg-gray-100 text-gray-700"
+                            }`}>
+                              {location.status.charAt(0) + location.status.slice(1).toLowerCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => router.push(`/listings?listingId=${encodeURIComponent(location.id)}`)}
+                              className="text-[#005f56] hover:text-[#004a43] font-medium"
+                            >
+                              View →
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="py-16 flex flex-col items-center justify-center text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
@@ -863,6 +1094,151 @@ export default function UserProfileView() {
           )}
         </div>
       </div>
+
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Edit User Information</h3>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Mobile Number</label>
+                <input
+                  value={editForm.phoneNumber}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowEditModal(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditUser}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-semibold text-white bg-[#005f56] hover:bg-[#004a43] rounded-lg disabled:opacity-50"
+              >
+                {actionLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSuspendModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Suspend User Activities</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Choose which activities to suspend for this user.
+              </p>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {isDriver ? (
+                <label className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={suspensionForm.suspendDriverReservation}
+                    onChange={(e) =>
+                      setSuspensionForm((prev) => ({
+                        ...prev,
+                        suspendDriverReservation: e.target.checked,
+                      }))
+                    }
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900">Suspend Reserving Parking</p>
+                    <p className="text-sm text-gray-600">
+                      User will be blocked from creating new parking reservations.
+                    </p>
+                  </div>
+                </label>
+              ) : null}
+
+              {isHost ? (
+                <label className="flex items-start gap-3 p-4 rounded-lg border border-gray-200 bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={suspensionForm.suspendHostParkingManagement}
+                    onChange={(e) =>
+                      setSuspensionForm((prev) => ({
+                        ...prev,
+                        suspendHostParkingManagement: e.target.checked,
+                      }))
+                    }
+                    className="mt-1"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900">Suspend Parking Space Management</p>
+                    <p className="text-sm text-gray-600">
+                      User will be blocked from creating, updating, deleting, and toggling parking locations/spaces.
+                    </p>
+                  </div>
+                </label>
+              ) : null}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowSuspendModal(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateSuspensions}
+                disabled={actionLoading}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
+              >
+                {actionLoading ? "Updating..." : "Update Suspensions"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -10,7 +10,9 @@ import {
   BarChart3,
   Settings,
   Crown,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Activity,
+  Star,
 } from "lucide-react";
 
 const navigationItems = [
@@ -37,10 +39,22 @@ const navigationItems = [
     label: "Reservations",
   },
   {
+    href: "/sessions",
+    icon: Activity,
+    label: "Live Sessions",
+    badge: "Live",
+  },
+  {
     href: "/transactions",
     icon: ArrowLeftRight,
     label: "Transactions",
     badge: "Top-Up/Withdraw",
+  },
+  {
+    href: "/reviews",
+    icon: Star,
+    label: "Reviews",
+    badge: "Moderate",
   },
   {
     href: "/reports",

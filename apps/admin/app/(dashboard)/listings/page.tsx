@@ -21,6 +21,7 @@ import {
   History,
   UserCheck,
   CreditCard,
+  Timer,
 } from "lucide-react";
 import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import api from "../../../src/lib/api";
@@ -33,6 +34,21 @@ type ParkingLocationImage = {
   id: string;
   imageUrl: string;
   isPrimary: boolean;
+};
+
+type ParkingSpaceStatus = "AVAILABLE" | "OCCUPIED" | "DISABLED";
+
+type ParkingSpace = {
+  id: string;
+  slotNumber: number;
+  name: string | null;
+  levelNumber: number | null;
+  status: ParkingSpaceStatus;
+  isActive: boolean;
+  reservations?: Array<{
+    id: string;
+    status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+  }>;
 };
 
 type UserModel = {
@@ -68,10 +84,14 @@ type ParkingLocation = {
   availableSlots: number | null;
   isMultiLevel: boolean;
   numberOfLevels: number | null;
+  openTime: string | null;
+  closeTime: string | null;
+  is24Hours: boolean;
   proofOfResidenceUrl: string | null;
   createdAt: string;
   host: Host;
   images: ParkingLocationImage[];
+  parkingSpaces?: ParkingSpace[];
   _count?: {
     parkingSpaces: number;
   };
@@ -141,6 +161,98 @@ interface DriversResponse {
   };
 }
 
+// --- Listing session types ---
+type ListingSessionRaw = {
+  id: string;
+  guestName?: string | null;
+  guestProfilePicture?: string | null;
+  propertyTitle?: string | null;
+  status?: string | null;
+  sessionStartedAt?: string | null;
+  arrivalDeadline?: string | null;
+  totalAmount?: number | string | null;
+};
+
+type ListingSession = {
+  id: string;
+  guestName: string;
+  guestProfilePicture: string | null;
+  propertyTitle: string;
+  status: "ACTIVE" | "CONFIRMED";
+  sessionStartedAt: string | null;
+  arrivalDeadline: string | null;
+  totalAmount: number;
+};
+
+type ListingSessionDetails = {
+  id: string;
+  status: string;
+  createdAt: string;
+  arrivalDeadline: string | null;
+  sessionStartedAt: string | null;
+  sessionEndedAt: string | null;
+  totalAmount: number;
+  guest: { name: string; email: string; phone: string | null };
+  host: { name: string; email: string; phone: string | null };
+  property: { title: string; address: string; slotNumber: number };
+};
+
+function normalizeListingSession(raw: ListingSessionRaw): ListingSession {
+  const parseAmt = (v: number | string | null | undefined) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  return {
+    id: raw.id,
+    guestName: raw.guestName || "Unknown Guest",
+    guestProfilePicture: raw.guestProfilePicture || null,
+    propertyTitle: raw.propertyTitle || "",
+    status: raw.status === "ACTIVE" ? "ACTIVE" : "CONFIRMED",
+    sessionStartedAt: raw.sessionStartedAt || null,
+    arrivalDeadline: raw.arrivalDeadline || null,
+    totalAmount: parseAmt(raw.totalAmount),
+  };
+}
+
+function ElapsedTimer({ startedAt }: { startedAt: string }) {
+  const [elapsed, setElapsed] = useState("");
+  useEffect(() => {
+    const update = () => {
+      const diffMs = Date.now() - new Date(startedAt).getTime();
+      const hours = Math.floor(diffMs / 3600000);
+      const minutes = Math.floor((diffMs % 3600000) / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+      setElapsed(hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  return <span className="font-mono font-semibold tabular-nums">{elapsed}</span>;
+}
+
+function ArrivalCountdown({ deadline }: { deadline: string }) {
+  const [remaining, setRemaining] = useState("");
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    const update = () => {
+      const diffMs = new Date(deadline).getTime() - Date.now();
+      if (diffMs <= 0) { setExpired(true); setRemaining("Overdue"); return; }
+      const minutes = Math.floor(diffMs / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+      setRemaining(`${minutes}m ${seconds}s`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [deadline]);
+  return (
+    <span className={`font-mono font-semibold tabular-nums ${expired ? "text-red-500" : "text-yellow-600"}`}>
+      {remaining}
+    </span>
+  );
+}
+
 export default function PendingListings() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -175,17 +287,23 @@ export default function PendingListings() {
   const [driversPage, setDriversPage] = useState(1);
   const [driversTotalPages, setDriversTotalPages] = useState(1);
   const [driversTotal, setDriversTotal] = useState(0);
+  const [lastListingSyncAt, setLastListingSyncAt] = useState<Date | null>(null);
+  const [listingActiveSessions, setListingActiveSessions] = useState<ListingSession[]>([]);
+  const [listingConfirmedSessions, setListingConfirmedSessions] = useState<ListingSession[]>([]);
+  const [listingSessionsLoading, setListingSessionsLoading] = useState(false);
+  const [listingSelectedSession, setListingSelectedSession] = useState<ListingSessionDetails | null>(null);
+  const [listingDetailsLoading, setListingDetailsLoading] = useState(false);
 
-  const toCoordinate = (value: number | string | null | undefined) => {
+  const toCoordinate = useCallback((value: number | string | null | undefined) => {
     if (value === null || value === undefined || value === "") {
       return null;
     }
 
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
-  };
+  }, []);
 
-  const normalizeLocation = (location: RawParkingLocation): ParkingLocation => {
+  const normalizeLocation = useCallback((location: RawParkingLocation): ParkingLocation => {
     const latitude =
       toCoordinate(location.latitude) ?? toCoordinate(location.lat) ?? 0;
     const longitude =
@@ -196,7 +314,20 @@ export default function PendingListings() {
       latitude,
       longitude,
     };
-  };
+  }, [toCoordinate]);
+
+  const fetchListingById = useCallback(async (targetListingId: string) => {
+    const encodedListingId = encodeURIComponent(targetListingId);
+    const response = await api.get<ListingsResponse>(
+      `/hosts/admin/locations?page=1&limit=1&search=${encodedListingId}`
+    );
+
+    const matchedListing =
+      response.data.data.find((location) => location.id === targetListingId) ||
+      response.data.data[0];
+
+    return matchedListing ? normalizeLocation(matchedListing) : null;
+  }, [normalizeLocation]);
 
   // Fetch pending listings from API
   const fetchListings = useCallback(async () => {
@@ -314,24 +445,12 @@ export default function PendingListings() {
       }
 
       try {
-        const encodedListingId = encodeURIComponent(listingId);
-        const [pendingRes, approvedRes, rejectedRes, fallbackRes] = await Promise.all([
-          api.get<ListingsResponse>(`/hosts/admin/locations?status=PENDING&page=1&limit=1&search=${encodedListingId}`),
-          api.get<ListingsResponse>(`/hosts/admin/locations?status=APPROVED&page=1&limit=1&search=${encodedListingId}`),
-          api.get<ListingsResponse>(`/hosts/admin/locations?status=REJECTED&page=1&limit=1&search=${encodedListingId}`),
-          api.get<ListingsResponse>(`/hosts/admin/locations?page=1&limit=1&search=${encodedListingId}`),
-        ]);
-
-        const matchedListing =
-          pendingRes.data.data[0] ||
-          approvedRes.data.data[0] ||
-          rejectedRes.data.data[0] ||
-          fallbackRes.data.data[0];
+        const matchedListing = await fetchListingById(listingId);
 
         if (matchedListing) {
-          const normalizedListing = normalizeLocation(matchedListing);
-          setSelectedListing(normalizedListing);
-          setActiveTab(normalizedListing.status === "PENDING" ? "pending" : "recent");
+          setSelectedListing(matchedListing);
+          setLastListingSyncAt(new Date());
+          setActiveTab(matchedListing.status === "PENDING" ? "pending" : "recent");
         }
       } catch (err) {
         console.error("Error loading listing from query:", err);
@@ -339,7 +458,50 @@ export default function PendingListings() {
     };
 
     fetchListingFromQuery();
-  }, [listingId]);
+  }, [listingId, fetchListingById]);
+
+  useEffect(() => {
+    if (!selectedListing?.id) {
+      return;
+    }
+
+    let isCancelled = false;
+    const currentListingId = selectedListing.id;
+
+    const syncSelectedListing = async () => {
+      try {
+        const latestListing = await fetchListingById(currentListingId);
+
+        if (!latestListing || isCancelled) {
+          return;
+        }
+
+        setSelectedListing((prev) => {
+          if (!prev || prev.id !== currentListingId) {
+            return prev;
+          }
+
+          return latestListing;
+        });
+        setLastListingSyncAt(new Date());
+      } catch (err) {
+        if (!isCancelled) {
+          console.error("Error syncing listing realtime data:", err);
+        }
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      void syncSelectedListing();
+    }, 5000);
+
+    void syncSelectedListing();
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [selectedListing?.id, fetchListingById]);
 
   useEffect(() => {
     if (activeTab === "recent") {
@@ -350,6 +512,40 @@ export default function PendingListings() {
       fetchRecentDrivers();
     }
   }, [activeTab, fetchRecentListings, fetchRecentDrivers]);
+
+  useEffect(() => {
+    if (!selectedListing) {
+      setListingActiveSessions([]);
+      setListingConfirmedSessions([]);
+      return;
+    }
+    const title = selectedListing.title;
+    const fetchSessions = async () => {
+      setListingSessionsLoading(true);
+      try {
+        const [activeRes, confirmedRes] = await Promise.all([
+          api.get<{ reservations: ListingSessionRaw[]; total: number }>(
+            "/dashboard/reservations?status=ACTIVE&limit=100"
+          ),
+          api.get<{ reservations: ListingSessionRaw[]; total: number }>(
+            "/dashboard/reservations?status=CONFIRMED&limit=100"
+          ),
+        ]);
+        const filter = (list: ListingSessionRaw[]) =>
+          list.filter((s) => s.propertyTitle === title).map(normalizeListingSession);
+        setListingActiveSessions(filter(activeRes.data.reservations));
+        setListingConfirmedSessions(filter(confirmedRes.data.reservations));
+      } catch (err) {
+        console.error("Error fetching listing sessions:", err);
+      } finally {
+        setListingSessionsLoading(false);
+      }
+    };
+    fetchSessions();
+    const id = setInterval(fetchSessions, 30000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListing?.id, selectedListing?.title]);
 
   // Approve listing
   const handleApprove = async (locationId: string) => {
@@ -409,6 +605,23 @@ export default function PendingListings() {
     }).format(amount);
   };
 
+  const formatOperatingTime = (time: string | null) => {
+    if (!time) return "N/A";
+
+    const [hourStr, minuteStr] = time.split(":");
+    const parsedHour = Number(hourStr);
+    const minute = minuteStr ?? "00";
+
+    if (!Number.isFinite(parsedHour)) {
+      return time;
+    }
+
+    const period = parsedHour >= 12 ? "PM" : "AM";
+    const hour12 = parsedHour % 12 === 0 ? 12 : parsedHour % 12;
+
+    return `${hour12}:${minute.padStart(2, "0")} ${period}`;
+  };
+
   // --- 1. DETAILED VIEW RENDER ---
   if (selectedListing) {
     const listingLatitude = toCoordinate(selectedListing.latitude);
@@ -435,6 +648,16 @@ export default function PendingListings() {
     const hostVerificationStyle = hostVerificationConfig[hostVerificationStatus];
     const StatusIcon = statusStyle.icon;
     const HostVerificationIcon = hostVerificationStyle.icon;
+    const parkingTypeLabel = selectedListing.isMultiLevel
+      ? `Multi-level parking (${selectedListing.numberOfLevels ?? 0} level${
+          (selectedListing.numberOfLevels ?? 0) === 1 ? "" : "s"
+        })`
+      : "Single-level parking";
+    const operatingHoursLabel = selectedListing.is24Hours
+      ? "Open 24 hours"
+      : `${formatOperatingTime(selectedListing.openTime)} - ${formatOperatingTime(
+          selectedListing.closeTime
+        )}`;
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
@@ -677,7 +900,141 @@ export default function PendingListings() {
               </CardContent>
             </Card>
 
-            {/* Decision Action - Only for pending listings */}
+            {/* Live Sessions at this listing */}
+            <Card className="shadow-sm border-gray-100">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="flex items-center gap-2">
+                  <CardTitle>Live Sessions</CardTitle>
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    Live
+                  </span>
+                </div>
+                {listingSessionsLoading && (
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Slot stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-lg border border-gray-200 p-3 bg-white">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Total Slots</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedListing.totalSlots ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3 bg-white">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Available</p>
+                      <p className="text-lg font-semibold text-green-700 mt-1">{selectedListing.availableSlots ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3 bg-white">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Parked</p>
+                      <p className="text-lg font-semibold text-orange-700 mt-1">{listingActiveSessions.length}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3 bg-white">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Arriving</p>
+                      <p className="text-lg font-semibold text-yellow-600 mt-1">{listingConfirmedSessions.length}</p>
+                    </div>
+                  </div>
+
+                  {/* Currently Parked */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <p className="text-sm font-semibold text-gray-700">Currently Parked ({listingActiveSessions.length})</p>
+                    </div>
+                    {listingActiveSessions.length === 0 ? (
+                      <p className="text-sm text-gray-400 pl-4">No active sessions right now.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {listingActiveSessions.map((session) => (
+                          <div key={session.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-100">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {session.guestProfilePicture ? (
+                                <Image src={session.guestProfilePicture} alt={session.guestName} width={32} height={32} className="rounded-full object-cover shrink-0" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm shrink-0">
+                                  {session.guestName.charAt(0)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{session.guestName}</p>
+                                <div className="flex items-center gap-1 text-xs text-green-700">
+                                  <Timer size={12} />
+                                  {session.sessionStartedAt ? <ElapsedTimer startedAt={session.sessionStartedAt} /> : "—"}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                setListingDetailsLoading(true);
+                                setListingSelectedSession(null);
+                                try {
+                                  const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
+                                  setListingSelectedSession(res.data);
+                                } catch { alert("Failed to load session details."); }
+                                finally { setListingDetailsLoading(false); }
+                              }}
+                              className="shrink-0 text-xs text-green-700 underline hover:text-green-900"
+                            >
+                              Details
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Awaiting Arrival */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                      <p className="text-sm font-semibold text-gray-700">Awaiting Arrival ({listingConfirmedSessions.length})</p>
+                    </div>
+                    {listingConfirmedSessions.length === 0 ? (
+                      <p className="text-sm text-gray-400 pl-4">No drivers currently en route.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {listingConfirmedSessions.map((session) => (
+                          <div key={session.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-100">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {session.guestProfilePicture ? (
+                                <Image src={session.guestProfilePicture} alt={session.guestName} width={32} height={32} className="rounded-full object-cover shrink-0" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-semibold text-sm shrink-0">
+                                  {session.guestName.charAt(0)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{session.guestName}</p>
+                                <div className="flex items-center gap-1 text-xs">
+                                  <Clock size={12} className="text-yellow-600" />
+                                  {session.arrivalDeadline ? <ArrivalCountdown deadline={session.arrivalDeadline} /> : "—"}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                setListingDetailsLoading(true);
+                                setListingSelectedSession(null);
+                                try {
+                                  const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
+                                  setListingSelectedSession(res.data);
+                                } catch { alert("Failed to load session details."); }
+                                finally { setListingDetailsLoading(false); }
+                              }}
+                              className="shrink-0 text-xs text-yellow-700 underline hover:text-yellow-900"
+                            >
+                              Details
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {isPending && (
               <Card className="shadow-sm border-gray-100">
                 <CardHeader>
@@ -737,17 +1094,36 @@ export default function PendingListings() {
                   <CardTitle>Listing Status</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-gray-50">
-                    <div className={`p-3 rounded-full ${statusStyle.bg}`}>
-                      <StatusIcon className={`w-6 h-6 ${statusStyle.text}`} />
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-gray-50">
+                      <div className={`p-3 rounded-full ${statusStyle.bg}`}>
+                        <StatusIcon className={`w-6 h-6 ${statusStyle.text}`} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {selectedListing.status === "APPROVED" ? "Listing Approved" : "Listing Rejected"}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          This listing has been {selectedListing.status.toLowerCase()} by an admin.
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {selectedListing.status === "APPROVED" ? "Listing Approved" : "Listing Rejected"}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        This listing has been {selectedListing.status.toLowerCase()} by an admin.
-                      </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="rounded-lg border border-gray-200 p-4 bg-white">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
+                          Parking Type
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900">{parkingTypeLabel}</p>
+                      </div>
+
+                      <div className="rounded-lg border border-gray-200 p-4 bg-white">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
+                          Operating Hours
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900">{operatingHoursLabel}</p>
+                      </div>
+
                     </div>
                   </div>
                 </CardContent>
@@ -755,7 +1131,107 @@ export default function PendingListings() {
             )}
           </div>
         </div>
-      </div>
+
+      {/* Session Details Modal */}
+      {(listingDetailsLoading || listingSelectedSession) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Session Details</h3>
+              <button
+                onClick={() => setListingSelectedSession(null)}
+                className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            {listingDetailsLoading ? (
+              <div className="py-10 flex items-center justify-center gap-2 text-gray-500">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading session details...</span>
+              </div>
+            ) : listingSelectedSession ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Booking</p>
+                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.id}</p>
+                  <p className="text-gray-600">
+                    Status:{" "}
+                    <span className={`font-medium ${listingSelectedSession.status === "ACTIVE" ? "text-green-600" : "text-yellow-600"}`}>
+                      {listingSelectedSession.status}
+                    </span>
+                  </p>
+                  <p className="text-gray-600">
+                    Created:{" "}
+                    {new Date(listingSelectedSession.createdAt).toLocaleString("en-PH", {
+                      month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Guest</p>
+                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.guest.name}</p>
+                  <p className="text-gray-600">{listingSelectedSession.guest.email}</p>
+                  <p className="text-gray-600">{listingSelectedSession.guest.phone || "No phone number"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Host</p>
+                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.host.name}</p>
+                  <p className="text-gray-600">{listingSelectedSession.host.email}</p>
+                  <p className="text-gray-600">{listingSelectedSession.host.phone || "No phone number"}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Slot</p>
+                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.property.title}</p>
+                  <p className="text-gray-600">{listingSelectedSession.property.address}</p>
+                  <p className="text-gray-600">Slot #{listingSelectedSession.property.slotNumber}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 md:col-span-2">
+                  <p className="text-xs uppercase text-gray-500 mb-2">Session Timeline</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <p className="text-xs text-gray-400">Arrival Deadline</p>
+                      <p className="text-gray-700 font-medium">
+                        {listingSelectedSession.arrivalDeadline
+                          ? new Date(listingSelectedSession.arrivalDeadline).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Session Started</p>
+                      <p className="text-gray-700 font-medium">
+                        {listingSelectedSession.sessionStartedAt
+                          ? new Date(listingSelectedSession.sessionStartedAt).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                          : "Not started"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Session Ended</p>
+                      <p className="text-gray-700 font-medium">
+                        {listingSelectedSession.sessionEndedAt
+                          ? new Date(listingSelectedSession.sessionEndedAt).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+                          : "Ongoing"}
+                      </p>
+                    </div>
+                  </div>
+                  {listingSelectedSession.sessionStartedAt && !listingSelectedSession.sessionEndedAt && (
+                    <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-green-50 rounded-lg text-green-700 text-sm">
+                      <Timer size={14} />
+                      <span>Live duration:</span>
+                      <ElapsedTimer startedAt={listingSelectedSession.sessionStartedAt} />
+                    </div>
+                  )}
+                  <p className="text-gray-900 font-semibold">
+                    Amount Paid:{" "}
+                    {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2 }).format(listingSelectedSession.totalAmount)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </div>
     );
   }
 

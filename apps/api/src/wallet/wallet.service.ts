@@ -143,7 +143,9 @@ export class WalletService {
 
     if (!request) throw new NotFoundException('Top-up request not found');
     if (request.status !== 'ACCEPTED') {
-      throw new BadRequestException('This request must be accepted by admin before uploading proof');
+      throw new BadRequestException(
+        'This request must be accepted by admin before uploading proof',
+      );
     }
 
     return this.prisma.topUpRequest.update({
@@ -152,8 +154,43 @@ export class WalletService {
     });
   }
 
-  /** Admin releases credits after verifying GCash sender number + amount */
-  async releaseTopUpCredits(requestId: string, adminUserId: string) {
+  async getMyTopUpRequests(userId: string) {
+    return this.prisma.topUpRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async getTopUpRequestsByUser(userId: string, limit = 10) {
+    return this.prisma.topUpRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getPendingTopUpRequests() {
+    await this.expireOldTopUpRequests();
+
+    return this.prisma.topUpRequest.findMany({
+      where: { status: { in: ['PENDING', 'ACCEPTED'] } },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
+    });
+  }
+
+  async approveTopUp(requestId: string, adminUserId: string) {
     const request = await this.prisma.topUpRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -163,7 +200,9 @@ export class WalletService {
 
     if (!request) throw new NotFoundException('Top-up request not found');
     if (request.status !== 'ACCEPTED') {
-      throw new BadRequestException('This request must be in ACCEPTED status to release credits');
+      throw new BadRequestException(
+        'This request must be in ACCEPTED status to release credits',
+      );
     }
 
     const wallet = await this.getOrCreateWallet(request.userId);
@@ -270,35 +309,6 @@ export class WalletService {
     }
   }
 
-  async getMyTopUpRequests(userId: string) {
-    return this.prisma.topUpRequest.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-  }
-
-  async getPendingTopUpRequests() {
-    // Expire any old ones first
-    await this.expireOldTopUpRequests();
-
-    return this.prisma.topUpRequest.findMany({
-      where: { status: { in: ['PENDING', 'ACCEPTED'] } },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-      },
-    });
-  }
-
   /** Get all top-up requests (admin) */
   async getAllTopUpRequests() {
     await this.expireOldTopUpRequests();
@@ -369,7 +379,11 @@ export class WalletService {
     if (!request) throw new NotFoundException('Top-up request not found');
 
     // Auto-expire if needed
-    if (request.status === 'PENDING' && request.expiresAt && new Date() > request.expiresAt) {
+    if (
+      request.status === 'PENDING' &&
+      request.expiresAt &&
+      new Date() > request.expiresAt
+    ) {
       await this.prisma.topUpRequest.update({
         where: { id: requestId },
         data: { status: 'EXPIRED' },
@@ -591,13 +605,19 @@ export class WalletService {
     return admins.map((a) => a.id);
   }
 
-  private async notifyAdminsNewTopUp(requestId: string, amount: number, userId: string) {
+  private async notifyAdminsNewTopUp(
+    requestId: string,
+    amount: number,
+    userId: string,
+  ) {
     const adminIds = await this.getAdminUserIds();
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { firstName: true, lastName: true },
     });
-    const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'A user';
+    const name = user
+      ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+      : 'A user';
 
     await Promise.all(
       adminIds.map((adminId) =>
@@ -612,13 +632,19 @@ export class WalletService {
     );
   }
 
-  private async notifyAdminsNewWithdraw(requestId: string, amount: number, userId: string) {
+  private async notifyAdminsNewWithdraw(
+    requestId: string,
+    amount: number,
+    userId: string,
+  ) {
     const adminIds = await this.getAdminUserIds();
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { firstName: true, lastName: true },
     });
-    const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'A user';
+    const name = user
+      ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+      : 'A user';
 
     await Promise.all(
       adminIds.map((adminId) =>

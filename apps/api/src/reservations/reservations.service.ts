@@ -18,6 +18,33 @@ import type {
   ReservationWithTransaction,
 } from './types/reservation.types';
 
+type DriverVehicleRecord = Awaited<
+  ReturnType<PrismaService['driverVehicle']['findFirst']>
+>;
+
+type HostReservationRecord = Prisma.ReservationGetPayload<{
+  include: {
+    parkingSpace: {
+      include: {
+        parkingLocation: true;
+      };
+    };
+    driver: {
+      include: {
+        user: {
+          select: {
+            firstName: true;
+            lastName: true;
+            phoneNumber: true;
+            profilePicture: true;
+          };
+        };
+        vehicles: true;
+      };
+    };
+  };
+}>;
+
 // Helper to safely extract nullable Prisma fields that ESLint can't resolve
 function toNullable<T>(value: unknown): T | null {
   return (value ?? null) as T | null;
@@ -33,7 +60,36 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
 
   private readonly HOST_APPROVAL_WINDOW_MS = 5 * 60 * 1000;
   private readonly DRIVER_ARRIVAL_WINDOW_MS = 60 * 60 * 1000;
+  private readonly OCCUPANCY_ACTIVE_STATUSES = ['CONFIRMED', 'ACTIVE'] as const;
   private timeoutSweepInterval: NodeJS.Timeout | null = null;
+
+  private async syncLocationAvailableSlotsBySpaceId(
+    tx: Prisma.TransactionClient,
+    parkingSpaceId: string,
+  ) {
+    const space = await tx.parkingSpace.findUnique({
+      where: { id: parkingSpaceId },
+      select: {
+        parkingLocationId: true,
+      },
+    });
+
+    if (!space) {
+      return;
+    }
+
+    const availableCount = await tx.parkingSpace.count({
+      where: {
+        parkingLocationId: space.parkingLocationId,
+        status: 'AVAILABLE',
+      },
+    });
+
+    await tx.parkingLocation.update({
+      where: { id: space.parkingLocationId },
+      data: { availableSlots: availableCount },
+    });
+  }
 
   onModuleInit() {
     this.timeoutSweepInterval = setInterval(() => {
@@ -123,6 +179,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             where: { id: reservation.parkingSpaceId },
             data: { status: 'AVAILABLE' },
           });
+          await this.syncLocationAvailableSlotsBySpaceId(
+            tx,
+            reservation.parkingSpaceId,
+          );
 
           await tx.reservation.update({
             where: { id: reservation.id },
@@ -140,6 +200,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             where: { id: reservation.parkingSpaceId },
             data: { status: 'AVAILABLE' },
           });
+          await this.syncLocationAvailableSlotsBySpaceId(
+            tx,
+            reservation.parkingSpaceId,
+          );
 
           await tx.reservation.update({
             where: { id: reservation.id },
@@ -229,6 +293,24 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   async createReservation(userId: string, dto: CreateReservationDto) {
     await this.processReservationTimeouts();
 
+    const driverRole = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        role: {
+          name: 'DRIVER',
+        },
+      },
+      select: {
+        status: true,
+      },
+    });
+
+    if (driverRole?.status === 'SUSPENDED') {
+      throw new ForbiddenException(
+        'Your reservation activity is currently suspended. Please contact support.',
+      );
+    }
+
     // Get the driver record
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
@@ -241,9 +323,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     }
 
     // If vehicleId is provided, verify it belongs to this driver
-    let selectedVehicle: Awaited<
-      ReturnType<typeof this.prisma.driverVehicle.findFirst>
-    > = null;
+    let selectedVehicle: DriverVehicleRecord = null;
     if (dto.vehicleId) {
       selectedVehicle = await this.prisma.driverVehicle.findFirst({
         where: {
@@ -395,6 +475,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         where: { id: dto.parkingSpaceId },
         data: { status: 'OCCUPIED' },
       });
+      await this.syncLocationAvailableSlotsBySpaceId(tx, dto.parkingSpaceId);
 
       // Create reservation
       const reservation = await tx.reservation.create({
@@ -650,6 +731,113 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Admin: Trace a reservation to its linked space/location and occupancy expectations.
+   */
+  async getReservationTraceForAdmin(reservationId: string) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        driver: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+        parkingSpace: {
+          include: {
+            parkingLocation: {
+              include: {
+                host: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        email: true,
+                        firstName: true,
+                        lastName: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    const reservationStatus = reservation.status;
+    const isStatusOccupancyActive = this.OCCUPANCY_ACTIVE_STATUSES.includes(
+      reservationStatus as (typeof this.OCCUPANCY_ACTIVE_STATUSES)[number],
+    );
+    const spaceMarkedOccupied = reservation.parkingSpace.status === 'OCCUPIED';
+
+    return {
+      reservation: {
+        id: reservation.id,
+        status: reservation.status,
+        createdAt: reservation.createdAt,
+        arrivalDeadline: reservation.arrivalDeadline,
+        sessionStartedAt: toNullable<Date>(reservation.sessionStartedAt),
+        sessionEndedAt: toNullable<Date>(reservation.sessionEndedAt),
+      },
+      driver: {
+        id: reservation.driver.user.id,
+        email: reservation.driver.user.email,
+        name:
+          [reservation.driver.user.firstName, reservation.driver.user.lastName]
+            .filter(Boolean)
+            .join(' ') || null,
+      },
+      space: {
+        id: reservation.parkingSpace.id,
+        status: reservation.parkingSpace.status,
+        isActive: reservation.parkingSpace.isActive,
+        slotNumber: reservation.parkingSpace.slotNumber,
+        name: reservation.parkingSpace.name,
+        levelNumber: reservation.parkingSpace.levelNumber,
+      },
+      location: {
+        id: reservation.parkingSpace.parkingLocation.id,
+        title: reservation.parkingSpace.parkingLocation.title,
+        status: reservation.parkingSpace.parkingLocation.status,
+        host: {
+          userId: reservation.parkingSpace.parkingLocation.host.user.id,
+          email: reservation.parkingSpace.parkingLocation.host.user.email,
+          name:
+            [
+              reservation.parkingSpace.parkingLocation.host.user.firstName,
+              reservation.parkingSpace.parkingLocation.host.user.lastName,
+            ]
+              .filter(Boolean)
+              .join(' ') || null,
+        },
+      },
+      occupancyDiagnostics: {
+        activeStatusesForListings: this.OCCUPANCY_ACTIVE_STATUSES,
+        isStatusOccupancyActive,
+        spaceMarkedOccupied,
+        shouldAppearOccupiedInListings:
+          isStatusOccupancyActive || spaceMarkedOccupied,
+        mismatch:
+          isStatusOccupancyActive && !spaceMarkedOccupied
+            ? 'Reservation is active by status but space is not marked OCCUPIED.'
+            : null,
+      },
+    };
+  }
+
+  /**
    * Host: Approve reservation request (within 5-minute approval window)
    */
   async approveReservation(hostUserId: string, reservationId: string) {
@@ -813,6 +1001,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         where: { id: reservation.parkingSpaceId },
         data: { status: 'AVAILABLE' },
       });
+      await this.syncLocationAvailableSlotsBySpaceId(
+        tx,
+        reservation.parkingSpaceId,
+      );
 
       return tx.reservation.update({
         where: { id: reservation.id },
@@ -1104,6 +1296,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           where: { id: reservation.parkingSpaceId },
           data: { status: 'AVAILABLE' },
         });
+        await this.syncLocationAvailableSlotsBySpaceId(
+          tx,
+          reservation.parkingSpaceId,
+        );
 
         return updated;
       },
@@ -1211,6 +1407,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         where: { id: reservation.parkingSpaceId },
         data: { status: 'AVAILABLE' },
       });
+      await this.syncLocationAvailableSlotsBySpaceId(
+        tx,
+        reservation.parkingSpaceId,
+      );
 
       // Update reservation status
       return tx.reservation.update({
@@ -1384,7 +1584,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     return this.mapHostReservation(r);
   }
 
-  private mapHostReservation(r: any) {
+  private mapHostReservation(r: HostReservationRecord) {
     return {
       id: r.id,
       qrCode: r.qrCode,
