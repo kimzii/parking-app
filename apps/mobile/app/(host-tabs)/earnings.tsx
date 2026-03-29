@@ -29,6 +29,12 @@ const SOURCE_CONFIG: Record<
     color: "#D4501E",
     bg: "#FFF0EC",
   },
+  BOOKING_PAYOUT: {
+    label: "Booking Earnings",
+    icon: "payments", 
+    color: "#4CAF50",
+    bg: "#E8F5E9",
+  },
   REFUND: {
     label: "Refund",
     icon: "replay",
@@ -202,7 +208,6 @@ export default function EarningsScreen() {
           />
         )}
       </View>
-
     </SafeAreaView>
   );
 }
@@ -374,5 +379,4 @@ const styles = StyleSheet.create({
     color: "#A09A94",
     textAlign: "center",
   },
-
 });

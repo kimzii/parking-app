@@ -350,6 +350,7 @@ enum TransactionSource {
   REFUND
   ADMIN_ADJUSTMENT
   HOST_PAYOUT
+  BOOKING_PAYOUT
 }
 
 enum VerificationStatus {
