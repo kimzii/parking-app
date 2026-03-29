@@ -1264,7 +1264,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             data: {
               walletId: hostWallet.id,
               type: 'CREDIT',
-              source: 'HOST_PAYOUT',
+              source: 'BOOKING_PAYOUT',
               amount: totalFee,
               referenceId: reservation.id,
               balanceBefore: hostWallet.balance,
