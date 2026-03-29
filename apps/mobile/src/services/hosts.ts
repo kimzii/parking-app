@@ -1,6 +1,25 @@
 import api from "./api";
 import * as SecureStore from "expo-secure-store";
 
+export interface HostProfile {
+  id: string;
+  userId: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    phoneNumber: string | null;
+    profilePicture: string | null;
+    createdAt: string;
+  };
+  averageRating: number | null;
+  totalReviews: number;
+  totalLocations: number;
+  approvedLocations: number;
+  pendingLocations: number;
+}
+
 export const hostService = {
   uploadImages: async (
     imageUris: string[],
@@ -58,7 +77,7 @@ export const hostService = {
     const res = await api.post("/hosts/become");
     return res.data;
   },
-  getProfile: async () => {
+  getProfile: async (): Promise<HostProfile> => {
     const res = await api.get("/hosts/profile");
     return res.data;
   },

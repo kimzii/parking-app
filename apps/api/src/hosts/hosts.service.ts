@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateParkingLocationDto } from './dto/create-parking-location.dto';
@@ -10,7 +11,7 @@ import { QueryParkingLocationsDto } from './dto/query-parking-locations.dto';
 import { UpdateLocationStatusDto } from './dto/update-location-status.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { S3Service } from '../common/s3.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, ReviewType } from '@prisma/client';
 
 // Convert level number to letter prefix: 1→"A", 2→"B", ..., 26→"Z", 27→"AA"
 function levelToPrefix(level: number): string {
@@ -47,6 +48,26 @@ export class HostsService {
     private notificationsService: NotificationsService,
     private s3: S3Service,
   ) {}
+
+  private async assertHostNotSuspended(userId: string) {
+    const hostRole = await this.prisma.userRole.findFirst({
+      where: {
+        userId,
+        role: {
+          name: 'HOST',
+        },
+      },
+      select: {
+        status: true,
+      },
+    });
+
+    if (hostRole?.status === 'SUSPENDED') {
+      throw new ForbiddenException(
+        'Host parking-space activities are suspended for this account.',
+      );
+    }
+  }
 
   // Become a host - adds HOST role and creates Host profile
   async becomeHost(userId: string) {
@@ -141,8 +162,30 @@ export class HostsService {
       throw new NotFoundException('Host profile not found');
     }
 
+    const hostRating = await this.prisma.review.aggregate({
+      where: {
+        reviewType: ReviewType.DRIVER_TO_LOCATION,
+        reservation: {
+          parkingSpace: {
+            parkingLocation: {
+              hostId: host.id,
+            },
+          },
+        },
+      },
+      _avg: { rating: true },
+      _count: true,
+    });
+
+    const averageRating = hostRating._avg.rating
+      ? Math.round(hostRating._avg.rating * 10) / 10
+      : null;
+    const totalReviews = hostRating._count;
+
     return {
       ...host,
+      averageRating,
+      totalReviews,
       totalLocations: host.parkingLocations.length,
       approvedLocations: host.parkingLocations.filter(
         (loc) => loc.status === 'APPROVED',
@@ -158,6 +201,8 @@ export class HostsService {
     userId: string,
     createLocationDto: CreateParkingLocationDto,
   ) {
+    await this.assertHostNotSuspended(userId);
+
     // Ensure host profile exists
     const host = await this.prisma.host.findUnique({
       where: { userId },
@@ -418,6 +463,8 @@ export class HostsService {
     locationId: string,
     updateLocationDto: UpdateParkingLocationDto,
   ) {
+    await this.assertHostNotSuspended(userId);
+
     const host = await this.prisma.host.findUnique({
       where: { userId },
     });
@@ -498,6 +545,8 @@ export class HostsService {
 
   // Delete parking location
   async deleteParkingLocation(userId: string, locationId: string) {
+    await this.assertHostNotSuspended(userId);
+
     const host = await this.prisma.host.findUnique({
       where: { userId },
     });
@@ -554,6 +603,8 @@ export class HostsService {
 
   // Toggle parking location (APPROVED <-> DISABLED)
   async toggleParkingLocation(userId: string, locationId: string) {
+    await this.assertHostNotSuspended(userId);
+
     const host = await this.prisma.host.findUnique({
       where: { userId },
     });
@@ -607,6 +658,8 @@ export class HostsService {
 
   // Toggle parking space status (AVAILABLE <-> DISABLED)
   async toggleParkingSpace(userId: string, spaceId: string) {
+    await this.assertHostNotSuspended(userId);
+
     const host = await this.prisma.host.findUnique({
       where: { userId },
     });
@@ -671,6 +724,8 @@ export class HostsService {
 
   // Delete a parking space
   async deleteParkingSpace(userId: string, spaceId: string) {
+    await this.assertHostNotSuspended(userId);
+
     const host = await this.prisma.host.findUnique({
       where: { userId },
     });
@@ -792,6 +847,28 @@ export class HostsService {
             },
           },
           images: true,
+          parkingSpaces: {
+            select: {
+              id: true,
+              slotNumber: true,
+              name: true,
+              levelNumber: true,
+              status: true,
+              isActive: true,
+              reservations: {
+                where: {
+                  status: {
+                    in: ['CONFIRMED', 'ACTIVE'],
+                  },
+                },
+                select: {
+                  id: true,
+                  status: true,
+                },
+              },
+            },
+            orderBy: [{ levelNumber: 'asc' }, { slotNumber: 'asc' }],
+          },
           _count: {
             select: {
               parkingSpaces: true,

@@ -178,6 +178,100 @@ export class ReviewsService {
     });
   }
 
+  async getAllReviewsAdmin(params: {
+    page: number;
+    limit: number;
+    type?: string;
+    search?: string;
+  }) {
+    const { page, limit, type, search } = params;
+    const skip = (page - 1) * limit;
+
+    const validType =
+      type === 'DRIVER_TO_LOCATION' || type === 'HOST_TO_DRIVER'
+        ? (type as ReviewType)
+        : undefined;
+
+    const where = {
+      ...(validType ? { reviewType: validType } : {}),
+      ...(search
+        ? {
+            OR: [
+              {
+                reviewer: {
+                  firstName: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+              {
+                reviewer: {
+                  lastName: { contains: search, mode: 'insensitive' as const },
+                },
+              },
+              { comment: { contains: search, mode: 'insensitive' as const } },
+              {
+                reservation: {
+                  parkingSpace: {
+                    parkingLocation: {
+                      title: { contains: search, mode: 'insensitive' as const },
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        include: {
+          reviewer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              profilePicture: true,
+              email: true,
+            },
+          },
+          reservation: {
+            select: {
+              parkingSpace: {
+                select: {
+                  name: true,
+                  slotNumber: true,
+                  parkingLocation: {
+                    select: { title: true, address: true },
+                  },
+                },
+              },
+              driver: {
+                select: {
+                  user: {
+                    select: { firstName: true, lastName: true, email: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    return { reviews, total, page, limit };
+  }
+
+  async deleteReview(id: string) {
+    const review = await this.prisma.review.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException('Review not found');
+    await this.prisma.review.delete({ where: { id } });
+    return { message: 'Review deleted successfully' };
+  }
+
   async getLocationAverageRating(locationId: string) {
     const result = await this.prisma.review.aggregate({
       where: {

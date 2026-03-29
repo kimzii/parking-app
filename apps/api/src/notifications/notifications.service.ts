@@ -278,7 +278,7 @@ export class NotificationsService {
       userId: driverUserId,
       title: 'You Have Arrived!',
       message: `You've reached ${locationTitle}. Please proceed to your parking spot.`,
-      type: 'DRIVER_ARRIVED',
+      type: 'GENERAL',
       data: { reservationId, screen: 'reservation-qr' },
     });
   }

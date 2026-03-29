@@ -9,6 +9,9 @@ import {
   Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleName } from '@prisma/client';
 import { ReservationsService } from './reservations.service';
 import {
   CreateReservationDto,
@@ -48,6 +51,16 @@ export class ReservationsController {
     @Query('status') status?: string,
   ) {
     return this.reservationsService.getDriverReservations(req.user.id, status);
+  }
+
+  /**
+   * Admin: Trace reservation linkage to space/location and occupancy expectation
+   */
+  @Get('admin/trace/:id')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  async traceReservationForAdmin(@Param('id') id: string) {
+    return this.reservationsService.getReservationTraceForAdmin(id);
   }
 
   /**
