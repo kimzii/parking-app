@@ -17,6 +17,7 @@ interface EWalletProps {
 export const EWallet: React.FC<EWalletProps> = ({
   balance,
   onTopUp,
+  onWithdraw,
   locked,
 }) => {
   return (
@@ -31,18 +32,34 @@ export const EWallet: React.FC<EWalletProps> = ({
       {locked && (
         <View style={styles.lockedBanner}>
           <MaterialIcons name="lock" size={14} color="#D4501E" />
-          <Text style={styles.lockedText}>Verify your account to unlock top-up</Text>
+          <Text style={styles.lockedText}>Verify your account to unlock wallet features</Text>
         </View>
       )}
       <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={[styles.button, locked && styles.buttonLocked]}
-          onPress={onTopUp}
-          activeOpacity={0.8}
-        >
-          <MaterialIcons name={locked ? "lock" : "add-circle-outline"} size={20} color="white" />
-          <Text style={styles.buttonText}>{locked ? "Verify to Top Up" : "Top Up"}</Text>
-        </TouchableOpacity>
+        {onTopUp !== undefined && (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              locked && styles.buttonLocked,
+              onWithdraw !== undefined && styles.buttonBorderRight,
+            ]}
+            onPress={onTopUp}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name={locked ? "lock" : "add-circle-outline"} size={20} color="white" />
+            <Text style={styles.buttonText}>{locked ? "Verify to Top Up" : "Top Up"}</Text>
+          </TouchableOpacity>
+        )}
+        {onWithdraw !== undefined && (
+          <TouchableOpacity
+            style={[styles.button, locked && styles.buttonLocked]}
+            onPress={onWithdraw}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name={locked ? "lock" : "account-balance"} size={20} color="white" />
+            <Text style={styles.buttonText}>{locked ? "Verify" : "Withdraw"}</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -92,6 +109,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 14,
+  },
+  buttonBorderRight: {
+    borderRightWidth: 1,
+    borderRightColor: "rgba(255,255,255,0.15)",
   },
   buttonText: {
     color: "#fff",

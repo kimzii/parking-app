@@ -70,7 +70,14 @@ export default function TopUpScreen() {
           startPolling(active.id);
           startCountdown(active.expiresAt);
         } else if (active.status === "ACCEPTED") {
-          setStep("qr");
+          if (active.proofImageUrl) {
+            // Proof already submitted — waiting for admin to release/reject
+            setStep("done");
+            startPolling(active.id); // keep polling so we detect approve/reject
+          } else {
+            setStep("qr");
+            startPolling(active.id); // poll in case admin rejects while on QR page
+          }
         }
       }
     } catch {
@@ -123,24 +130,32 @@ export default function TopUpScreen() {
   };
 
   const startPolling = (requestId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
         const updated = await walletService.getTopUpStatus(requestId);
         setCurrentRequest(updated);
 
-        if (updated.status === "ACCEPTED") {
-          if (pollRef.current) clearInterval(pollRef.current);
+        if (updated.status === "ACCEPTED" && !updated.proofImageUrl) {
           if (timerRef.current) clearInterval(timerRef.current);
           setStep("qr");
+        } else if (updated.status === "APPROVED") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          if (timerRef.current) clearInterval(timerRef.current);
+          setStep("amount");
+          setCurrentRequest(null);
+          Alert.alert("Credits Released!", `₱${parseFloat(updated.amount).toFixed(2)} has been added to your wallet.`);
         } else if (updated.status === "REJECTED") {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timerRef.current) clearInterval(timerRef.current);
           setStep("amount");
+          setCurrentRequest(null);
           Alert.alert("Request Rejected", "Your top-up request was rejected by the admin.");
         } else if (updated.status === "EXPIRED") {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timerRef.current) clearInterval(timerRef.current);
           setStep("amount");
+          setCurrentRequest(null);
           Alert.alert("Request Expired", "Your top-up request has expired. Please try again.");
         }
       } catch {
@@ -341,9 +356,7 @@ export default function TopUpScreen() {
 
   const renderDoneStep = () => (
     <View style={styles.doneContainer}>
-      <View style={styles.doneIconBg}>
-        <MaterialIcons name="check-circle" size={56} color="#D4501E" />
-      </View>
+      <ActivityIndicator size="large" color="#D4501E" style={{ marginBottom: 8 }} />
       <Text style={styles.doneTitle}>Proof Submitted!</Text>
       <Text style={styles.doneText}>
         Your payment proof for ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been uploaded. The admin will verify your payment and release your credits shortly.
@@ -351,6 +364,12 @@ export default function TopUpScreen() {
       <View style={styles.refCard}>
         <Text style={styles.refLabel}>Reference Code</Text>
         <Text style={styles.refCode}>{currentRequest?.referenceCode}</Text>
+      </View>
+      <View style={styles.noticeCard}>
+        <MaterialIcons name="info-outline" size={18} color="#D4501E" />
+        <Text style={styles.noticeText}>
+          You can safely go back — your request is being reviewed. You'll be notified once credits are released.
+        </Text>
       </View>
     </View>
   );
@@ -423,11 +442,11 @@ export default function TopUpScreen() {
       case "done":
         return (
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[styles.primaryBtn, { backgroundColor: "#B0BEC5" }]}
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryBtnText}>Done</Text>
+            <Text style={styles.primaryBtnText}>Go Back — Request is Being Reviewed</Text>
           </TouchableOpacity>
         );
     }
