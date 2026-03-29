@@ -158,7 +158,7 @@ export default function PaymentScreen() {
               Verify to unlock payments
             </Text>
             <Text style={styles.verifyBannerText}>
-              Top-up, withdraw, and transactions require driver verification.
+              Top-up and transactions require driver verification.
             </Text>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
@@ -194,18 +194,6 @@ export default function PaymentScreen() {
           >
             <MaterialIcons name="add" size={18} color="#fff" />
             <Text style={styles.actionBtnText}>Top Up</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() =>
-              isDriverVerified
-                ? router.push("/(modals)/withdraw" as any)
-                : router.push("/(modals)/driver-verification")
-            }
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="arrow-upward" size={18} color="#fff" />
-            <Text style={styles.actionBtnText}>Withdraw</Text>
           </TouchableOpacity>
         </View>
       </View>
