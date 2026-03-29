@@ -32,6 +32,8 @@ export interface RecentTransaction {
   createdAt: Date;
 }
 
+type TransactionActorType = 'ALL' | 'DRIVER' | 'HOST';
+
 export interface RevenueTrendPoint {
   date: string;
   revenue: number;
@@ -373,26 +375,41 @@ export class DashboardService {
 
   async getRecentTransactions(
     limit: number = 10,
+    actorType: TransactionActorType = 'ALL',
+    includeAll: boolean = false,
   ): Promise<RecentTransaction[]> {
-    // Get recent payments with user info
-    const payments = await this.prisma.payment.findMany({
-      take: limit,
+    const roleFilter =
+      actorType === 'ALL'
+        ? undefined
+        : {
+            some: {
+              role: {
+                name: actorType,
+              },
+            },
+          };
+
+    const transactions = await this.prisma.walletTransaction.findMany({
+      ...(includeAll ? {} : { take: limit }),
+      where: {
+        wallet: {
+          user: {
+            ...(roleFilter ? { userRoles: roleFilter } : {}),
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       include: {
-        reservation: {
+        wallet: {
           include: {
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                    userRoles: {
-                      include: {
-                        role: true,
-                      },
-                    },
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                userRoles: {
+                  include: {
+                    role: true,
                   },
                 },
               },
@@ -402,28 +419,32 @@ export class DashboardService {
       },
     });
 
-    return payments.map((payment, index) => {
-      const user = payment.reservation.driver.user;
+    return transactions.map((transaction, index) => {
+      const user = transaction.wallet.user;
       const userName =
         user.firstName && user.lastName
           ? `${user.firstName} ${user.lastName}`
           : user.email.split('@')[0];
 
       const roles = user.userRoles.map((ur) => ur.role.name);
-      const userRole = roles.includes('HOST')
-        ? 'Host'
-        : roles.includes('DRIVER')
-          ? 'Driver'
-          : 'User';
+      let userRole = 'User';
+
+      if (roles.includes('HOST') && !roles.includes('DRIVER')) {
+        userRole = 'Host';
+      } else if (roles.includes('DRIVER') && !roles.includes('HOST')) {
+        userRole = 'Driver';
+      } else if (roles.includes('HOST') && roles.includes('DRIVER')) {
+        userRole = transaction.source === 'HOST_PAYOUT' ? 'Host' : 'Driver';
+      }
 
       return {
-        id: `TRX-${String(index + 1).padStart(3, '0')}`,
+        id: transaction.id || `TRX-${String(index + 1).padStart(3, '0')}`,
         userName,
         userRole,
         email: user.email,
-        status: payment.status,
-        amount: parseFloat(payment.amount.toString()),
-        createdAt: payment.createdAt,
+        status: transaction.source,
+        amount: parseFloat(transaction.amount.toString()),
+        createdAt: transaction.createdAt,
       };
     });
   }

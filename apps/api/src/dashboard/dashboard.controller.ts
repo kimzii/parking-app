@@ -52,9 +52,18 @@ export class DashboardController {
 
   @Get('recent-transactions')
   @Roles(RoleName.ADMIN)
-  async getRecentTransactions(@Query('limit') limit?: string) {
+  async getRecentTransactions(
+    @Query('limit') limit?: string,
+    @Query('actorType') actorType?: 'ALL' | 'DRIVER' | 'HOST',
+    @Query('includeAll') includeAll?: string,
+  ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 10;
-    return this.dashboardService.getRecentTransactions(parsedLimit);
+    const shouldIncludeAll = includeAll === 'true';
+    return this.dashboardService.getRecentTransactions(
+      parsedLimit,
+      actorType || 'ALL',
+      shouldIncludeAll,
+    );
   }
 
   @Get('revenue-trend')

@@ -26,6 +26,7 @@ export interface UserProfileResponse {
   createdAt: Date;
   roles: RoleName[];
   roleStatuses: {
+    roleId: string;
     role: RoleName;
     status: VerificationStatus;
   }[];
@@ -43,6 +44,7 @@ export interface UserListItem {
   createdAt: Date;
   roles: RoleName[];
   roleStatuses: {
+    roleId: string;
     role: RoleName;
     status: VerificationStatus;
   }[];

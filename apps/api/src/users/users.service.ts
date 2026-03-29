@@ -5,13 +5,14 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, ReviewType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { CreateAdminDto } from './dto/create-admin.dto';
+import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 import { EmailService } from '../common/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import * as bcrypt from 'bcrypt';
@@ -68,6 +69,7 @@ export class UsersService {
       walletBalance: user.wallet?.balance ?? 0,
       roles: user.userRoles.map((ur) => ur.role.name),
       roleStatuses: user.userRoles.map((ur) => ({
+        roleId: ur.role.id,
         role: ur.role.name,
         status: ur.status,
       })),
@@ -209,6 +211,7 @@ export class UsersService {
       ...user,
       roles: user.userRoles.map((ur) => ur.role.name),
       roleStatuses: user.userRoles.map((ur) => ({
+        roleId: ur.role.id,
         role: ur.role.name,
         status: ur.status,
       })),
@@ -508,6 +511,8 @@ export class UsersService {
       createdAt: Date;
       revenueTotal: number;
     }[] = [];
+    let hostAverageRating: number | null = null;
+    let hostTotalReviews = 0;
 
     if (user.host) {
       const hostLocations = await this.prisma.parkingLocation.findMany({
@@ -545,12 +550,33 @@ export class UsersService {
           return locationTotal + spaceTotal;
         }, 0),
       }));
+
+      const hostRating = await this.prisma.review.aggregate({
+        where: {
+          reviewType: ReviewType.DRIVER_TO_LOCATION,
+          reservation: {
+            parkingSpace: {
+              parkingLocation: {
+                hostId: user.host.id,
+              },
+            },
+          },
+        },
+        _avg: { rating: true },
+        _count: true,
+      });
+
+      hostAverageRating = hostRating._avg.rating
+        ? Math.round(hostRating._avg.rating * 10) / 10
+        : null;
+      hostTotalReviews = hostRating._count;
     }
 
     return {
       ...user,
       roles: user.userRoles.map((ur) => ur.role.name),
       roleStatuses: user.userRoles.map((ur) => ({
+        roleId: ur.role.id,
         role: ur.role.name,
         status: ur.status,
       })),
@@ -564,9 +590,53 @@ export class UsersService {
         ? {
             ...user.host,
             parkingLocations: hostParkingLocations,
+            averageRating: hostAverageRating,
+            totalReviews: hostTotalReviews,
           }
         : undefined,
     };
+  }
+
+  // Admin: Update user profile fields by ID
+  async updateUserByAdmin(userId: string, updateUserDto: AdminUpdateUserDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    try {
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: updateUserDto,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phoneNumber: true,
+          profilePicture: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        message: 'User updated successfully',
+        user: updatedUser,
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('A user with this email already exists');
+      }
+
+      throw error;
+    }
   }
 
   // Admin: Create a new admin user

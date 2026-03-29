@@ -38,7 +38,7 @@ export default function LoginPage() {
 }
 
 function LoginPageContent() {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  const apiBaseUrl = "/api/proxy";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false); // Added for the "eye" toggle
