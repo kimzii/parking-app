@@ -127,9 +127,8 @@ export default function HostProfileScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <EWallet
-              balance={Number(user?.walletBalance ?? 0)}
-              onTopUp={() => router.push("/(modals)/top-up")}
-              onWithdraw={() => {}}
+              balance={walletBalance}
+              onWithdraw={() => router.push("/(modals)/withdraw")}
             />
 
             <View style={styles.menuSection}>
