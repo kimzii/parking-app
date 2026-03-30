@@ -87,6 +87,7 @@ type ParkingLocation = {
   openTime: string | null;
   closeTime: string | null;
   is24Hours: boolean;
+  acceptedVehicles?: string[];
   proofOfResidenceUrl: string | null;
   createdAt: string;
   host: Host;
@@ -658,6 +659,14 @@ export default function PendingListings() {
       : `${formatOperatingTime(selectedListing.openTime)} - ${formatOperatingTime(
           selectedListing.closeTime
         )}`;
+    const acceptedVehiclesLabel = (() => {
+      const av = selectedListing.acceptedVehicles ?? [];
+      if (av.length === 0 || (av.includes("CAR") && av.includes("MOTORCYCLE")))
+        return "Cars & Motorcycles";
+      if (av.includes("CAR")) return "Cars only";
+      if (av.includes("MOTORCYCLE")) return "Motorcycles only";
+      return av.join(", ");
+    })();
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
@@ -1122,6 +1131,23 @@ export default function PendingListings() {
                           Operating Hours
                         </p>
                         <p className="text-sm font-semibold text-gray-900">{operatingHoursLabel}</p>
+                      </div>
+
+                      <div className="rounded-lg border border-gray-200 p-4 bg-white">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
+                          Accepted Vehicles
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {(!selectedListing.acceptedVehicles || selectedListing.acceptedVehicles.includes("CAR")) && (
+                            <Car className="w-4 h-4 text-orange-500" />
+                          )}
+                          {(!selectedListing.acceptedVehicles || selectedListing.acceptedVehicles.includes("MOTORCYCLE")) && (
+                            <svg className="w-4 h-4 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="4" cy="17" r="2" /><circle cx="20" cy="17" r="2" /><path d="M7 17h10M12 17V5l4 4" />
+                            </svg>
+                          )}
+                          <p className="text-sm font-semibold text-gray-900">{acceptedVehiclesLabel}</p>
+                        </div>
                       </div>
 
                     </div>

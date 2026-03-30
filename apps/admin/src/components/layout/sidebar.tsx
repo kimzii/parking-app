@@ -12,7 +12,6 @@ import {
   Crown,
   ArrowLeftRight,
   Activity,
-  Star,
 } from "lucide-react";
 
 const navigationItems = [
@@ -49,12 +48,6 @@ const navigationItems = [
     icon: ArrowLeftRight,
     label: "Transactions",
     badge: "Top-Up/Withdraw",
-  },
-  {
-    href: "/reviews",
-    icon: Star,
-    label: "Reviews",
-    badge: "Moderate",
   },
   {
     href: "/reports",

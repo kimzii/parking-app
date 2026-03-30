@@ -24,6 +24,7 @@ interface ParkingSpot {
   basePricePerHour: string;
   totalSlots: number | null;
   availableSlots: number | null;
+  acceptedVehicles?: string[];
   images: { imageUrl: string }[];
 }
 
@@ -304,27 +305,39 @@ export default function MapScreen() {
                 }, MAP_MOVE_DEBOUNCE_MS);
               }}
             >
-              {spots.map((spot) => (
-                <Marker
-                  key={spot.id}
-                  coordinate={{
-                    latitude: Number(spot.latitude),
-                    longitude: Number(spot.longitude),
-                  }}
-                  title={spot.title}
-                  description={`₱${Number(spot.basePricePerHour).toFixed(2)}/hr`}
-                  onPress={() => setSelectedSpot(spot)}
-                >
-                  <View style={styles.markerContainer}>
-                    <View style={styles.markerBubble}>
-                      <Text style={styles.markerPrice}>
-                        ₱{Number(spot.basePricePerHour).toFixed(0)}
-                      </Text>
+              {spots.map((spot) => {
+                const av = spot.acceptedVehicles ?? ["CAR", "MOTORCYCLE"];
+                const carOnly = av.length === 1 && av.includes("CAR");
+                const motoOnly = av.length === 1 && av.includes("MOTORCYCLE");
+                const markerColor = motoOnly ? "#FF9800" : carOnly ? "#1976D2" : "#D4501E";
+                return (
+                  <Marker
+                    key={spot.id}
+                    coordinate={{
+                      latitude: Number(spot.latitude),
+                      longitude: Number(spot.longitude),
+                    }}
+                    title={spot.title}
+                    description={`₱${Number(spot.basePricePerHour).toFixed(2)}/hr`}
+                    onPress={() => setSelectedSpot(spot)}
+                  >
+                    <View style={styles.markerContainer}>
+                      <View style={[styles.markerBubble, { backgroundColor: markerColor }]}>
+                        <MaterialIcons
+                          name={motoOnly ? "two-wheeler" : carOnly ? "directions-car" : "local-parking"}
+                          size={10}
+                          color="#fff"
+                          style={{ marginRight: 2 }}
+                        />
+                        <Text style={styles.markerPrice}>
+                          ₱{Number(spot.basePricePerHour).toFixed(0)}
+                        </Text>
+                      </View>
+                      <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
                     </View>
-                    <View style={styles.markerArrow} />
-                  </View>
-                </Marker>
-              ))}
+                  </Marker>
+                );
+              })}
             </MapView>
           )}
 
@@ -383,6 +396,14 @@ export default function MapScreen() {
                   {selectedSpot.availableSlots ?? selectedSpot.totalSlots ?? 0}{" "}
                   slots
                 </Text>
+              </View>
+              <View style={styles.spotDetailItem}>
+                {(!selectedSpot.acceptedVehicles || selectedSpot.acceptedVehicles.includes("CAR")) && (
+                  <MaterialIcons name="directions-car" size={16} color="#D4501E" />
+                )}
+                {(!selectedSpot.acceptedVehicles || selectedSpot.acceptedVehicles.includes("MOTORCYCLE")) && (
+                  <MaterialIcons name="two-wheeler" size={16} color="#D4501E" />
+                )}
               </View>
             </View>
             <TouchableOpacity

@@ -28,6 +28,7 @@ interface ParkingSpot {
   basePricePerHour: string;
   totalSlots: number | null;
   availableSlots: number | null;
+  acceptedVehicles?: string[];
   images: { imageUrl: string }[];
 }
 
@@ -195,6 +196,14 @@ export default function HomeScreen() {
               >
                 {hasSlots ? `${slots} slot${slots !== 1 ? "s" : ""}` : "Full"}
               </Text>
+            </View>
+            <View style={styles.vehicleChip}>
+              {(!item.acceptedVehicles || item.acceptedVehicles.includes("CAR")) && (
+                <MaterialIcons name="directions-car" size={13} color="#A09A94" />
+              )}
+              {(!item.acceptedVehicles || item.acceptedVehicles.includes("MOTORCYCLE")) && (
+                <MaterialIcons name="two-wheeler" size={13} color="#A09A94" />
+              )}
             </View>
           </View>
         </View>
@@ -565,6 +574,15 @@ const styles = StyleSheet.create({
   },
   slotsTextFull: {
     color: "#A09A94",
+  },
+  vehicleChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "#F5F4F2",
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
 
   // Empty state

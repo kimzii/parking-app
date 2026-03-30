@@ -69,6 +69,8 @@ export default function FinancialReportsPage() {
   const [transactions, setTransactions] = useState<RecentTransaction[]>([]);
   const [revenueTrend, setRevenueTrend] = useState<RevenueTrendPoint[]>([]);
   const [transactionActorFilter, setTransactionActorFilter] = useState<"ALL" | "DRIVER" | "HOST">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 30;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const dateFilter = "This Month";
@@ -369,9 +371,10 @@ export default function FinancialReportsPage() {
               <span className="text-sm text-gray-500">User Type</span>
               <select
                 value={transactionActorFilter}
-                onChange={(event) =>
-                  setTransactionActorFilter(event.target.value as "ALL" | "DRIVER" | "HOST")
-                }
+                onChange={(event) => {
+                  setTransactionActorFilter(event.target.value as "ALL" | "DRIVER" | "HOST");
+                  setCurrentPage(1);
+                }}
                 className="bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#005f56]"
               >
                 <option value="ALL">All</option>
@@ -402,40 +405,64 @@ export default function FinancialReportsPage() {
                   </td>
                 </tr>
               ) : (
-                transactions.map((trx) => (
-                  <tr key={trx.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">{trx.id}</td>
-                    <td className="px-6 py-4 font-semibold text-gray-900">{trx.userName}</td>
-                    <td className="px-6 py-4 text-gray-600">{trx.userRole}</td>
-                    <td className="px-6 py-4 text-gray-600">{trx.email}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        trx.status === 'HOST_PAYOUT' ? 'bg-green-100 text-green-700' :
-                        trx.status === 'RESERVATION_PAYMENT' ? 'bg-blue-100 text-blue-700' :
-                        trx.status === 'REFUND' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {trx.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-gray-900">
-                      {formatCurrency(trx.amount)}
-                    </td>
-                  </tr>
-                ))
+                transactions
+                  .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                  .map((trx) => (
+                    <tr key={trx.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-gray-900">{trx.id}</td>
+                      <td className="px-6 py-4 font-semibold text-gray-900">{trx.userName}</td>
+                      <td className="px-6 py-4 text-gray-600">{trx.userRole}</td>
+                      <td className="px-6 py-4 text-gray-600">{trx.email}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          trx.status === 'HOST_PAYOUT' ? 'bg-green-100 text-green-700' :
+                          trx.status === 'RESERVATION_PAYMENT' ? 'bg-blue-100 text-blue-700' :
+                          trx.status === 'REFUND' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {trx.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-gray-900">
+                        {formatCurrency(trx.amount)}
+                      </td>
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Placeholder */}
-        <div className="p-4 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500 bg-gray-50/30">
-          <span>Showing 1 to {transactions.length} of {transactions.length} entries</span>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50" disabled>Previous</button>
-            <button className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100">Next</button>
-          </div>
-        </div>
+        {/* Pagination */}
+        {transactions.length > 0 && (() => {
+          const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
+          const start = (currentPage - 1) * PAGE_SIZE + 1;
+          const end = Math.min(currentPage * PAGE_SIZE, transactions.length);
+          return (
+            <div className="p-4 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500 bg-gray-50/30">
+              <span>Showing {start}–{end} of {transactions.length} entries</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-gray-600 font-medium">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
     </div>

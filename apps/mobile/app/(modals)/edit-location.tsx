@@ -51,6 +51,19 @@ export default function EditLocationScreen() {
   const [newImages, setNewImages] = useState<string[]>([]);
   const [imagesChanged, setImagesChanged] = useState(false);
 
+  // Accepted vehicles
+  const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>(["CAR", "MOTORCYCLE"]);
+
+  const toggleVehicleType = (type: string) => {
+    setAcceptedVehicles((prev) => {
+      if (prev.includes(type)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((v) => v !== type);
+      }
+      return [...prev, type];
+    });
+  };
+
   // Original status for warning
   const [originalStatus, setOriginalStatus] = useState<string>("");
 
@@ -105,6 +118,9 @@ export default function EditLocationScreen() {
         setClosePeriod(close.period);
       }
 
+      if (data.acceptedVehicles && data.acceptedVehicles.length > 0) {
+        setAcceptedVehicles(data.acceptedVehicles);
+      }
       setExistingImages(data.images || []);
     } catch (err) {
       console.error("Failed to fetch location:", err);
@@ -238,6 +254,7 @@ export default function EditLocationScreen() {
           openTime: is24Hours ? undefined : openTime,
           closeTime: is24Hours ? undefined : closeTime,
           ...(imageUrls ? { imageUrls } : {}),
+          acceptedVehicles,
         });
 
         Alert.alert(
@@ -371,6 +388,58 @@ export default function EditLocationScreen() {
               </View>
             ) : null}
             <Text style={styles.hintText}>Tap the map to update the pin location</Text>
+          </View>
+
+          {/* Accepted Vehicle Types */}
+          <Text style={styles.sectionTitle}>Accepted Vehicles</Text>
+          <View style={styles.card}>
+            <Text style={styles.hintText}>Select which vehicle types can park here</Text>
+            <View style={styles.vehicleTypeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.vehicleTypeBtn,
+                  acceptedVehicles.includes("CAR") && styles.vehicleTypeBtnActive,
+                ]}
+                onPress={() => toggleVehicleType("CAR")}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="directions-car"
+                  size={24}
+                  color={acceptedVehicles.includes("CAR") ? "#fff" : "#D4501E"}
+                />
+                <Text
+                  style={[
+                    styles.vehicleTypeText,
+                    acceptedVehicles.includes("CAR") && styles.vehicleTypeTextActive,
+                  ]}
+                >
+                  Cars
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.vehicleTypeBtn,
+                  acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeBtnActive,
+                ]}
+                onPress={() => toggleVehicleType("MOTORCYCLE")}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="two-wheeler"
+                  size={24}
+                  color={acceptedVehicles.includes("MOTORCYCLE") ? "#fff" : "#D4501E"}
+                />
+                <Text
+                  style={[
+                    styles.vehicleTypeText,
+                    acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeTextActive,
+                  ]}
+                >
+                  Motorcycles
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Operating Hours */}
@@ -799,5 +868,33 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  vehicleTypeRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  vehicleTypeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#FFF0EC",
+    borderWidth: 2,
+    borderColor: "#FFF0EC",
+  },
+  vehicleTypeBtnActive: {
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
+  },
+  vehicleTypeText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#D4501E",
+  },
+  vehicleTypeTextActive: {
+    color: "#fff",
   },
 });

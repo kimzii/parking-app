@@ -22,6 +22,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
+import { getLocationReviews, getLocationRating, Review, LocationRating } from "../../src/services/reviews";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -110,12 +111,20 @@ export default function LocationDetailScreen() {
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
   const [spaceActionLoading, setSpaceActionLoading] = useState(false);
   const [viewingBooking, setViewingBooking] = useState(false);
+  const [rating, setRating] = useState<LocationRating | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [showReviews, setShowReviews] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   const fetchLocation = useCallback(async () => {
     if (!id) return;
     try {
-      const data = await hostService.getLocation(id);
+      const [data, ratingData] = await Promise.all([
+        hostService.getLocation(id),
+        getLocationRating(id),
+      ]);
       setLocation(data);
+      setRating(ratingData);
     } catch (err) {
       console.error("Failed to fetch location:", err);
     } finally {
@@ -123,6 +132,20 @@ export default function LocationDetailScreen() {
       setRefreshing(false);
     }
   }, [id]);
+
+  const handleViewAllReviews = async () => {
+    if (!id) return;
+    setLoadingReviews(true);
+    setShowReviews(true);
+    try {
+      const data = await getLocationReviews(id);
+      setReviews(data);
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -440,6 +463,42 @@ export default function LocationDetailScreen() {
           </View>
         </View>
 
+        {/* Rating Card */}
+        <View style={styles.ratingCard}>
+          <View style={styles.ratingCardLeft}>
+            <View style={styles.ratingStarsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <MaterialIcons
+                  key={star}
+                  name={
+                    rating && rating.averageRating !== null && star <= Math.round(rating.averageRating)
+                      ? "star"
+                      : "star-outline"
+                  }
+                  size={20}
+                  color="#FFD54F"
+                />
+              ))}
+            </View>
+            <Text style={styles.ratingScore}>
+              {rating && rating.averageRating !== null
+                ? `${Number(rating.averageRating).toFixed(1)} / 5.0`
+                : "No ratings yet"}
+            </Text>
+            <Text style={styles.ratingCount}>
+              {rating ? `${rating.totalReviews} review${rating.totalReviews !== 1 ? "s" : ""}` : ""}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.viewAllBtn}
+            onPress={handleViewAllReviews}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.viewAllBtnText}>View All Ratings</Text>
+            <MaterialIcons name="chevron-right" size={18} color="#D4501E" />
+          </TouchableOpacity>
+        </View>
+
         {/* Spaces Summary */}
         <View style={styles.overviewRow}>
           <View style={styles.overviewItem}>
@@ -625,6 +684,108 @@ export default function LocationDetailScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Reviews Modal */}
+      <Modal
+        visible={showReviews}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowReviews(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: "80%" }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.reviewsModalHeader}>
+              <Text style={styles.reviewsModalTitle}>Ratings & Reviews</Text>
+              <TouchableOpacity onPress={() => setShowReviews(false)}>
+                <MaterialIcons name="close" size={24} color="#A09A94" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Summary row */}
+            <View style={styles.reviewsSummaryRow}>
+              <Text style={styles.reviewsSummaryScore}>
+                {rating?.averageRating !== null && rating?.averageRating !== undefined
+                  ? Number(rating.averageRating).toFixed(1)
+                  : "—"}
+              </Text>
+              <View>
+                <View style={{ flexDirection: "row", gap: 2 }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <MaterialIcons
+                      key={star}
+                      name={
+                        rating?.averageRating !== null && rating?.averageRating !== undefined &&
+                        star <= Math.round(rating.averageRating!)
+                          ? "star"
+                          : "star-outline"
+                      }
+                      size={18}
+                      color="#FFD54F"
+                    />
+                  ))}
+                </View>
+                <Text style={styles.reviewsSummaryCount}>
+                  {rating?.totalReviews ?? 0} review{(rating?.totalReviews ?? 0) !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+
+            {loadingReviews ? (
+              <ActivityIndicator size="large" color="#D4501E" style={{ marginVertical: 32 }} />
+            ) : reviews.length === 0 ? (
+              <View style={styles.reviewsEmpty}>
+                <MaterialIcons name="star-outline" size={40} color="#C7C7CC" />
+                <Text style={styles.reviewsEmptyText}>No reviews yet</Text>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
+                {reviews.map((review) => {
+                  const name = `${review.reviewer.firstName ?? ""} ${review.reviewer.lastName ?? ""}`.trim() || "Anonymous";
+                  return (
+                    <View key={review.id} style={styles.reviewItem}>
+                      <View style={styles.reviewItemHeader}>
+                        <View style={styles.reviewAvatar}>
+                          {review.reviewer.profilePicture ? (
+                            <Image
+                              source={{ uri: review.reviewer.profilePicture }}
+                              style={StyleSheet.absoluteFillObject}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <MaterialIcons name="person" size={18} color="#fff" />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.reviewerName}>{name}</Text>
+                          <Text style={styles.reviewDate}>
+                            {new Date(review.createdAt).toLocaleDateString("en-PH", {
+                              month: "short", day: "numeric", year: "numeric",
+                            })}
+                          </Text>
+                        </View>
+                        <View style={styles.reviewStarsRow}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <MaterialIcons
+                              key={star}
+                              name={star <= review.rating ? "star" : "star-outline"}
+                              size={14}
+                              color="#FFD54F"
+                            />
+                          ))}
+                        </View>
+                      </View>
+                      {review.comment ? (
+                        <Text style={styles.reviewComment}>{review.comment}</Text>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Space Action Modal */}
       <Modal
@@ -1095,7 +1256,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   modalHandle: {
     width: 36,
@@ -1261,4 +1422,74 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
     color: "#fff",
   },
+
+  // Rating Card
+  ratingCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0EDE8",
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  ratingCardLeft: { gap: 4 },
+  ratingStarsRow: { flexDirection: "row", gap: 2 },
+  ratingScore: { fontSize: 18, fontWeight: "800", color: "#232230" },
+  ratingCount: { fontSize: 12, color: "#A09A94", fontWeight: "500" },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "#FFF0EC",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FFD5C8",
+  },
+  viewAllBtnText: { fontSize: 13, fontWeight: "700", color: "#D4501E" },
+
+  // Reviews Modal
+  reviewsModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  reviewsModalTitle: { fontSize: 18, fontWeight: "800", color: "#232230" },
+  reviewsSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    backgroundColor: "#FFF0EC",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 4,
+  },
+  reviewsSummaryScore: { fontSize: 40, fontWeight: "800", color: "#D4501E" },
+  reviewsSummaryCount: { fontSize: 12, color: "#A09A94", fontWeight: "500", marginTop: 2 },
+  reviewsEmpty: { alignItems: "center", paddingVertical: 32, gap: 8 },
+  reviewsEmptyText: { fontSize: 14, color: "#A09A94", fontWeight: "500" },
+  reviewItem: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0EDE8",
+    gap: 8,
+  },
+  reviewItemHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  reviewAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#D4501E",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  reviewerName: { fontSize: 13, fontWeight: "700", color: "#232230" },
+  reviewDate: { fontSize: 11, color: "#A09A94", marginTop: 1 },
+  reviewStarsRow: { flexDirection: "row", gap: 1 },
+  reviewComment: { fontSize: 13, color: "#6B6B6B", lineHeight: 18, paddingLeft: 46 },
 });

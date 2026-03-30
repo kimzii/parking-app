@@ -113,6 +113,7 @@ export const hostService = {
     return res.data;
   },
   createLocation: async (data: {
+    
     title: string;
     address: string;
     latitude: number;
@@ -129,6 +130,7 @@ export const hostService = {
     openTime?: string;
     closeTime?: string;
     is24Hours?: boolean;
+    acceptedVehicles?: string[];
   }) => {
     const res = await api.post("/hosts/locations", data);
     return res.data;
@@ -146,6 +148,7 @@ export const hostService = {
       openTime?: string;
       closeTime?: string;
       is24Hours?: boolean;
+      acceptedVehicles?: string[];
     },
   ) => {
     const res = await api.put(`/hosts/locations/${id}`, data);
