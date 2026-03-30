@@ -149,6 +149,7 @@ model ParkingLocation {
   openTime            String?                @map("open_time")
   closeTime           String?                @map("close_time")
   is24Hours           Boolean                @default(false) @map("is_24_hours")
+  acceptedVehicles    VehicleType[]          @default([CAR, MOTORCYCLE]) @map("accepted_vehicles")
   createdAt           DateTime               @default(now()) @map("created_at")
   images              ParkingLocationImage[]
   host                Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)

@@ -61,6 +61,7 @@ interface SpotDetail {
   openTime: string | null;
   closeTime: string | null;
   is24Hours: boolean;
+  acceptedVehicles?: string[];
   createdAt: string;
   images: SpotImage[];
   parkingSpaces: ParkingSpace[];
@@ -421,6 +422,24 @@ export default function SpotDetailScreen() {
                 <MaterialIcons name="event-seat" size={20} color="#D4501E" />
                 <Text style={styles.infoLabel}>Total Slots</Text>
                 <Text style={styles.infoValue}>{total}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <MaterialIcons name="directions-car" size={20} color="#D4501E" />
+                <Text style={styles.infoLabel}>Vehicles</Text>
+                <View style={styles.vehicleIconsRow}>
+                  {(!spot.acceptedVehicles || spot.acceptedVehicles.includes("CAR")) && (
+                    <View style={styles.vehicleTag}>
+                      <MaterialIcons name="directions-car" size={14} color="#D4501E" />
+                      <Text style={styles.vehicleTagText}>Car</Text>
+                    </View>
+                  )}
+                  {(!spot.acceptedVehicles || spot.acceptedVehicles.includes("MOTORCYCLE")) && (
+                    <View style={styles.vehicleTag}>
+                      <MaterialIcons name="two-wheeler" size={14} color="#D4501E" />
+                      <Text style={styles.vehicleTagText}>Motorcycle</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
           </View>
@@ -948,6 +967,7 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+<<<<<<< Updated upstream
 
   // Space Action Modal
   modalOverlay: {
@@ -1049,5 +1069,24 @@ const styles = StyleSheet.create({
     color: "#6B6B6B",
     lineHeight: 18,
     paddingLeft: 46,
+=======
+  vehicleIconsRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  vehicleTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF0EC",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  vehicleTagText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#D4501E",
+>>>>>>> Stashed changes
   },
 });

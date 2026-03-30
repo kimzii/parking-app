@@ -48,6 +48,7 @@ interface SpotDetail {
   openTime?: string;
   closeTime?: string;
   is24Hours?: boolean;
+  acceptedVehicles?: string[];
   parkingSpaces: ParkingSpace[];
 }
 
@@ -105,6 +106,12 @@ export default function BookSpotScreen() {
   const firstHourFee = spot ? Number(spot.basePricePerHour) : 0;
   const hasInsufficientBalance =
     firstHourFee > 0 && walletBalance < firstHourFee;
+
+  const isVehicleIncompatible =
+    !!selectedVehicle?.vehicleType &&
+    !!spot?.acceptedVehicles &&
+    spot.acceptedVehicles.length > 0 &&
+    !spot.acceptedVehicles.includes(selectedVehicle.vehicleType);
 
   const ensureVehicleRegistered = async (): Promise<boolean> => {
     if (vehicles.length > 0 && selectedVehicle) {
@@ -457,6 +464,18 @@ export default function BookSpotScreen() {
           </View>
         )}
 
+        {/* Vehicle Incompatibility Warning */}
+        {isVehicleIncompatible && (
+          <View style={styles.incompatibleBanner}>
+            <MaterialIcons name="warning" size={20} color="#E53935" />
+            <Text style={styles.incompatibleText}>
+              This location does not accept{" "}
+              {selectedVehicle?.vehicleType === "CAR" ? "cars" : "motorcycles"}.
+              Only {spot?.acceptedVehicles?.map((v) => v === "CAR" ? "Cars" : "Motorcycles").join(", ")} allowed.
+            </Text>
+          </View>
+        )}
+
         {/* Select Slot */}
         <View style={styles.section}>
           <View style={styles.slotsHeader}>
@@ -676,10 +695,10 @@ export default function BookSpotScreen() {
           <TouchableOpacity
             style={[
               styles.bookBtn,
-              (booking || hasInsufficientBalance) && styles.bookBtnDisabled,
+              (booking || hasInsufficientBalance || isVehicleIncompatible) && styles.bookBtnDisabled,
             ]}
             onPress={handleBooking}
-            disabled={!!booking || !!hasInsufficientBalance}
+            disabled={!!booking || !!hasInsufficientBalance || isVehicleIncompatible}
             activeOpacity={0.8}
           >
             {booking ? (
@@ -692,9 +711,11 @@ export default function BookSpotScreen() {
                   color="#fff"
                 />
                 <Text style={styles.bookBtnText}>
-                  {hasInsufficientBalance
-                    ? "Insufficient Balance"
-                    : `Pay ₱${firstHourFee.toFixed(2)} & Book Now`}
+                  {isVehicleIncompatible
+                    ? "Vehicle Not Compatible"
+                    : hasInsufficientBalance
+                      ? "Insufficient Balance"
+                      : `Pay ₱${firstHourFee.toFixed(2)} & Book Now`}
                 </Text>
               </>
             )}
@@ -1010,5 +1031,23 @@ const styles = StyleSheet.create({
   },
   vehicleColorSelected: {
     color: "rgba(255,255,255,0.7)",
+  },
+  incompatibleBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFEBEE",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#E53935",
+  },
+  incompatibleText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#E53935",
+    fontWeight: "600",
+    lineHeight: 18,
   },
 });

@@ -6,6 +6,7 @@ import {
   Min,
   Max,
   IsArray,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -157,4 +158,15 @@ export class CreateParkingLocationDto {
   @IsOptional()
   @IsBoolean()
   is24Hours?: boolean;
+
+  @ApiPropertyOptional({
+    example: ['CAR', 'MOTORCYCLE'],
+    description:
+      'Vehicle types accepted at this location. Defaults to both CAR and MOTORCYCLE.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsIn(['CAR', 'MOTORCYCLE'], { each: true })
+  acceptedVehicles?: string[];
 }

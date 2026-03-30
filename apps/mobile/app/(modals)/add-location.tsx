@@ -59,6 +59,18 @@ export default function AddLocationScreen() {
   const [closeHour, setCloseHour] = useState("10");
   const [closeMinute, setCloseMinute] = useState("00");
   const [closePeriod, setClosePeriod] = useState<"AM" | "PM">("PM");
+  const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>(["CAR", "MOTORCYCLE"]);
+
+  const toggleVehicleType = (type: string) => {
+    setAcceptedVehicles((prev) => {
+      if (prev.includes(type)) {
+        // Don't allow removing the last one
+        if (prev.length === 1) return prev;
+        return prev.filter((v) => v !== type);
+      }
+      return [...prev, type];
+    });
+  };
 
   const to24Hour = (hour: string, minute: string, period: "AM" | "PM") => {
     let h = parseInt(hour, 10);
@@ -373,6 +385,7 @@ export default function AddLocationScreen() {
         is24Hours: is24Hours || undefined,
         openTime: is24Hours ? undefined : openTime,
         closeTime: is24Hours ? undefined : closeTime,
+        acceptedVehicles,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
@@ -524,6 +537,60 @@ export default function AddLocationScreen() {
                   />
                 </View>
               )}
+            </View>
+          </View>
+
+          {/* Accepted Vehicle Types */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Accepted Vehicles</Text>
+            <Text style={styles.hintText}>
+              Select which vehicle types can park here
+            </Text>
+            <View style={styles.vehicleTypeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.vehicleTypeBtn,
+                  acceptedVehicles.includes("CAR") && styles.vehicleTypeBtnActive,
+                ]}
+                onPress={() => toggleVehicleType("CAR")}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="directions-car"
+                  size={24}
+                  color={acceptedVehicles.includes("CAR") ? "#fff" : "#D4501E"}
+                />
+                <Text
+                  style={[
+                    styles.vehicleTypeText,
+                    acceptedVehicles.includes("CAR") && styles.vehicleTypeTextActive,
+                  ]}
+                >
+                  Cars
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.vehicleTypeBtn,
+                  acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeBtnActive,
+                ]}
+                onPress={() => toggleVehicleType("MOTORCYCLE")}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="two-wheeler"
+                  size={24}
+                  color={acceptedVehicles.includes("MOTORCYCLE") ? "#fff" : "#D4501E"}
+                />
+                <Text
+                  style={[
+                    styles.vehicleTypeText,
+                    acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeTextActive,
+                  ]}
+                >
+                  Motorcycles
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -1469,5 +1536,39 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 17,
     fontWeight: "700",
+  },
+  hintText: {
+    fontSize: 12,
+    color: "#A09A94",
+    marginTop: -4,
+  },
+  vehicleTypeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  vehicleTypeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#FFF0EC",
+    borderWidth: 2,
+    borderColor: "#FFF0EC",
+  },
+  vehicleTypeBtnActive: {
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
+  },
+  vehicleTypeText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#D4501E",
+  },
+  vehicleTypeTextActive: {
+    color: "#fff",
   },
 });

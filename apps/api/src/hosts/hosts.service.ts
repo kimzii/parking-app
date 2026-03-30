@@ -11,7 +11,7 @@ import { QueryParkingLocationsDto } from './dto/query-parking-locations.dto';
 import { UpdateLocationStatusDto } from './dto/update-location-status.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { S3Service } from '../common/s3.service';
-import { Prisma, ReviewType } from '@prisma/client';
+import { Prisma, ReviewType, VehicleType } from '@prisma/client';
 
 // Convert level number to letter prefix: 1→"A", 2→"B", ..., 26→"Z", 27→"AA"
 function levelToPrefix(level: number): string {
@@ -219,6 +219,7 @@ export class HostsService {
       levelSlots,
       spaceNames,
       proofOfResidenceUrl,
+      acceptedVehicles,
       ...locationData
     } = createLocationDto;
 
@@ -240,6 +241,10 @@ export class HostsService {
           availableSlots: computedTotalSlots || 1,
           status: 'PENDING',
           proofOfResidenceUrl,
+          ...(acceptedVehicles &&
+            acceptedVehicles.length > 0 && {
+              acceptedVehicles: acceptedVehicles as VehicleType[],
+            }),
         },
       });
 
@@ -489,7 +494,7 @@ export class HostsService {
     const newStatus =
       location.status === 'APPROVED' ? 'PENDING' : location.status;
 
-    const { imageUrls, proofOfResidenceUrl, ...locationData } =
+    const { imageUrls, proofOfResidenceUrl, acceptedVehicles, ...locationData } =
       updateLocationDto;
 
     // Delete old images from S3 if new ones are provided
@@ -516,6 +521,9 @@ export class HostsService {
         data: {
           ...locationData,
           ...(proofOfResidenceUrl && { proofOfResidenceUrl }),
+          ...(acceptedVehicles && {
+            acceptedVehicles: acceptedVehicles as VehicleType[],
+          }),
           status: newStatus, // Reset to pending if was approved
           availableSlots:
             updateLocationDto.totalSlots || location.availableSlots,
@@ -1009,6 +1017,7 @@ export class HostsService {
         basePricePerHour: true,
         totalSlots: true,
         availableSlots: true,
+        acceptedVehicles: true,
         images: {
           where: { isPrimary: true },
           take: 1,

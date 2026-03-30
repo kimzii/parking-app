@@ -379,6 +379,20 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Parking location is not approved');
     }
 
+    // Check vehicle type compatibility with location
+    const acceptedVehicles =
+      parkingSpace.parkingLocation.acceptedVehicles ?? [];
+    if (
+      acceptedVehicles.length > 0 &&
+      selectedVehicle.vehicleType &&
+      !acceptedVehicles.includes(selectedVehicle.vehicleType)
+    ) {
+      const accepted = acceptedVehicles.join(', ');
+      throw new BadRequestException(
+        `This location only accepts ${accepted}. Your vehicle type (${selectedVehicle.vehicleType}) is not compatible.`,
+      );
+    }
+
     // Check if location is currently open
     if (!this.isLocationOpen(parkingSpace.parkingLocation)) {
       throw new BadRequestException(
