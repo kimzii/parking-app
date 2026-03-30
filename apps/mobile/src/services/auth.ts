@@ -19,6 +19,8 @@ export const authService = {
     firstName: string;
     lastName: string;
     phoneNumber: string;
+    termsAccepted: boolean;
+    privacyAccepted: boolean;
   }) {
     const response = await api.post("/auth/register", data);
     return response.data;

@@ -381,6 +381,8 @@ export class UsersService {
         emailVerified: true,
         lastLoginAt: true,
         createdAt: true,
+        termsAcceptedAt: true,
+        privacyAcceptedAt: true,
         userRoles: {
           select: {
             status: true,

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
+import LegalModal, { LegalTab } from "../../src/components/LegalModal";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -19,6 +20,13 @@ import { useViewMode } from "../../src/contexts/ViewModeContext";
 export default function HostSettingsScreen() {
   const [user, setUser] = useState<User | null>(null);
   const { setViewMode } = useViewMode();
+  const [legalModalVisible, setLegalModalVisible] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>("terms");
+
+  const openLegal = (tab: LegalTab) => {
+    setLegalTab(tab);
+    setLegalModalVisible(true);
+  };
 
   const fetchUser = useCallback(async () => {
     const token = await SecureStore.getItemAsync("accessToken");
@@ -126,6 +134,38 @@ export default function HostSettingsScreen() {
           </View>
         </View>
 
+        {/* Legal */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Legal</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => openLegal("terms")}
+              activeOpacity={0.75}
+            >
+              <View style={styles.menuIconBg}>
+                <MaterialIcons name="description" size={18} color="#A09A94" />
+              </View>
+              <Text style={styles.menuLabel}>Terms and Conditions</Text>
+              <MaterialIcons name="chevron-right" size={22} color="#D1D1CF" />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => openLegal("privacy")}
+              activeOpacity={0.75}
+            >
+              <View style={styles.menuIconBg}>
+                <MaterialIcons name="privacy-tip" size={18} color="#A09A94" />
+              </View>
+              <Text style={styles.menuLabel}>Data Privacy Policy</Text>
+              <MaterialIcons name="chevron-right" size={22} color="#D1D1CF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Logout */}
         <TouchableOpacity
           style={styles.logoutButton}
@@ -136,6 +176,12 @@ export default function HostSettingsScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <LegalModal
+        visible={legalModalVisible}
+        initialTab={legalTab}
+        onClose={() => setLegalModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

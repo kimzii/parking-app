@@ -64,6 +64,7 @@ interface LocationDetail {
   is24Hours: boolean;
   proofOfResidenceUrl: string | null;
   createdAt: string;
+  acceptedVehicles: string[] | null;
   images: { id: string; imageUrl: string; isPrimary: boolean }[];
   parkingSpaces: ParkingSpace[];
   _count: { parkingSpaces: number };
@@ -448,6 +449,25 @@ export default function LocationDetailScreen() {
                   ? `${formatTime(location.openTime)} – ${formatTime(location.closeTime)}`
                   : "Not specified"}
             </Text>
+          </View>
+          <View style={styles.detailDivider} />
+          <View style={styles.detailRow}>
+            <MaterialIcons name="directions-car" size={16} color="#D4501E" />
+            <Text style={styles.detailLabel}>Accepts</Text>
+            <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+              {(location.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("CAR") && (
+                <View style={styles.vehicleBadge}>
+                  <MaterialIcons name="directions-car" size={12} color="#D4501E" />
+                  <Text style={styles.vehicleBadgeText}>Car</Text>
+                </View>
+              )}
+              {(location.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("MOTORCYCLE") && (
+                <View style={styles.vehicleBadge}>
+                  <MaterialIcons name="two-wheeler" size={12} color="#D4501E" />
+                  <Text style={styles.vehicleBadgeText}>Motorcycle</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.detailDivider} />
           <View style={styles.detailRow}>
@@ -1492,4 +1512,14 @@ const styles = StyleSheet.create({
   reviewDate: { fontSize: 11, color: "#A09A94", marginTop: 1 },
   reviewStarsRow: { flexDirection: "row", gap: 1 },
   reviewComment: { fontSize: 13, color: "#6B6B6B", lineHeight: 18, paddingLeft: 46 },
+  vehicleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#FFF0EC",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  vehicleBadgeText: { fontSize: 12, fontWeight: "600", color: "#D4501E" },
 });

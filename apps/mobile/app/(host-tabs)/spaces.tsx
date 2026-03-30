@@ -23,6 +23,7 @@ interface ParkingLocation {
   totalSlots: number | null;
   availableSlots: number | null;
   basePricePerHour: string;
+  acceptedVehicles: string[] | null;
 }
 
 const STATUS_CONFIG = {
@@ -110,6 +111,14 @@ export default function SpacesScreen() {
             <Text style={styles.detailText}>
               ₱{Number(item.basePricePerHour).toFixed(2)}/hr
             </Text>
+          </View>
+          <View style={styles.detailItem}>
+            {(item.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("CAR") && (
+              <MaterialIcons name="directions-car" size={15} color="#A09A94" />
+            )}
+            {(item.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("MOTORCYCLE") && (
+              <MaterialIcons name="two-wheeler" size={15} color="#A09A94" />
+            )}
           </View>
           <View style={styles.detailItem}>
             <MaterialIcons name="chevron-right" size={18} color="#A09A94" />

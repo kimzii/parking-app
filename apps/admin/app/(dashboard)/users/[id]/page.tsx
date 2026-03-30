@@ -43,6 +43,8 @@ interface UserProfile {
   emailVerified: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  termsAcceptedAt: string | null;
+  privacyAcceptedAt: string | null;
   roles: RoleName[];
   roleStatuses: RoleStatus[];
   driver?: {
@@ -819,6 +821,54 @@ export default function UserProfileView() {
               </div>
 
               <div className="lg:col-span-7 space-y-8">
+                {/* Legal Consent Status */}
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <ShieldCheck size={20} className="text-[#005f56]" />
+                    Legal Consent
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Terms &amp; Conditions</p>
+                      {user.termsAcceptedAt ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle size={16} className="text-green-500 shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-green-700">Accepted</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {new Date(user.termsAcceptedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle size={16} className="text-red-400 shrink-0" />
+                          <p className="text-sm font-medium text-red-500">Not accepted</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                      <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Data Privacy Policy</p>
+                      {user.privacyAcceptedAt ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle size={16} className="text-green-500 shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-green-700">Accepted</p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {new Date(user.privacyAcceptedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle size={16} className="text-red-400 shrink-0" />
+                          <p className="text-sm font-medium text-red-500">Not accepted</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {isDriver && user.driver && (
                   <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">

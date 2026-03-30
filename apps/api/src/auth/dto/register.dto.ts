@@ -1,7 +1,9 @@
 import {
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsString,
+  IsTrue,
   Matches,
   MinLength,
 } from 'class-validator';
@@ -54,4 +56,20 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Phone number is required' })
   @IsString()
   phoneNumber: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'User must accept Terms and Conditions to register',
+  })
+  @IsBoolean()
+  @IsTrue({ message: 'You must accept the Terms and Conditions' })
+  termsAccepted: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'User must accept the Data Privacy Policy to register',
+  })
+  @IsBoolean()
+  @IsTrue({ message: 'You must accept the Data Privacy Policy' })
+  privacyAccepted: boolean;
 }
