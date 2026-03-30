@@ -254,7 +254,7 @@ export default function TopUpScreen() {
       <View style={styles.noticeCard}>
         <MaterialIcons name="info-outline" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          Your request will be sent to an admin for approval. You have a 5-minute window. Once accepted, you'll be shown a GCash QR code to pay.
+          Your request will be sent to an admin for approval. You have a 5-minute window. Once accepted, you&apos;ll be shown a GCash QR code to pay.
         </Text>
       </View>
     </>
@@ -309,7 +309,6 @@ export default function TopUpScreen() {
       <View style={styles.refCard}>
         <Text style={styles.refLabel}>Reference Code</Text>
         <Text style={styles.refCode}>{currentRequest?.referenceCode}</Text>
-        <Text style={styles.refHint}>Include this as message when paying</Text>
       </View>
 
       <View style={styles.qrContainer}>
@@ -323,8 +322,19 @@ export default function TopUpScreen() {
       <View style={styles.noticeCard}>
         <MaterialIcons name="warning" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          Make sure you pay using the GCash number linked to your account. Admin will verify the sender's number matches your profile.
+          Make sure you pay using the GCash number linked to your account. Admin will verify the sender&apos;s number matches your profile.
         </Text>
+      </View>
+
+      <View style={styles.contactCard}>
+        <MaterialIcons name="mail-outline" size={18} color="#5C6BC0" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.contactTitle}>Important: Pay the exact amount</Text>
+          <Text style={styles.contactText}>
+            If an incorrect amount is sent, your top-up request will be cancelled and you will receive a notification with the reason.{"\n\n"}For any issues, contact us at{" "}
+            <Text style={styles.contactEmail}>support@parklink.com</Text>
+          </Text>
+        </View>
       </View>
     </>
   );
@@ -377,8 +387,18 @@ export default function TopUpScreen() {
       <View style={styles.noticeCard}>
         <MaterialIcons name="notifications-active" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          You'll be notified once your credits are released. You can safely go back and check back later.
+          You&apos;ll be notified once your credits are released. You can safely go back and check back later.
         </Text>
+      </View>
+      <View style={styles.contactCard}>
+        <MaterialIcons name="mail-outline" size={18} color="#5C6BC0" />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.contactTitle}>Issues with your top-up?</Text>
+          <Text style={styles.contactText}>
+            If your request is cancelled (e.g. incorrect amount sent), you will receive a notification with the reason.{"\n\n"}For further assistance, contact us at{" "}
+            <Text style={styles.contactEmail}>support@parklink.com</Text>
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -427,7 +447,7 @@ export default function TopUpScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="check" size={22} color="#fff" />
-            <Text style={styles.primaryBtnText}>I've Paid — Upload Proof</Text>
+            <Text style={styles.primaryBtnText}>I&apos;ve Paid — Upload Proof</Text>
           </TouchableOpacity>
         );
       case "proof":
@@ -543,6 +563,14 @@ const styles = StyleSheet.create({
   },
   processingTitle: { fontSize: 14, fontWeight: "700", color: "#D4501E", marginBottom: 4 },
   processingText: { fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
+  contactCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: "#EEF0FB", borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: "#C5CAE9",
+  },
+  contactTitle: { fontSize: 13, fontWeight: "700", color: "#3949AB", marginBottom: 4 },
+  contactText: { fontSize: 12, color: "#3949AB", lineHeight: 18 },
+  contactEmail: { fontWeight: "700", textDecorationLine: "underline" },
   noticeCard: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: "#FFF8E1", borderRadius: 12, padding: 14,

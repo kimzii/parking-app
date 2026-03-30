@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -106,6 +107,8 @@ export default function TransactionsPage() {
   const [loadingAll, setLoadingAll] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [timerTick, setTimerTick] = useState(0);
+  const [rejectDialog, setRejectDialog] = useState<{ id: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const fetchTopUps = useCallback(async () => {
     try {
@@ -189,16 +192,25 @@ export default function TransactionsPage() {
     }
   };
 
-  const handleRejectTopUp = async (id: string) => {
-    if (!confirm("Are you sure you want to reject this top-up request?")) return;
+  const handleRejectTopUp = (id: string) => {
+    setRejectReason("");
+    setRejectDialog({ id });
+  };
+
+  const confirmRejectTopUp = async () => {
+    if (!rejectDialog) return;
+    const { id } = rejectDialog;
+    setRejectDialog(null);
     setActionLoading(id);
     try {
-      await api.patch(`/wallet/top-up/${id}/reject`);
+      await api.patch(`/wallet/top-up/${id}/reject`, { reason: rejectReason.trim() || undefined });
       await fetchTopUps();
+      await fetchAllTransactions();
     } catch (err: any) {
       alert(err?.response?.data?.message || "Failed to reject top-up");
     } finally {
       setActionLoading(null);
+      setRejectReason("");
     }
   };
 
@@ -660,6 +672,53 @@ export default function TransactionsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Reject Reason Dialog */}
+      {rejectDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 mx-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-50">
+                <XCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Reject Top-Up Request</h2>
+                <p className="text-sm text-gray-500">The user will be notified with this reason.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Reason <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <Textarea
+                placeholder="e.g. Incorrect amount sent, GCash number did not match..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setRejectDialog(null); setRejectReason(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                onClick={confirmRejectTopUp}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                Confirm Reject
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
