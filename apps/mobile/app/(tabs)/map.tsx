@@ -323,15 +323,28 @@ export default function MapScreen() {
                   >
                     <View style={styles.markerContainer}>
                       <View style={[styles.markerBubble, { backgroundColor: markerColor }]}>
-                        <MaterialIcons
-                          name={motoOnly ? "two-wheeler" : carOnly ? "directions-car" : "local-parking"}
-                          size={10}
-                          color="#fff"
-                          style={{ marginRight: 2 }}
-                        />
-                        <Text style={styles.markerPrice}>
-                          ₱{Number(spot.basePricePerHour).toFixed(0)}
-                        </Text>
+                        {!carOnly && !motoOnly ? (
+                          <>
+                            <View style={styles.markerIconRow}>
+                              <MaterialIcons name="directions-car" size={10} color="#fff" />
+                              <MaterialIcons name="two-wheeler" size={10} color="#fff" />
+                            </View>
+                            <Text style={styles.markerPrice}>
+                              ₱{Number(spot.basePricePerHour).toFixed(0)}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <MaterialIcons
+                              name={motoOnly ? "two-wheeler" : "directions-car"}
+                              size={10}
+                              color="#fff"
+                            />
+                            <Text style={styles.markerPrice}>
+                              ₱{Number(spot.basePricePerHour).toFixed(0)}
+                            </Text>
+                          </>
+                        )}
                       </View>
                       <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
                     </View>
@@ -539,9 +552,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#232230",
   },
-  markerContainer: { alignItems: "center" },
+  markerContainer: { alignItems: "center", justifyContent: "center" },
   markerBubble: {
-  backgroundColor: "#D4501E",
+    backgroundColor: "#D4501E",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -550,6 +566,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+  },
+  markerIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
   },
   markerPrice: { color: "#fff", fontSize: 12, fontWeight: "800" },
   markerArrow: {

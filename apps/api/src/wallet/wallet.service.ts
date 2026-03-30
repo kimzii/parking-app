@@ -268,7 +268,9 @@ export class WalletService {
     });
 
     const baseMessage = `Your top-up request for ₱${new Decimal(request.amount).toFixed(2)} was rejected.`;
-    const message = reason ? `${baseMessage} Reason: ${reason}` : baseMessage;
+    const message = reason
+      ? `${baseMessage} Reason: ${reason}. For further help, contact support@parklink.com`
+      : `${baseMessage} For further help, contact support@parklink.com`;
 
     await this.notificationsService.send({
       userId: request.userId,

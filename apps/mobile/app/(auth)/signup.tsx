@@ -14,6 +14,7 @@ import {
 import { router } from "expo-router";
 import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
+import LegalModal, { LegalTab } from "../../src/components/LegalModal";
 
 export default function SignupScreen() {
   const [firstName, setFirstName] = useState("");
@@ -25,6 +26,17 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<LegalTab>("terms");
+
+  const canSubmit = termsAccepted && privacyAccepted && !loading;
+
+  const openModal = (tab: LegalTab) => {
+    setActiveTab(tab);
+    setModalVisible(true);
+  };
 
   const handleSignup = async () => {
     if (!firstName.trim()) {
@@ -55,8 +67,17 @@ export default function SignupScreen() {
       Alert.alert("Error", "Passwords do not match");
       return;
     }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password) || password.length < 8) {
-      Alert.alert("Error", "Password must be at least 8 characters with uppercase, lowercase, number, and special character");
+    if (
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password) ||
+      password.length < 8
+    ) {
+      Alert.alert(
+        "Error",
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+      );
       return;
     }
 
@@ -68,15 +89,23 @@ export default function SignupScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
+        termsAccepted,
+        privacyAccepted,
       });
-      Alert.alert("Verify your email First", "We sent a verification code to your email.");
+      Alert.alert(
+        "Verify your email First",
+        "We sent a verification code to your email."
+      );
       router.replace({
         pathname: "/(auth)/verify",
         params: { email: email.trim() },
       });
     } catch (error: any) {
       const raw = error.response?.data?.message;
-      const message = Array.isArray(raw) ? raw.join("\n") : raw || error.message || "Signup failed. Please try again.";
+      const message =
+        Array.isArray(raw)
+          ? raw.join("\n")
+          : raw || error.message || "Signup failed. Please try again.";
       Alert.alert("Signup Failed", message);
       console.error("Signup error:", error);
     } finally {
@@ -182,11 +211,7 @@ export default function SignupScreen() {
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeButton}
             >
-              <Feather
-                name={showPassword ? "eye-off" : "eye"}
-                size={18}
-                color="#A09A94"
-              />
+              <Feather name={showPassword ? "eye-off" : "eye"} size={18} color="#A09A94" />
             </TouchableOpacity>
           </View>
 
@@ -226,24 +251,55 @@ export default function SignupScreen() {
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               style={styles.eyeButton}
             >
-              <Feather
-                name={showConfirmPassword ? "eye-off" : "eye"}
-                size={18}
-                color="#A09A94"
-              />
+              <Feather name={showConfirmPassword ? "eye-off" : "eye"} size={18} color="#A09A94" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Terms & Privacy Checkboxes */}
+          <View style={styles.consentSection}>
+            <TouchableOpacity
+              style={styles.consentRow}
+              onPress={() => setTermsAccepted(!termsAccepted)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                {termsAccepted && <Feather name="check" size={12} color="#fff" />}
+              </View>
+              <Text style={styles.consentText}>
+                I have read and agree to the{" "}
+                <Text style={styles.consentLink} onPress={() => openModal("terms")}>
+                  Terms and Conditions
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.consentRow}
+              onPress={() => setPrivacyAccepted(!privacyAccepted)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, privacyAccepted && styles.checkboxChecked]}>
+                {privacyAccepted && <Feather name="check" size={12} color="#fff" />}
+              </View>
+              <Text style={styles.consentText}>
+                I have read and agree to the{" "}
+                <Text style={styles.consentLink} onPress={() => openModal("privacy")}>
+                  Data Privacy Policy
+                </Text>
+              </Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.button, !canSubmit && styles.buttonDisabled]}
             onPress={handleSignup}
-            disabled={loading}
+            disabled={!canSubmit}
             activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Sign Up</Text>
+              <Text style={styles.buttonText}>Create Account</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -255,6 +311,17 @@ export default function SignupScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <LegalModal
+        visible={modalVisible}
+        initialTab={activeTab}
+        onClose={() => setModalVisible(false)}
+        onAccept={(tab) => {
+          if (tab === "terms") setTermsAccepted(true);
+          else setPrivacyAccepted(true);
+          setModalVisible(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -343,6 +410,52 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 14,
   },
+  requirements: {
+    marginTop: 8,
+    gap: 2,
+  },
+  reqText: {
+    fontSize: 12,
+    color: "#E53935",
+  },
+  reqMet: {
+    color: "#4CAF50",
+  },
+  consentSection: {
+    marginTop: 20,
+    gap: 12,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: "#D4501E",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#232230",
+    lineHeight: 20,
+  },
+  consentLink: {
+    color: "#D4501E",
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
   button: {
     backgroundColor: "#D4501E",
     paddingVertical: 16,
@@ -356,8 +469,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   buttonDisabled: {
-    backgroundColor: "#A8D5D1",
+    backgroundColor: "#C5C5C5",
     shadowOpacity: 0,
+    elevation: 0,
   },
   buttonText: {
     color: "#fff",
@@ -377,16 +491,5 @@ const styles = StyleSheet.create({
     color: "#D4501E",
     fontSize: 14,
     fontWeight: "700",
-  },
-  requirements: {
-    marginTop: 8,
-    gap: 2,
-  },
-  reqText: {
-    fontSize: 12,
-    color: "#E53935",
-  },
-  reqMet: {
-    color: "#4CAF50",
   },
 });

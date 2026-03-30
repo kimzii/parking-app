@@ -28,6 +28,8 @@ model User {
   lastLoginAt         DateTime?
   lastLoginIp         String?
   pushToken           String?   @map("push_token")
+  termsAcceptedAt     DateTime? @map("terms_accepted_at")
+  privacyAcceptedAt   DateTime? @map("privacy_accepted_at")
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 

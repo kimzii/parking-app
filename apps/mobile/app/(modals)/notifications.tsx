@@ -38,6 +38,8 @@ const NOTIFICATION_ICONS: Record<
     bg: "#E8F5E9",
   },
   LOCATION_REJECTED: { icon: "cancel", color: "#E53935", bg: "#FFEBEE" },
+  TOPUP_APPROVED: { icon: "check-circle", color: "#4CAF50", bg: "#E8F5E9" },
+  TOPUP_REJECTED: { icon: "warning", color: "#E53935", bg: "#FFEBEE" },
   GENERAL: { icon: "notifications", color: "#D4501E", bg: "#FFF0EC" },
 };
 

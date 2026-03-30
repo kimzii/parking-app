@@ -16,6 +16,8 @@ import {
   CheckCircle,
   AlertCircle,
   X,
+  CreditCard,
+  ArrowDownLeft,
 } from "lucide-react";
 
 interface User {
@@ -37,9 +39,14 @@ type NotificationType =
   | "BOOKING_PENDING"
   | "BOOKING_APPROVED"
   | "DRIVER_NEARBY"
+  | "DRIVER_ARRIVED"
   | "DRIVER_VERIFIED"
   | "LOCATION_APPROVED"
-  | "LOCATION_REJECTED";
+  | "LOCATION_REJECTED"
+  | "TOPUP_APPROVED"
+  | "TOPUP_REJECTED"
+  | "WITHDRAW_APPROVED"
+  | "WITHDRAW_REJECTED";
 
 interface ApiNotification {
   id: string;
@@ -53,7 +60,7 @@ interface ApiNotification {
 
 interface UiNotification {
   id: string;
-  type: NotificationType | "PENDING_LISTING" | "PENDING_DRIVER";
+  type: NotificationType | "PENDING_LISTING" | "PENDING_DRIVER" | "TOPUP_REQUEST" | "WITHDRAW_REQUEST";
   title: string;
   message: string;
   time: string;
@@ -84,54 +91,91 @@ const formatTimeAgo = (dateString: string) => {
 };
 
 const mapNotificationLink = (notification: ApiNotification): string => {
-  const reservationId =
-    notification.data && typeof notification.data === "object" && "reservationId" in notification.data
-      ? String(notification.data.reservationId)
-      : null;
+  const data = notification.data && typeof notification.data === "object" ? notification.data : {};
+
+  const getString = (key: string) =>
+    key in data ? String(data[key]) : null;
+
+  const reservationId = getString("reservationId");
+  const locationId = getString("locationId");
+  const topUpRequestId = getString("topUpRequestId");
+  const withdrawRequestId = getString("withdrawRequestId");
+  const driverId = getString("driverId");
 
   switch (notification.type) {
     case "LOCATION_APPROVED":
     case "LOCATION_REJECTED":
-      return "/listings";
+      return locationId ? `/listings?listingId=${locationId}` : "/listings";
+
     case "DRIVER_VERIFIED":
-      return "/users";
+      return driverId ? `/users?driverId=${driverId}` : "/users";
+
     case "BOOKING_PENDING":
     case "BOOKING_APPROVED":
     case "BOOKING_CANCELLED":
     case "BOOKING_COMPLETED":
     case "DRIVER_NEARBY":
+    case "DRIVER_ARRIVED":
       return reservationId ? `/reservations?reservationId=${reservationId}` : "/reservations";
-    case "GENERAL":
-      if (
-        notification.data &&
-        typeof notification.data === "object" &&
-        "kind" in notification.data
-      ) {
-        const kind = String(notification.data.kind);
-        if (kind === "PENDING_LISTING") {
-          return "/listings";
-        }
-        if (kind === "PENDING_DRIVER") {
-          return "/users";
-        }
-      }
 
+    case "TOPUP_APPROVED":
+    case "TOPUP_REJECTED":
+      return topUpRequestId
+        ? `/transactions?tab=topup&requestId=${topUpRequestId}`
+        : "/transactions?tab=topup";
+
+    case "WITHDRAW_APPROVED":
+    case "WITHDRAW_REJECTED":
+      return withdrawRequestId
+        ? `/transactions?tab=withdraw&requestId=${withdrawRequestId}`
+        : "/transactions?tab=withdraw";
+
+    case "GENERAL": {
+      const kind = getString("kind");
+      if (kind === "PENDING_LISTING") {
+        return locationId ? `/listings?listingId=${locationId}` : "/listings";
+      }
+      if (kind === "PENDING_DRIVER") {
+        return driverId ? `/users?driverId=${driverId}` : "/users";
+      }
+      if (kind === "TOPUP_REQUEST") {
+        return topUpRequestId
+          ? `/transactions?tab=topup&requestId=${topUpRequestId}`
+          : "/transactions?tab=topup";
+      }
+      if (kind === "WITHDRAW_REQUEST") {
+        return withdrawRequestId
+          ? `/transactions?tab=withdraw&requestId=${withdrawRequestId}`
+          : "/transactions?tab=withdraw";
+      }
       return "/dashboard";
+    }
+
     default:
       return "/dashboard";
   }
 };
 
-const toUiNotification = (notification: ApiNotification): UiNotification => ({
-  id: notification.id,
-  type: notification.type,
-  title: notification.title,
-  message: notification.message,
-  time: formatTimeAgo(notification.createdAt),
-  read: notification.isRead,
-  link: mapNotificationLink(notification),
-  persisted: true,
-});
+const toUiNotification = (notification: ApiNotification): UiNotification => {
+  const kind =
+    notification.type === "GENERAL" &&
+    notification.data &&
+    typeof notification.data === "object" &&
+    "kind" in notification.data
+      ? String(notification.data.kind)
+      : null;
+
+  return {
+    id: notification.id,
+    type: (kind as UiNotification["type"]) ?? notification.type,
+    title: notification.title,
+    message: notification.message,
+    time: formatTimeAgo(notification.createdAt),
+    read: notification.isRead,
+    link: mapNotificationLink(notification),
+    persisted: true,
+  };
+};
 
 export default function Header({ user, onLogout }: HeaderProps) {
   const router = useRouter();
@@ -275,7 +319,16 @@ export default function Header({ user, onLogout }: HeaderProps) {
       case "PENDING_DRIVER":
         return <CheckCircle size={16} className="text-green-500" />;
       case "DRIVER_NEARBY":
+      case "DRIVER_ARRIVED":
         return <AlertCircle size={16} className="text-red-500" />;
+      case "TOPUP_APPROVED":
+      case "TOPUP_REJECTED":
+      case "TOPUP_REQUEST":
+        return <CreditCard size={16} className="text-purple-500" />;
+      case "WITHDRAW_APPROVED":
+      case "WITHDRAW_REJECTED":
+      case "WITHDRAW_REQUEST":
+        return <ArrowDownLeft size={16} className="text-orange-500" />;
       default:
         return <Bell size={16} className="text-gray-500" />;
     }

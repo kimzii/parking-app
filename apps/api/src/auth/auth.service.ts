@@ -57,7 +57,7 @@ export class AuthService {
   }
   // Register
   async register(registerDto: RegisterDto) {
-    const { email, password, firstName, lastName, phoneNumber } = registerDto;
+    const { email, password, firstName, lastName, phoneNumber, termsAccepted, privacyAccepted } = registerDto;
 
     // Check if user exists
     const existingUser = await this.prisma.user.findUnique({
@@ -76,6 +76,8 @@ export class AuthService {
     const verificationExpiry = new Date();
     verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 5);
 
+    const now = new Date();
+
     // Create user without role assignment — role is selected after email verification
     const user = await this.prisma.user.create({
       data: {
@@ -86,6 +88,8 @@ export class AuthService {
         phoneNumber,
         verificationCode,
         verificationExpiry,
+        termsAcceptedAt: termsAccepted ? now : null,
+        privacyAcceptedAt: privacyAccepted ? now : null,
         wallet: {
           create: {},
         },

@@ -16,6 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { userService } from "../../src/services/user";
 import * as reservationsService from "../../src/services/reservations";
 import { getUnreadCount } from "../../src/services/notifications";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 const STATUS_CONFIG: Record<
   string,
@@ -85,6 +86,11 @@ export default function HostHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(new Date());
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Real-time: bump unread badge when a new notification arrives
+  useSocketEvent("notification", () => {
+    setUnreadCount((prev) => prev + 1);
+  });
 
   const greeting = (() => {
     const hour = new Date().getHours();

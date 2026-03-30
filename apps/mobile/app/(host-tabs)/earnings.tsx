@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { walletService, Transaction } from "../../src/services/wallet";
+import { getUnreadCount } from "../../src/services/notifications";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 const SOURCE_CONFIG: Record<
   string,
@@ -60,12 +62,18 @@ export default function EarningsScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useSocketEvent("notification", () => {
+    setUnreadCount((prev) => prev + 1);
+  });
 
   const fetchData = useCallback(async () => {
     try {
       const [balanceData, txns] = await Promise.all([
         walletService.getBalance(),
         walletService.getTransactions(20),
+        getUnreadCount().then(setUnreadCount).catch(() => {}),
       ]);
       setBalance(parseFloat(balanceData.balance));
       setTransactions(txns);
@@ -178,8 +186,26 @@ export default function EarningsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Earnings</Text>
-        <Text style={styles.headerSubtitle}>Track your hosting income</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>Earnings</Text>
+            <Text style={styles.headerSubtitle}>Track your hosting income</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/(modals)/notifications" as any)}
+            style={styles.notifBtn}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="notifications" size={22} color="#D4501E" />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -218,6 +244,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 16,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  notifBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#FFF0EC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#D4501E",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#fff",
   },
   headerTitle: {
     fontSize: 24,

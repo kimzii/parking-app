@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { hostService } from "../../src/services/hosts";
+import { getUnreadCount } from "../../src/services/notifications";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 interface ParkingLocation {
   id: string;
@@ -21,6 +23,7 @@ interface ParkingLocation {
   totalSlots: number | null;
   availableSlots: number | null;
   basePricePerHour: string;
+  acceptedVehicles: string[] | null;
 }
 
 const STATUS_CONFIG = {
@@ -34,10 +37,18 @@ export default function SpacesScreen() {
   const [locations, setLocations] = useState<ParkingLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useSocketEvent("notification", () => {
+    setUnreadCount((prev) => prev + 1);
+  });
 
   const fetchLocations = useCallback(async () => {
     try {
-      const data = await hostService.getLocations({ limit: 50 });
+      const [data] = await Promise.all([
+        hostService.getLocations({ limit: 50 }),
+        getUnreadCount().then(setUnreadCount).catch(() => {}),
+      ]);
       setLocations(data.data || []);
     } catch (err) {
       console.error("Failed to fetch locations:", err);
@@ -102,6 +113,14 @@ export default function SpacesScreen() {
             </Text>
           </View>
           <View style={styles.detailItem}>
+            {(item.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("CAR") && (
+              <MaterialIcons name="directions-car" size={15} color="#A09A94" />
+            )}
+            {(item.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("MOTORCYCLE") && (
+              <MaterialIcons name="two-wheeler" size={15} color="#A09A94" />
+            )}
+          </View>
+          <View style={styles.detailItem}>
             <MaterialIcons name="chevron-right" size={18} color="#A09A94" />
           </View>
         </View>
@@ -125,10 +144,28 @@ export default function SpacesScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Spaces</Text>
-        <Text style={styles.headerSubtitle}>
-          {locations.length} location{locations.length !== 1 ? "s" : ""}
-        </Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>My Spaces</Text>
+            <Text style={styles.headerSubtitle}>
+              {locations.length} location{locations.length !== 1 ? "s" : ""}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/(modals)/notifications" as any)}
+            style={styles.notifBtn}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="notifications" size={22} color="#D4501E" />
+            {unreadCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -175,6 +212,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 16,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  notifBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#FFF0EC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notifBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#D4501E",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#fff",
   },
   headerTitle: {
     fontSize: 24,
