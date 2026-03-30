@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,17 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Page ────────────────────────────────────────
 
 export default function TransactionsPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const requestId = searchParams.get("requestId");
+  const highlightRef = useRef<HTMLDivElement>(null);
+
+  const defaultTab =
+    tabParam === "withdraw" ? "withdrawals" :
+    tabParam === "topup" ? "topups" :
+    "topups";
+
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [topUps, setTopUps] = useState<TopUpRequest[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawRequest[]>([]);
   const [allTopUps, setAllTopUps] = useState<TopUpRequest[]>([]);
@@ -164,6 +176,15 @@ export default function TransactionsPage() {
     const timer = setInterval(() => setTimerTick((t) => t + 1), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Scroll to highlighted request from notification deep-link
+  useEffect(() => {
+    if (!requestId || loadingTopUps || loadingWithdraws) return;
+    const el = document.getElementById(`request-${requestId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [requestId, loadingTopUps, loadingWithdraws, activeTab]);
 
   // ─── Top-Up Actions ────────────────────────────
 
@@ -318,7 +339,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="topups">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="topups">
             <ArrowUpCircle className="h-4 w-4 mr-1" />
@@ -356,10 +377,10 @@ export default function TransactionsPage() {
                 const remaining = req.status === "PENDING" ? getTimeRemaining(req.expiresAt) : null;
 
                 return (
-                  <Card key={req.id} className={`border-l-4 ${
+                  <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 transition-all ${
                     req.status === "PENDING" ? "border-l-yellow-400" :
                     req.status === "ACCEPTED" ? "border-l-blue-400" : "border-l-gray-300"
-                  }`}>
+                  } ${requestId === req.id ? "ring-2 ring-[#005f56] ring-offset-2" : ""}`}>
                     <CardContent className="pt-5 pb-4">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         {/* Left: Info */}
@@ -506,7 +527,7 @@ export default function TransactionsPage() {
                 const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.email;
 
                 return (
-                  <Card key={req.id} className="border-l-4 border-l-orange-400">
+                  <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 border-l-orange-400 transition-all ${requestId === req.id ? "ring-2 ring-[#005f56] ring-offset-2" : ""}`}>
                     <CardContent className="pt-5 pb-4">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         {/* Left: Info */}
@@ -597,9 +618,9 @@ export default function TransactionsPage() {
                   const isTopUp = req._type === "topup";
 
                   return (
-                    <Card key={req.id} className={`border-l-4 ${
+                    <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 transition-all ${
                       isTopUp ? "border-l-blue-300" : "border-l-orange-300"
-                    }`}>
+                    } ${requestId === req.id ? "ring-2 ring-[#005f56] ring-offset-2" : ""}`}>
                       <CardContent className="pt-5 pb-4">
                         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                           <div className="flex-1 space-y-2">
