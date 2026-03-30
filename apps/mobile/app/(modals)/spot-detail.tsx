@@ -966,8 +966,7 @@ const styles = StyleSheet.create({
   bookBtnDisabled: {
     opacity: 0.75,
   },
-  bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-<<<<<<< Updated upstream
+    bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 
   // Space Action Modal
   modalOverlay: {
@@ -1069,7 +1068,9 @@ const styles = StyleSheet.create({
     color: "#6B6B6B",
     lineHeight: 18,
     paddingLeft: 46,
-=======
+  },
+
+  // Vehicle tags (keep these too)
   vehicleIconsRow: {
     flexDirection: "row",
     gap: 6,
@@ -1087,6 +1088,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#D4501E",
->>>>>>> Stashed changes
   },
 });

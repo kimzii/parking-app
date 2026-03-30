@@ -53,40 +53,6 @@ export class ReviewsController {
     return this.reviewsService.createHostReview(req.user.id, dto);
   }
 
-  @Get('location/:locationId')
-  @ApiOperation({ summary: 'Get all reviews for a parking location' })
-  async getLocationReviews(@Param('locationId') locationId: string) {
-    return this.reviewsService.getReviewsForLocation(locationId);
-  }
-
-  @Get('location/:locationId/rating')
-  @ApiOperation({ summary: 'Get average rating for a parking location' })
-  async getLocationRating(@Param('locationId') locationId: string) {
-    return this.reviewsService.getLocationAverageRating(locationId);
-  }
-
-  @Get('driver/:driverId')
-  @ApiOperation({ summary: 'Get all reviews for a driver' })
-  async getDriverReviews(@Param('driverId') driverId: string) {
-    return this.reviewsService.getReviewsForDriver(driverId);
-  }
-
-  @Get('reservation/:reservationId')
-  @ApiOperation({ summary: 'Get reviews for a specific reservation' })
-  async getReservationReviews(
-    @Param('reservationId') reservationId: string,
-  ) {
-    return this.reviewsService.getReviewsForReservation(reservationId);
-  }
-
-  @Get('admin/user/:userId')
-  @UseGuards(RolesGuard)
-  @Roles(RoleName.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
-  async getUserReviews(@Param('userId') userId: string) {
-    return this.reviewsService.getUserReviewsAdmin(userId);
-  }
-
   @Get('admin/all')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)
@@ -105,11 +71,45 @@ export class ReviewsController {
     });
   }
 
+  @Get('admin/user/:userId')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
+  async getUserReviews(@Param('userId') userId: string) {
+    return this.reviewsService.getUserReviewsAdmin(userId);
+  }
+
   @Delete('admin/:id')
   @UseGuards(RolesGuard)
   @Roles(RoleName.ADMIN)
   @ApiOperation({ summary: 'Admin: Delete a review' })
   async deleteReview(@Param('id') id: string) {
     return this.reviewsService.deleteReview(id);
+  }
+
+  @Get('location/:locationId/rating')
+  @ApiOperation({ summary: 'Get average rating for a parking location' })
+  async getLocationRating(@Param('locationId') locationId: string) {
+    return this.reviewsService.getLocationAverageRating(locationId);
+  }
+
+  @Get('location/:locationId')
+  @ApiOperation({ summary: 'Get all reviews for a parking location' })
+  async getLocationReviews(@Param('locationId') locationId: string) {
+    return this.reviewsService.getReviewsForLocation(locationId);
+  }
+
+  @Get('driver/:driverId')
+  @ApiOperation({ summary: 'Get all reviews for a driver' })
+  async getDriverReviews(@Param('driverId') driverId: string) {
+    return this.reviewsService.getReviewsForDriver(driverId);
+  }
+
+  @Get('reservation/:reservationId')
+  @ApiOperation({ summary: 'Get reviews for a specific reservation' })
+  async getReservationReviews(
+    @Param('reservationId') reservationId: string,
+  ) {
+    return this.reviewsService.getReviewsForReservation(reservationId);
   }
 }

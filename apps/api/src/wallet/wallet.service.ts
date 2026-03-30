@@ -248,7 +248,7 @@ export class WalletService {
     return { success: true };
   }
 
-  async rejectTopUp(requestId: string, adminUserId: string) {
+  async rejectTopUp(requestId: string, adminUserId: string, reason?: string) {
     const request = await this.prisma.topUpRequest.findUnique({
       where: { id: requestId },
     });
@@ -267,12 +267,15 @@ export class WalletService {
       },
     });
 
+    const baseMessage = `Your top-up request for ₱${new Decimal(request.amount).toFixed(2)} was rejected.`;
+    const message = reason ? `${baseMessage} Reason: ${reason}` : baseMessage;
+
     await this.notificationsService.send({
       userId: request.userId,
       title: 'Top-Up Rejected',
-      message: `Your top-up request for ₱${new Decimal(request.amount).toFixed(2)} was rejected.`,
+      message,
       type: 'TOPUP_REJECTED',
-      data: { topUpRequestId: requestId },
+      data: { topUpRequestId: requestId, reason: reason ?? null },
     });
 
     return { success: true };

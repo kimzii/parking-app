@@ -193,8 +193,9 @@ export class WalletController {
   async rejectTopUp(
     @Request() req: { user: { id: string } },
     @Param('id') id: string,
+    @Body() body: { reason?: string },
   ) {
-    return this.walletService.rejectTopUp(id, req.user.id);
+    return this.walletService.rejectTopUp(id, req.user.id, body?.reason);
   }
 
   // ─── Withdraw ──────────────────────────────────

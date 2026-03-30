@@ -42,9 +42,11 @@ type ParkingSpace = {
   id: string;
   slotNumber: number;
   name: string | null;
+  description: string | null;
   levelNumber: number | null;
   status: ParkingSpaceStatus;
   isActive: boolean;
+  createdAt: string;
   reservations?: Array<{
     id: string;
     status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
@@ -198,6 +200,18 @@ type ListingSessionDetails = {
   property: { title: string; address: string; slotNumber: number };
 };
 
+type ListingTransaction = {
+  id: string;
+  guestName: string;
+  hostName: string;
+  propertyTitle: string;
+  status: string;
+  totalAmount: number;
+  sessionStartedAt: string | null;
+  sessionEndedAt: string | null;
+  createdAt: string;
+};
+
 function normalizeListingSession(raw: ListingSessionRaw): ListingSession {
   const parseAmt = (v: number | string | null | undefined) => {
     const n = Number(v);
@@ -294,6 +308,9 @@ export default function PendingListings() {
   const [listingSessionsLoading, setListingSessionsLoading] = useState(false);
   const [listingSelectedSession, setListingSelectedSession] = useState<ListingSessionDetails | null>(null);
   const [listingDetailsLoading, setListingDetailsLoading] = useState(false);
+  const [listingTransactions, setListingTransactions] = useState<ListingTransaction[]>([]);
+  const [listingTransactionsLoading, setListingTransactionsLoading] = useState(false);
+  const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
 
   const toCoordinate = useCallback((value: number | string | null | undefined) => {
     if (value === null || value === undefined || value === "") {
@@ -548,6 +565,39 @@ export default function PendingListings() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedListing?.id, selectedListing?.title]);
 
+  useEffect(() => {
+    if (!selectedListing) {
+      setListingTransactions([]);
+      return;
+    }
+    const title = selectedListing.title;
+    const fetchTransactions = async () => {
+      setListingTransactionsLoading(true);
+      try {
+        const encoded = encodeURIComponent(title);
+        const [completedRes, cancelledRes] = await Promise.all([
+          api.get<{ reservations: ListingTransaction[]; total: number }>(
+            `/dashboard/reservations?status=COMPLETED&limit=100&search=${encoded}`
+          ),
+          api.get<{ reservations: ListingTransaction[]; total: number }>(
+            `/dashboard/reservations?status=CANCELLED&limit=100&search=${encoded}`
+          ),
+        ]);
+        const all = [
+          ...completedRes.data.reservations,
+          ...cancelledRes.data.reservations,
+        ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setListingTransactions(all);
+      } catch (err) {
+        console.error("Error fetching listing transactions:", err);
+      } finally {
+        setListingTransactionsLoading(false);
+      }
+    };
+    fetchTransactions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedListing?.id, selectedListing?.title]);
+
   // Approve listing
   const handleApprove = async (locationId: string) => {
     try {
@@ -781,6 +831,22 @@ export default function PendingListings() {
                     <p className="text-sm text-gray-900">{selectedListing.address}</p>
                   </div>
 
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Vehicles Accepted</p>
+                    {selectedListing.acceptedVehicles && selectedListing.acceptedVehicles.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedListing.acceptedVehicles.map((v) => (
+                          <span key={v} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#005f56]/10 text-[#005f56] border border-[#005f56]/20">
+                            {v === "CAR" ? "🚗" : v === "MOTORCYCLE" ? "🏍️" : v === "SUV" ? "🚙" : "🚘"}
+                            {v.charAt(0) + v.slice(1).toLowerCase()}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">Not specified</p>
+                    )}
+                  </div>
+
                   <div className="w-full h-48 bg-slate-50 rounded-lg overflow-hidden border border-gray-200">
                     {!googleMapsApiKey ? (
                       <div className="h-full flex items-center justify-center text-center px-4">
@@ -858,6 +924,78 @@ export default function PendingListings() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Parking Spaces */}
+            <Card className="shadow-sm border-gray-100">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Car className="w-5 h-5 text-gray-500" />
+                  Parking Spaces ({selectedListing.parkingSpaces?.length ?? 0})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!selectedListing.parkingSpaces || selectedListing.parkingSpaces.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                    No parking spaces configured.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(selectedListing.isMultiLevel
+                      ? [...new Set(selectedListing.parkingSpaces.map((s) => s.levelNumber))].sort((a, b) => (a ?? 0) - (b ?? 0))
+                      : [null]
+                    ).map((level) => {
+                      const spaces = selectedListing.parkingSpaces!.filter((s) =>
+                        selectedListing.isMultiLevel ? s.levelNumber === level : true
+                      );
+                      return (
+                        <div key={level ?? "flat"}>
+                          {selectedListing.isMultiLevel && (
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 mt-3 first:mt-0">
+                              Level {level}
+                            </p>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            {spaces.map((space) => (
+                              <button
+                                key={space.id}
+                                onClick={() => setSelectedSpace(space)}
+                                className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#005f56]/40 ${
+                                  !space.isActive
+                                    ? "bg-gray-50 border-gray-200 opacity-60"
+                                    : space.status === "AVAILABLE"
+                                    ? "bg-green-50 border-green-200"
+                                    : space.status === "OCCUPIED"
+                                    ? "bg-blue-50 border-blue-200"
+                                    : "bg-gray-50 border-gray-300"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-semibold text-gray-900">
+                                    {space.name || `Slot ${space.slotNumber}`}
+                                  </span>
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                    !space.isActive
+                                      ? "bg-gray-200 text-gray-500"
+                                      : space.status === "AVAILABLE"
+                                      ? "bg-green-100 text-green-700"
+                                      : space.status === "OCCUPIED"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : "bg-gray-200 text-gray-600"
+                                  }`}>
+                                    {!space.isActive ? "Disabled" : space.status.charAt(0) + space.status.slice(1).toLowerCase()}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-400">#{space.slotNumber}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1133,30 +1271,161 @@ export default function PendingListings() {
                         <p className="text-sm font-semibold text-gray-900">{operatingHoursLabel}</p>
                       </div>
 
-                      <div className="rounded-lg border border-gray-200 p-4 bg-white">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
-                          Accepted Vehicles
-                        </p>
-                        <div className="flex items-center gap-2">
-                          {(!selectedListing.acceptedVehicles || selectedListing.acceptedVehicles.includes("CAR")) && (
-                            <Car className="w-4 h-4 text-orange-500" />
-                          )}
-                          {(!selectedListing.acceptedVehicles || selectedListing.acceptedVehicles.includes("MOTORCYCLE")) && (
-                            <svg className="w-4 h-4 text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="4" cy="17" r="2" /><circle cx="20" cy="17" r="2" /><path d="M7 17h10M12 17V5l4 4" />
-                            </svg>
-                          )}
-                          <p className="text-sm font-semibold text-gray-900">{acceptedVehiclesLabel}</p>
-                        </div>
-                      </div>
-
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
+
+            {/* Transactions */}
+            <Card className="shadow-sm border-gray-100">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-gray-500" />
+                  Transactions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {listingTransactionsLoading ? (
+                  <div className="py-8 flex items-center justify-center gap-2 text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading transactions...</span>
+                  </div>
+                ) : listingTransactions.length === 0 ? (
+                  <div className="py-8 text-center text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200 text-sm">
+                    No transactions found for this listing.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
+                        <tr>
+                          <th className="px-4 py-3">Booking ID</th>
+                          <th className="px-4 py-3">Guest</th>
+                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3">Amount</th>
+                          <th className="px-4 py-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {listingTransactions.map((txn) => (
+                          <tr key={txn.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900 font-mono text-xs">
+                              {txn.id.slice(0, 8).toUpperCase()}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">{txn.guestName}</td>
+                            <td className="px-4 py-3 text-gray-500">
+                              {txn.sessionEndedAt
+                                ? new Date(txn.sessionEndedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+                                : new Date(txn.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-gray-900">
+                              ₱{txn.totalAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                txn.status === "COMPLETED" ? "bg-green-100 text-green-700" :
+                                txn.status === "CANCELLED" ? "bg-red-100 text-red-700" :
+                                "bg-gray-100 text-gray-700"
+                              }`}>
+                                {txn.status.charAt(0) + txn.status.slice(1).toLowerCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
+
+      {/* Space Details Modal */}
+      {selectedSpace && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedSpace(null)}>
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900">Slot Details</h3>
+              <button
+                onClick={() => setSelectedSpace(null)}
+                className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Slot Number</p>
+                  <p className="text-sm font-semibold text-gray-900">#{selectedSpace.slotNumber}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Name</p>
+                  <p className="text-sm font-semibold text-gray-900">{selectedSpace.name || "—"}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Status</p>
+                  <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    !selectedSpace.isActive
+                      ? "bg-gray-200 text-gray-600"
+                      : selectedSpace.status === "AVAILABLE"
+                      ? "bg-green-100 text-green-700"
+                      : selectedSpace.status === "OCCUPIED"
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-200 text-gray-600"
+                  }`}>
+                    {!selectedSpace.isActive ? "Disabled" : selectedSpace.status.charAt(0) + selectedSpace.status.slice(1).toLowerCase()}
+                  </span>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Active</p>
+                  <p className={`text-sm font-semibold ${selectedSpace.isActive ? "text-green-700" : "text-red-500"}`}>
+                    {selectedSpace.isActive ? "Yes" : "No"}
+                  </p>
+                </div>
+                {selectedSpace.levelNumber !== null && (
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Level</p>
+                    <p className="text-sm font-semibold text-gray-900">{selectedSpace.levelNumber}</p>
+                  </div>
+                )}
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Date Added</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {selectedSpace.createdAt
+                      ? new Date(selectedSpace.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+              {selectedSpace.description && (
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Description</p>
+                  <p className="text-sm text-gray-700">{selectedSpace.description}</p>
+                </div>
+              )}
+              {selectedSpace.reservations && selectedSpace.reservations.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-2">Active Reservations</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedSpace.reservations.map((r) => (
+                      <span key={r.id} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        r.status === "ACTIVE" ? "bg-green-100 text-green-700" :
+                        r.status === "CONFIRMED" ? "bg-blue-100 text-blue-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Session Details Modal */}
       {(listingDetailsLoading || listingSelectedSession) && (

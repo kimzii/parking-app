@@ -869,55 +869,6 @@ export default function UserProfileView() {
                   </div>
                 )}
 
-                {isHost && (
-                  <>
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-bold text-gray-900">Recent Listings</h3>
-                    </div>
-
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                      <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
-                          <tr>
-                            <th className="px-4 py-3">Listing ID</th>
-                            <th className="px-4 py-3">Property Name</th>
-                            <th className="px-4 py-3">Date Added</th>
-                            <th className="px-4 py-3">Revenue</th>
-                            <th className="px-4 py-3 text-right">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 text-sm">
-                          {user.host?.parkingLocations && user.host.parkingLocations.length > 0 ? (
-                            user.host.parkingLocations.map((listing) => (
-                              <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
-                                <td className="px-4 py-3 font-medium text-gray-900">{listing.id.slice(0, 8).toUpperCase()}</td>
-                                <td className="px-4 py-3 text-gray-600">{listing.title}</td>
-                                <td className="px-4 py-3 text-gray-600">{formatListingDate(listing.createdAt)}</td>
-                                <td className="px-4 py-3 font-medium text-gray-900">{formatListingRevenue(listing.revenueTotal)}</td>
-                                <td className="px-4 py-3 text-right">
-                                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                    listing.status === "APPROVED" ? "bg-green-100 text-green-700" :
-                                    listing.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
-                                    listing.status === "REJECTED" ? "bg-red-100 text-red-700" :
-                                    "bg-gray-100 text-gray-700"
-                                  }`}>
-                                    {listing.status.charAt(0) + listing.status.slice(1).toLowerCase()}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
-                                No recent listings found.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           )}
@@ -1189,6 +1140,51 @@ export default function UserProfileView() {
                 >
                   View All Pending Listings →
                 </button>
+              </div>
+
+              <div>
+                <h4 className="text-base font-bold text-gray-900 mb-3">Recent Listings</h4>
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3">Listing ID</th>
+                        <th className="px-4 py-3">Property Name</th>
+                        <th className="px-4 py-3">Date Added</th>
+                        <th className="px-4 py-3">Revenue</th>
+                        <th className="px-4 py-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm">
+                      {user.host.parkingLocations && user.host.parkingLocations.length > 0 ? (
+                        user.host.parkingLocations.map((listing) => (
+                          <tr key={listing.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900">{listing.id.slice(0, 8).toUpperCase()}</td>
+                            <td className="px-4 py-3 text-gray-600">{listing.title}</td>
+                            <td className="px-4 py-3 text-gray-600">{formatListingDate(listing.createdAt)}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{formatListingRevenue(listing.revenueTotal)}</td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                listing.status === "APPROVED" ? "bg-green-100 text-green-700" :
+                                listing.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+                                listing.status === "REJECTED" ? "bg-red-100 text-red-700" :
+                                "bg-gray-100 text-gray-700"
+                              }`}>
+                                {listing.status.charAt(0) + listing.status.slice(1).toLowerCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                            No recent listings found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {user.host.parkingLocations && user.host.parkingLocations.length > 0 ? (
