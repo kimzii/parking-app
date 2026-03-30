@@ -3,7 +3,7 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
-  IsTrue,
+  Equals,
   Matches,
   MinLength,
 } from 'class-validator';
@@ -62,7 +62,7 @@ export class RegisterDto {
     description: 'User must accept Terms and Conditions to register',
   })
   @IsBoolean()
-  @IsTrue({ message: 'You must accept the Terms and Conditions' })
+  @Equals(true, { message: 'You must accept the Terms and Conditions' })
   termsAccepted: boolean;
 
   @ApiProperty({
@@ -70,6 +70,6 @@ export class RegisterDto {
     description: 'User must accept the Data Privacy Policy to register',
   })
   @IsBoolean()
-  @IsTrue({ message: 'You must accept the Data Privacy Policy' })
+  @Equals(true, { message: 'You must accept the Data Privacy Policy' })
   privacyAccepted: boolean;
 }
