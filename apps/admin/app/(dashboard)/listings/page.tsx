@@ -310,6 +310,8 @@ export default function PendingListings() {
   const [listingDetailsLoading, setListingDetailsLoading] = useState(false);
   const [listingTransactions, setListingTransactions] = useState<ListingTransaction[]>([]);
   const [listingTransactionsLoading, setListingTransactionsLoading] = useState(false);
+  const [listingCancelTarget, setListingCancelTarget] = useState<ListingSession | null>(null);
+  const [listingCancelLoading, setListingCancelLoading] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
 
   const toCoordinate = useCallback((value: number | string | null | undefined) => {
@@ -597,6 +599,21 @@ export default function PendingListings() {
     fetchTransactions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedListing?.id, selectedListing?.title]);
+
+  const handleListingCancelSession = async () => {
+    if (!listingCancelTarget) return;
+    try {
+      setListingCancelLoading(true);
+      await api.delete(`/dashboard/reservations/${listingCancelTarget.id}`);
+      setListingCancelTarget(null);
+      setListingActiveSessions((prev) => prev.filter((s) => s.id !== listingCancelTarget.id));
+      setListingConfirmedSessions((prev) => prev.filter((s) => s.id !== listingCancelTarget.id));
+    } catch {
+      alert("Failed to cancel session. Please try again.");
+    } finally {
+      setListingCancelLoading(false);
+    }
+  };
 
   // Approve listing
   const handleApprove = async (locationId: string) => {
@@ -1111,20 +1128,28 @@ export default function PendingListings() {
                                 </div>
                               </div>
                             </div>
-                            <button
-                              onClick={async () => {
-                                setListingDetailsLoading(true);
-                                setListingSelectedSession(null);
-                                try {
-                                  const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
-                                  setListingSelectedSession(res.data);
-                                } catch { alert("Failed to load session details."); }
-                                finally { setListingDetailsLoading(false); }
-                              }}
-                              className="shrink-0 text-xs text-green-700 underline hover:text-green-900"
-                            >
-                              Details
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={async () => {
+                                  setListingDetailsLoading(true);
+                                  setListingSelectedSession(null);
+                                  try {
+                                    const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
+                                    setListingSelectedSession(res.data);
+                                  } catch { alert("Failed to load session details."); }
+                                  finally { setListingDetailsLoading(false); }
+                                }}
+                                className="text-xs text-green-700 underline hover:text-green-900"
+                              >
+                                Details
+                              </button>
+                              <button
+                                onClick={() => setListingCancelTarget(session)}
+                                className="text-xs text-red-500 underline hover:text-red-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1159,20 +1184,28 @@ export default function PendingListings() {
                                 </div>
                               </div>
                             </div>
-                            <button
-                              onClick={async () => {
-                                setListingDetailsLoading(true);
-                                setListingSelectedSession(null);
-                                try {
-                                  const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
-                                  setListingSelectedSession(res.data);
-                                } catch { alert("Failed to load session details."); }
-                                finally { setListingDetailsLoading(false); }
-                              }}
-                              className="shrink-0 text-xs text-yellow-700 underline hover:text-yellow-900"
-                            >
-                              Details
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={async () => {
+                                  setListingDetailsLoading(true);
+                                  setListingSelectedSession(null);
+                                  try {
+                                    const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
+                                    setListingSelectedSession(res.data);
+                                  } catch { alert("Failed to load session details."); }
+                                  finally { setListingDetailsLoading(false); }
+                                }}
+                                className="text-xs text-yellow-700 underline hover:text-yellow-900"
+                              >
+                                Details
+                              </button>
+                              <button
+                                onClick={() => setListingCancelTarget(session)}
+                                className="text-xs text-red-500 underline hover:text-red-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1341,6 +1374,45 @@ export default function PendingListings() {
             </Card>
           </div>
         </div>
+
+      {/* Listing Cancel Session Modal */}
+      {listingCancelTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !listingCancelLoading && setListingCancelTarget(null)}>
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <XCircle size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Cancel Session</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  This will permanently cancel the session for <span className="font-semibold text-gray-700">{listingCancelTarget.guestName}</span>. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-5 text-sm text-red-700">
+              <strong>Warning:</strong> Only cancel sessions in case of a genuine error or emergency. The driver will be notified.
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setListingCancelTarget(null)}
+                disabled={listingCancelLoading}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Keep Session
+              </button>
+              <button
+                onClick={handleListingCancelSession}
+                disabled={listingCancelLoading}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {listingCancelLoading ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
+                {listingCancelLoading ? "Cancelling..." : "Cancel Session"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Space Details Modal */}
       {selectedSpace && (
