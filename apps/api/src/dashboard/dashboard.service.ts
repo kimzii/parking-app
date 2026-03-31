@@ -377,6 +377,8 @@ export class DashboardService {
     limit: number = 10,
     actorType: TransactionActorType = 'ALL',
     includeAll: boolean = false,
+    startDate?: Date,
+    endDate?: Date,
   ): Promise<RecentTransaction[]> {
     const roleFilter =
       actorType === 'ALL'
@@ -389,9 +391,20 @@ export class DashboardService {
             },
           };
 
+    const dateFilter =
+      startDate || endDate
+        ? {
+            createdAt: {
+              ...(startDate ? { gte: startDate } : {}),
+              ...(endDate ? { lte: endDate } : {}),
+            },
+          }
+        : {};
+
     const transactions = await this.prisma.walletTransaction.findMany({
       ...(includeAll ? {} : { take: limit }),
       where: {
+        ...dateFilter,
         wallet: {
           user: {
             ...(roleFilter ? { userRoles: roleFilter } : {}),
