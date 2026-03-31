@@ -53,31 +53,33 @@ export class ReviewsController {
     return this.reviewsService.createHostReview(req.user.id, dto);
   }
 
-  @Get('admin/all')
-  @UseGuards(RolesGuard)
-  @Roles(RoleName.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all reviews with filters' })
-  async getAllReviewsAdmin(
-    @Query('page') page = '1',
-    @Query('limit') limit = '10',
-    @Query('type') type?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.reviewsService.getAllReviewsAdmin({
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      type,
-      search,
-    });
-  }
+  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
+  // @Get('admin/all')
+  // @UseGuards(RolesGuard)
+  // @Roles(RoleName.ADMIN)
+  // @ApiOperation({ summary: 'Admin: Get all reviews with filters' })
+  // async getAllReviewsAdmin(
+  //   @Query('page') page = '1',
+  //   @Query('limit') limit = '10',
+  //   @Query('type') type?: string,
+  //   @Query('search') search?: string,
+  // ) {
+  //   return this.reviewsService.getAllReviewsAdmin({
+  //     page: parseInt(page, 10),
+  //     limit: parseInt(limit, 10),
+  //     type,
+  //     search,
+  //   });
+  // }
 
-  @Get('admin/user/:userId')
-  @UseGuards(RolesGuard)
-  @Roles(RoleName.ADMIN)
-  @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
-  async getUserReviews(@Param('userId') userId: string) {
-    return this.reviewsService.getUserReviewsAdmin(userId);
-  }
+  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
+  // @Get('admin/user/:userId')
+  // @UseGuards(RolesGuard)
+  // @Roles(RoleName.ADMIN)
+  // @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
+  // async getUserReviews(@Param('userId') userId: string) {
+  //   return this.reviewsService.getUserReviewsAdmin(userId);
+  // }
 
   @Delete('admin/:id')
   @UseGuards(RolesGuard)

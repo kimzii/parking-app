@@ -245,16 +245,17 @@ export class DriversController {
     return this.driversService.updateDriverStatus(driverId, updateStatusDto);
   }
 
-  @Get('admin/statistics')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiOperation({ summary: 'Get driver statistics (Admin only)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Driver statistics retrieved successfully',
-  })
-  @ApiResponse({ status: 403, description: 'Admin access required' })
-  async getDriverStatistics() {
-    return this.driversService.getDriverStatistics();
-  }
+  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
+  // @Get('admin/statistics')
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @Roles('ADMIN')
+  // @ApiOperation({ summary: 'Get driver statistics (Admin only)' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Driver statistics retrieved successfully',
+  // })
+  // @ApiResponse({ status: 403, description: 'Admin access required' })
+  // async getDriverStatistics() {
+  //   return this.driversService.getDriverStatistics();
+  // }
 }
