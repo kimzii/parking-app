@@ -18,6 +18,9 @@ import {
   X,
   CreditCard,
   ArrowDownLeft,
+  CalendarCheck,
+  SquareParking,
+  Wallet,
 } from "lucide-react";
 
 interface User {
@@ -335,9 +338,12 @@ export default function Header({ user, onLogout }: HeaderProps) {
   };
 
   const quickActions = [
-    { icon: UserPlus, label: "View Pending Users", href: "/users", description: "Review pending verifications" },
-    { icon: MapPin, label: "View Pending Listings", href: "/listings", description: "Approve parking locations" },
-    { icon: FileText, label: "View Reports", href: "/reports", description: "Check analytics & reports" },
+    { icon: UserPlus, label: "Users", href: "/users", description: "Review pending verifications" },
+    { icon: MapPin, label: "Listings", href: "/listings", description: "Approve parking locations" },
+    { icon: CalendarCheck, label: "Reservations", href: "/reservations", description: "Manage booking reservations" },
+    { icon: SquareParking, label: "Sessions", href: "/sessions", description: "View active parking sessions" },
+    { icon: Wallet, label: "Transactions", href: "/transactions", description: "Top-ups & withdrawals" },
+    { icon: FileText, label: "Reports", href: "/reports", description: "Analytics & financial reports" },
     { icon: Settings, label: "Settings", href: "/settings", description: "Configure system settings" },
   ];
 
@@ -386,9 +392,9 @@ export default function Header({ user, onLogout }: HeaderProps) {
 
             {/* Quick Actions Dropdown */}
             {showQuickActions && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
-                <div className="px-4 py-2 border-b border-gray-100">
-                  <h3 className="font-semibold text-gray-900">Quick Actions</h3>
+              <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-xl shadow-lg border border-gray-200 py-1.5 z-50">
+                <div className="px-3 py-1.5 border-b border-gray-100">
+                  <h3 className="font-semibold text-gray-900 text-xs uppercase tracking-wider">Quick Actions</h3>
                 </div>
                 {quickActions.map((action) => (
                   <button
@@ -397,14 +403,14 @@ export default function Header({ user, onLogout }: HeaderProps) {
                       router.push(action.href);
                       setShowQuickActions(false);
                     }}
-                    className="w-full px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-gray-50 transition-colors text-left"
                   >
-                    <div className="w-9 h-9 bg-[#005f56]/10 rounded-lg flex items-center justify-center shrink-0">
-                      <action.icon size={18} className="text-[#005f56]" />
+                    <div className="w-7 h-7 bg-[#005f56]/10 rounded-md flex items-center justify-center shrink-0">
+                      <action.icon size={14} className="text-[#005f56]" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{action.label}</p>
-                      <p className="text-xs text-gray-500">{action.description}</p>
+                      <p className="font-medium text-gray-900 text-xs">{action.label}</p>
+                      <p className="text-[10px] text-gray-400 leading-tight">{action.description}</p>
                     </div>
                   </button>
                 ))}
