@@ -363,6 +363,12 @@ export default function UserProfileView() {
   const handleEditUser = async () => {
     if (!user) return;
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editForm.email.trim())) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
     try {
       setActionLoading(true);
       await api.put(`/users/${user.id}`, {

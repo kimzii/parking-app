@@ -360,7 +360,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
       <div className="flex items-center justify-between gap-8">
 
        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="relative w-[500px]">
+        <form onSubmit={handleSearch} className="relative w-full max-w-[500px]">
           <Search
             size={18}
             className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
