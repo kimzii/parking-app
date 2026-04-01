@@ -56,13 +56,19 @@ export class DashboardController {
     @Query('limit') limit?: string,
     @Query('actorType') actorType?: 'ALL' | 'DRIVER' | 'HOST',
     @Query('includeAll') includeAll?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     const parsedLimit = limit ? parseInt(limit, 10) : 10;
     const shouldIncludeAll = includeAll === 'true';
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
     return this.dashboardService.getRecentTransactions(
       parsedLimit,
       actorType || 'ALL',
       shouldIncludeAll,
+      start,
+      end,
     );
   }
 

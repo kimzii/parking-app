@@ -125,20 +125,21 @@ export class WalletController {
     return this.walletService.getMyTopUpRequests(req.user.id);
   }
 
-  @Get('top-up/user/:userId')
-  @ApiOperation({ summary: 'Admin: Get top-up requests for a specific user' })
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  async getTopUpRequestsByUser(
-    @Param('userId') userId: string,
-    @Query('limit') limit?: string,
-  ) {
-    const parsedLimit = limit ? parseInt(limit, 10) : 10;
-    return this.walletService.getTopUpRequestsByUser(
-      userId,
-      Number.isNaN(parsedLimit) ? 10 : parsedLimit,
-    );
-  }
+  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
+  // @Get('top-up/user/:userId')
+  // @ApiOperation({ summary: 'Admin: Get top-up requests for a specific user' })
+  // @UseGuards(RolesGuard)
+  // @Roles('ADMIN')
+  // async getTopUpRequestsByUser(
+  //   @Param('userId') userId: string,
+  //   @Query('limit') limit?: string,
+  // ) {
+  //   const parsedLimit = limit ? parseInt(limit, 10) : 10;
+  //   return this.walletService.getTopUpRequestsByUser(
+  //     userId,
+  //     Number.isNaN(parsedLimit) ? 10 : parsedLimit,
+  //   );
+  // }
 
   @Get('top-up/pending')
   @ApiOperation({ summary: 'Admin: Get pending/accepted top-up requests' })
@@ -156,13 +157,14 @@ export class WalletController {
     return this.walletService.getAllTopUpRequests();
   }
 
-  @Get('top-up/:id')
-  @ApiOperation({ summary: 'Admin: Get single top-up request details' })
-  @UseGuards(RolesGuard)
-  @Roles('ADMIN')
-  async getTopUpRequest(@Param('id') id: string) {
-    return this.walletService.getTopUpRequest(id);
-  }
+  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
+  // @Get('top-up/:id')
+  // @ApiOperation({ summary: 'Admin: Get single top-up request details' })
+  // @UseGuards(RolesGuard)
+  // @Roles('ADMIN')
+  // async getTopUpRequest(@Param('id') id: string) {
+  //   return this.walletService.getTopUpRequest(id);
+  // }
 
   @Patch('top-up/:id/accept')
   @ApiOperation({ summary: 'Admin: Accept a top-up request (user will see QR)' })

@@ -173,9 +173,11 @@ function formatDuration(startedAt: string | null, endedAt: string | null): strin
 function SessionCard({
   session,
   onViewDetails,
+  onCancel,
 }: {
   session: Session;
   onViewDetails: (id: string) => void;
+  onCancel: (session: Session) => void;
 }) {
   const isActive = session.status === "ACTIVE";
 
@@ -237,13 +239,22 @@ function SessionCard({
           <span className="font-semibold text-gray-900">{formatCurrency(session.totalAmount)}</span>
         </div>
 
-        <button
-          onClick={() => onViewDetails(session.id)}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-        >
-          <Eye size={15} />
-          View Details
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onViewDetails(session.id)}
+            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+          >
+            <Eye size={15} />
+            View Details
+          </button>
+          <button
+            onClick={() => onCancel(session)}
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+          >
+            <XCircle size={15} />
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -346,6 +357,8 @@ export default function LiveSessionsPage() {
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0);
   const [selectedSession, setSelectedSession] = useState<SessionDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Session | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -417,6 +430,20 @@ export default function LiveSessionsPage() {
       alert("Failed to load session details.");
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const handleCancelSession = async () => {
+    if (!cancelTarget) return;
+    try {
+      setCancelLoading(true);
+      await api.delete(`/dashboard/reservations/${cancelTarget.id}`);
+      setCancelTarget(null);
+      await fetchSessions(false);
+    } catch {
+      alert("Failed to cancel session. Please try again.");
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -529,7 +556,7 @@ export default function LiveSessionsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {activeSessions.map((session) => (
-              <SessionCard key={session.id} session={session} onViewDetails={handleViewDetails} />
+              <SessionCard key={session.id} session={session} onViewDetails={handleViewDetails} onCancel={setCancelTarget} />
             ))}
           </div>
         )}
@@ -551,7 +578,7 @@ export default function LiveSessionsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {confirmedSessions.map((session) => (
-              <SessionCard key={session.id} session={session} onViewDetails={handleViewDetails} />
+              <SessionCard key={session.id} session={session} onViewDetails={handleViewDetails} onCancel={setCancelTarget} />
             ))}
           </div>
         )}
@@ -714,6 +741,45 @@ export default function LiveSessionsPage() {
                 </div>
               </div>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !cancelLoading && setCancelTarget(null)}>
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <XCircle size={20} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Cancel Session</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  This will permanently cancel the session for <span className="font-semibold text-gray-700">{cancelTarget.guestName}</span> at <span className="font-semibold text-gray-700">{cancelTarget.propertyTitle}</span>. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-5 text-sm text-red-700">
+              <strong>Warning:</strong> Only cancel sessions in case of a genuine error or emergency. The driver will be notified.
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelLoading}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Keep Session
+              </button>
+              <button
+                onClick={handleCancelSession}
+                disabled={cancelLoading}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {cancelLoading ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
+                {cancelLoading ? "Cancelling..." : "Cancel Session"}
+              </button>
+            </div>
           </div>
         </div>
       )}

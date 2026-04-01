@@ -60,6 +60,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
 
   private readonly HOST_APPROVAL_WINDOW_MS = 5 * 60 * 1000;
   private readonly DRIVER_ARRIVAL_WINDOW_MS = 60 * 60 * 1000;
+  private readonly PLATFORM_COMMISSION_RATE = new Decimal(0.1);
   private readonly OCCUPANCY_ACTIVE_STATUSES = ['CONFIRMED', 'ACTIVE'] as const;
   private timeoutSweepInterval: NodeJS.Timeout | null = null;
 
@@ -634,6 +635,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       totalAmount: r.totalAmount,
       escrowAmount: toNullable(r.escrowAmount),
       finalAmount: toNullable(r.finalAmount),
+      commissionRate: r.commissionRate,
+      platformFee: toNullable(r.platformFee),
+      hostPayoutAmount: toNullable(r.hostPayoutAmount),
       overtimeAmount: toNullable(r.overtimeAmount),
       createdAt: r.createdAt,
       parkingSpace: {
@@ -724,6 +728,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       totalAmount: reservation.totalAmount,
       escrowAmount: toNullable(reservation.escrowAmount),
       finalAmount: toNullable(reservation.finalAmount),
+      commissionRate: reservation.commissionRate,
+      platformFee: toNullable(reservation.platformFee),
+      hostPayoutAmount: toNullable(reservation.hostPayoutAmount),
       overtimeAmount: toNullable(reservation.overtimeAmount),
       createdAt: reservation.createdAt,
       parkingSpace: {
@@ -1227,6 +1234,13 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const durationMs = now.getTime() - sessionStart.getTime();
     const durationHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
     const totalFee = pricePerHour.mul(durationHours);
+    const platformCommission = totalFee
+      .mul(this.PLATFORM_COMMISSION_RATE)
+      .toDecimalPlaces(2);
+    const hostPayoutAmount = Decimal.max(
+      totalFee.sub(platformCommission),
+      0,
+    ).toDecimalPlaces(2);
 
     // First hour was already paid (escrow)
     const escrowAmount = new Decimal(String(reservation.escrowAmount ?? 0));
@@ -1273,23 +1287,29 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           where: { userId: host.userId },
         });
 
+        let hostPayoutTransactionId: string | null = null;
+
         if (hostWallet) {
-          await tx.walletTransaction.create({
+          const hostPayoutTransaction = await tx.walletTransaction.create({
             data: {
               walletId: hostWallet.id,
               type: 'CREDIT',
               source: 'BOOKING_PAYOUT',
-              amount: totalFee,
+              amount: hostPayoutAmount,
               referenceId: reservation.id,
               balanceBefore: hostWallet.balance,
-              balanceAfter: new Decimal(hostWallet.balance).add(totalFee),
+              balanceAfter: new Decimal(hostWallet.balance).add(
+                hostPayoutAmount,
+              ),
             },
           });
+
+          hostPayoutTransactionId = hostPayoutTransaction.id;
 
           await tx.wallet.update({
             where: { id: hostWallet.id },
             data: {
-              balance: { increment: totalFee.toNumber() },
+              balance: { increment: hostPayoutAmount.toNumber() },
             },
           });
         }
@@ -1302,6 +1322,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             sessionEndedAt: now,
             finalAmount: totalFee,
             totalAmount: totalFee,
+            commissionRate: this.PLATFORM_COMMISSION_RATE,
+            platformFee: platformCommission,
+            hostPayoutAmount,
+            hostPayoutId: hostPayoutTransactionId,
           },
         });
 
@@ -1340,6 +1364,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         sessionEndedAt: toNullable<Date>(result.sessionEndedAt),
         totalAmount: result.totalAmount,
         finalAmount: toNullable(result.finalAmount),
+        commissionRate: result.commissionRate,
+        platformFee: toNullable(result.platformFee),
+        hostPayoutAmount: toNullable(result.hostPayoutAmount),
         durationHours,
       },
       additionalCharge: additionalCharge.gt(0)
@@ -1608,6 +1635,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       sessionEndedAt: toNullable<Date>(r.sessionEndedAt),
       totalAmount: r.totalAmount,
       finalAmount: toNullable(r.finalAmount),
+      commissionRate: r.commissionRate,
+      platformFee: toNullable(r.platformFee),
+      hostPayoutAmount: toNullable(r.hostPayoutAmount),
       overtimeAmount: toNullable(r.overtimeAmount),
       createdAt: r.createdAt,
       parkingSpace: {

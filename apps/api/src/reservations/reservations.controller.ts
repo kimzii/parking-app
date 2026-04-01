@@ -53,15 +53,16 @@ export class ReservationsController {
     return this.reservationsService.getDriverReservations(req.user.id, status);
   }
 
-  /**
-   * Admin: Trace reservation linkage to space/location and occupancy expectation
-   */
-  @Get('admin/trace/:id')
-  @UseGuards(RolesGuard)
-  @Roles(RoleName.ADMIN)
-  async traceReservationForAdmin(@Param('id') id: string) {
-    return this.reservationsService.getReservationTraceForAdmin(id);
-  }
+  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
+  // /**
+  //  * Admin: Trace reservation linkage to space/location and occupancy expectation
+  //  */
+  // @Get('admin/trace/:id')
+  // @UseGuards(RolesGuard)
+  // @Roles(RoleName.ADMIN)
+  // async traceReservationForAdmin(@Param('id') id: string) {
+  //   return this.reservationsService.getReservationTraceForAdmin(id);
+  // }
 
   /**
    * Get a single reservation by ID
