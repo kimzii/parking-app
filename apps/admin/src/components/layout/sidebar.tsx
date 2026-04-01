@@ -1,6 +1,8 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -9,12 +11,11 @@ import {
   CalendarDays,
   BarChart3,
   Settings,
-  Crown,
   ArrowLeftRight,
   Activity,
 } from "lucide-react";
 
-const navigationItems = [
+const navigationItems: { href: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string; badge?: string }[] = [
   {
     href: "/dashboard",
     icon: LayoutDashboard,
@@ -24,13 +25,13 @@ const navigationItems = [
     href: "/listings",
     icon: FileText,
     label: "Listings",
-    badge: "Pending/Active",
+    // badge: "Pending/Active",
   },
   {
     href: "/users",
     icon: Users,
     label: "Users",
-    badge: "Drivers/Hosts",
+    // badge: "Drivers/Hosts",
   },
   {
     href: "/reservations",
@@ -41,13 +42,13 @@ const navigationItems = [
     href: "/sessions",
     icon: Activity,
     label: "Live Sessions",
-    badge: "Live",
+    // badge: "Live",
   },
   {
     href: "/transactions",
     icon: ArrowLeftRight,
     label: "Transactions",
-    badge: "Top-Up/Withdraw",
+    // badge: "Top-Up/Withdraw",
   },
   {
     href: "/reports",
@@ -69,15 +70,14 @@ export default function Sidebar() {
 
       {/* Logo Section */}
       <div className="p-6 flex justify-left mb-2">
-        <div className="h-14 w-14 bg-[#005f56] rounded-[4px] flex items-center justify-center relative shadow-sm">
-          <span className="text-white text-3xl font-serif font-bold pt-1">
-            P
-          </span>
-          <Crown
-            className="absolute -top-3 text-white h-10 w-5 fill-current"
-            strokeWidth={1.5}
-          />
-        </div>
+        <Image
+          src="/icon.png"
+          alt="Parklink"
+          width={56}
+          height={56}
+          className="rounded-[4px] shadow-sm"
+          priority
+        />
       </div>
 
       {/* Navigation */}
@@ -92,20 +92,20 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3.5 rounded-lg transition-colors group ${
                 isActive
-                  ? "bg-[#E6F4F1] text-[#005f56] font-semibold"
+                  ? "bg-[#FEF0E8] text-[#C94B1E] font-semibold"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
               <Icon
                 size={20}
-                className={isActive ? "text-[#005f56]" : "text-gray-500 group-hover:text-gray-700"}
+                className={isActive ? "text-[#C94B1E]" : "text-gray-500 group-hover:text-gray-700"}
               />
               <span className="text-[15px]">{item.label}</span>
 
               {/* Optional Badge rendering if needed */}
               {item.badge && (
                 <span className={`ml-auto text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                    isActive ? "bg-[#005f56]/10 text-[#005f56]" : "bg-gray-100 text-gray-500"
+                    isActive ? "bg-[#C94B1E]/10 text-[#C94B1E]" : "bg-gray-100 text-gray-500"
                 }`}>
                   {item.badge}
                 </span>

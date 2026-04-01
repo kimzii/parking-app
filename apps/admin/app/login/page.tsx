@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import axios from "axios";
-import { Crown, Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
 
 // --- 1. LOCAL UI COMPONENTS (Keep these to avoid module errors) ---
 
@@ -256,15 +257,14 @@ function LoginPageContent() {
       <div className="relative z-10 w-full flex flex-col items-center">
 
         {/* 1. Logo Section (Outside Card) */}
-        <div className="h-14 w-14 bg-[#005f56] rounded-[4px] flex items-center justify-center relative shadow-sm mb-6">
-          <span className="text-white text-3xl font-serif font-bold pt-1">
-            P
-          </span>
-          <Crown
-            className="absolute -top-3 text-white h-5 w-5 fill-current"
-            strokeWidth={1.5}
-          />
-        </div>
+        <Image
+          src="/icon.png"
+          alt="Parklink"
+          width={56}
+          height={56}
+          className="rounded-[4px] shadow-sm mb-6"
+          priority
+        />
 
         {/* 2. Login Card */}
         <Card className="w-full max-w-[440px] shadow-lg border-gray-100 rounded-xl bg-white">
@@ -312,7 +312,7 @@ function LoginPageContent() {
                   placeholder="admin123"
                   {...register("email")}
                   disabled={isLoading}
-                  className={`h-11 rounded-md border-gray-300 focus-visible:ring-[#005f56] px-4 ${errors.email ? "border-red-500" : ""}`}
+                  className={`h-11 rounded-md border-gray-300 focus-visible:ring-[#C94B1E] px-4 ${errors.email ? "border-red-500" : ""}`}
                 />
                 {errors.email && (
                   <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
@@ -334,7 +334,7 @@ function LoginPageContent() {
                     placeholder="••••••••"
                     {...register("password")}
                     disabled={isLoading}
-                    className={`h-11 rounded-md border-gray-300 pr-10 focus-visible:ring-[#005f56] px-4 ${errors.password ? "border-red-500" : ""}`}
+                    className={`h-11 rounded-md border-gray-300 pr-10 focus-visible:ring-[#C94B1E] px-4 ${errors.password ? "border-red-500" : ""}`}
                   />
                   <button
                     type="button"
@@ -359,7 +359,7 @@ function LoginPageContent() {
               <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full h-11 text-base font-semibold bg-[#005f56] hover:bg-[#004d40] text-white rounded-md"
+                  className="w-full h-11 text-base font-semibold bg-[#C94B1E] hover:bg-[#A83A16] text-white rounded-md"
                   disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}

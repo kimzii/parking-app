@@ -1,3 +1,23 @@
+// This root route redirects to /login.
+// The full login form that was previously here is a duplicate of app/login/page.tsx
+// and has been commented out below.
+
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function RootPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/login");
+  }, [router]);
+
+  return null;
+}
+
+/*
 // apps/admin/app/login/page.tsx
 "use client";
 
@@ -41,7 +61,7 @@ function LoginPageContent() {
   const apiBaseUrl = "/api/proxy";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // Added for the "eye" toggle
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const cookieFlags =
@@ -65,7 +85,6 @@ function LoginPageContent() {
     resolver: zodResolver(loginSchema),
   });
 
-  // Check for error parameters on page load
   useEffect(() => {
     const errorParam = searchParams.get("error");
     if (errorParam === "admin_required") {
@@ -73,7 +92,6 @@ function LoginPageContent() {
     }
   }, [searchParams]);
 
-  // Check if already authenticated on page load
   useEffect(() => {
     const checkExistingAuth = () => {
       const token = localStorage.getItem("accessToken");
@@ -154,13 +172,11 @@ function LoginPageContent() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      {/* Logo Section - Recreated visually based on the image */}
       <div className="flex flex-col items-center mb-8">
-        <div className="h-16 w-16 bg-[#005f56] rounded-md flex items-center justify-center relative shadow-sm mb-4">
+        <div className="h-16 w-16 bg-[#C94B1E] rounded-md flex items-center justify-center relative shadow-sm mb-4">
           <span className="text-white text-4xl font-serif font-bold pt-2">
             P
           </span>
-          {/* Crown icon positioned roughly where it is in the image */}
           <Crown
             className="absolute -top-3 text-white h-6 w-6 fill-current"
             strokeWidth={1.5}
@@ -185,21 +201,16 @@ function LoginPageContent() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-sm font-semibold text-gray-900"
-              >
+              <Label htmlFor="email" className="text-sm font-semibold text-gray-900">
                 Username
               </Label>
               <Input
                 id="email"
                 type="email"
-                // The design says "Username", but we functionally use email.
-                // Keeping the placeholder consistent with logic, or can be "admin" if preferred.
                 placeholder="admin@parkup.com"
                 {...register("email")}
                 disabled={isLoading}
-                className={`h-12 border-gray-300 focus-visible:ring-[#005f56] ${errors.email ? "border-red-500" : ""}`}
+                className={`h-12 border-gray-300 focus-visible:ring-[#C94B1E] ${errors.email ? "border-red-500" : ""}`}
               />
               {errors.email && (
                 <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -207,10 +218,7 @@ function LoginPageContent() {
             </div>
 
             <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="text-sm font-semibold text-gray-900"
-              >
+              <Label htmlFor="password" className="text-sm font-semibold text-gray-900">
                 Password
               </Label>
               <div className="relative">
@@ -220,39 +228,30 @@ function LoginPageContent() {
                   placeholder="••••••••"
                   {...register("password")}
                   disabled={isLoading}
-                  className={`h-12 border-gray-300 pr-10 focus-visible:ring-[#005f56] ${errors.password ? "border-red-500" : ""}`}
+                  className={`h-12 border-gray-300 pr-10 focus-visible:ring-[#C94B1E] ${errors.password ? "border-red-500" : ""}`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-red-500">
-                  {errors.password.message}
-                </p>
+                <p className="text-sm text-red-500">{errors.password.message}</p>
               )}
             </div>
 
             <div className="flex justify-start">
-              <a
-                href="#"
-                className="text-sm font-medium text-[#005f56] hover:underline"
-              >
+              <a href="#" className="text-sm font-medium text-[#C94B1E] hover:underline">
                 Forgot Password?
               </a>
             </div>
 
             <Button
               type="submit"
-              className="w-full h-12 text-base font-semibold bg-[#005f56] hover:bg-[#004d40] text-white"
+              className="w-full h-12 text-base font-semibold bg-[#C94B1E] hover:bg-[#A83A16] text-white"
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Log In"}
@@ -267,3 +266,4 @@ function LoginPageContent() {
     </div>
   );
 }
+*/
