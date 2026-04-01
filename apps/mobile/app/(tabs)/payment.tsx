@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -14,6 +15,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { walletService, Transaction } from "../../src/services/wallet";
 import { userService } from "../../src/services/user";
 import { useSocketEvent } from "../../src/hooks/useSocket";
+import { getMyReservations, settleRemainingDue, Reservation } from "../../src/services/reservations";
 
 const SOURCE_CONFIG: Record<
   string,
@@ -57,6 +59,8 @@ export default function PaymentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isDriverVerified, setIsDriverVerified] = useState(true);
+  const [pendingPayment, setPendingPayment] = useState<Reservation | null>(null);
+  const [settling, setSettling] = useState(false);
 
   // Real-time: refresh balance & transactions when a notification arrives (e.g. top-up approved)
   useSocketEvent("balance-update", (data: { balance: string }) => {
@@ -68,10 +72,11 @@ export default function PaymentScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [balanceData, profile, txns] = await Promise.all([
+      const [balanceData, profile, txns, reservations] = await Promise.all([
         walletService.getBalance(),
         userService.getProfile(),
         walletService.getTransactions(20),
+        getMyReservations("PAYMENT_PENDING").catch(() => [] as Reservation[]),
       ]);
       setBalance(Number(balanceData.balance ?? 0));
       setTransactions(txns);
@@ -81,6 +86,7 @@ export default function PaymentScreen() {
             rs.role === "DRIVER" && rs.status === "VERIFIED",
         ) ?? false;
       setIsDriverVerified(verified);
+      setPendingPayment(reservations.length > 0 ? reservations[0] : null);
     } catch (err) {
       console.error("Failed to fetch payment data:", err);
     } finally {
@@ -99,6 +105,40 @@ export default function PaymentScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
+  };
+
+  const handleSettle = async () => {
+    if (!pendingPayment) return;
+    if (balance < (pendingPayment.remainingDue ?? 0)) {
+      Alert.alert(
+        "Insufficient Balance",
+        `You need ₱${(pendingPayment.remainingDue ?? 0).toFixed(2)} to settle this. Please top up first.`,
+        [{ text: "OK" }],
+      );
+      return;
+    }
+    Alert.alert(
+      "Settle Outstanding Balance",
+      `Pay ₱${(pendingPayment.remainingDue ?? 0).toFixed(2)} from your wallet to complete this booking?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Settle Now",
+          onPress: async () => {
+            setSettling(true);
+            try {
+              await settleRemainingDue(pendingPayment.id);
+              Alert.alert("Done", "Outstanding balance settled. Booking is now complete.");
+              fetchData();
+            } catch (err: any) {
+              Alert.alert("Failed", err?.response?.data?.message ?? "Could not settle payment.");
+            } finally {
+              setSettling(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
@@ -163,6 +203,32 @@ export default function PaymentScreen() {
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
         </TouchableOpacity>
+      )}
+
+      {/* Outstanding Balance Banner */}
+      {pendingPayment && (
+        <View style={styles.debtBanner}>
+          <MaterialIcons name="warning" size={20} color="#E53935" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.debtBannerTitle}>Outstanding Balance</Text>
+            <Text style={styles.debtBannerText}>
+              You owe ₱{(pendingPayment.remainingDue ?? 0).toFixed(2)} from your last session.
+              Settle this to unlock new bookings.
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.settleBt}
+            onPress={handleSettle}
+            disabled={settling}
+            activeOpacity={0.8}
+          >
+            {settling ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.settleBtText}>Pay</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Balance Card */}
@@ -432,5 +498,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#A09A94",
     marginTop: 2,
+  },
+  debtBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFEBEE",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E53935",
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+  debtBannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#E53935",
+  },
+  debtBannerText: {
+    fontSize: 12,
+    color: "#B71C1C",
+    marginTop: 2,
+  },
+  settleBt: {
+    backgroundColor: "#E53935",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 48,
+    alignItems: "center",
+  },
+  settleBtText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
   },
 });

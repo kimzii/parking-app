@@ -1,97 +1,18 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import axios from "axios";
-import { Crown, Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
-
-// --- 1. LOCAL UI COMPONENTS (Keep these to avoid module errors) ---
-
-const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={`inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 ${className}`}
-        {...props}
-      />
-    );
-  }
-);
-Button.displayName = "Button";
-
-const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={`flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-Input.displayName = "Input";
-
-const Label = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
-  ({ className, ...props }, ref) => (
-    <label
-      ref={ref}
-      className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}
-      {...props}
-    />
-  )
-);
-Label.displayName = "Label";
-
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={`rounded-xl border bg-card text-card-foreground shadow-sm ${className}`}
-      {...props}
-    />
-  )
-);
-Card.displayName = "Card";
-
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={`p-6 pt-0 ${className}`} {...props} />
-  )
-);
-CardContent.displayName = "CardContent";
-
-const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & { variant?: "default" | "destructive" }>(
-  ({ className, variant = "default", ...props }, ref) => (
-    <div
-      ref={ref}
-      role="alert"
-      className={`relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground ${
-        variant === "destructive"
-          ? "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive"
-          : "bg-background text-foreground"
-      } ${className}`}
-      {...props}
-    />
-  )
-);
-Alert.displayName = "Alert";
-
-const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={`text-sm [&_p]:leading-relaxed ${className}`}
-      {...props}
-    />
-  )
-);
-AlertDescription.displayName = "AlertDescription";
+import Image from "next/image";
+import { Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 
 // --- 2. BACKGROUND COMPONENT ---
 
@@ -256,15 +177,14 @@ function LoginPageContent() {
       <div className="relative z-10 w-full flex flex-col items-center">
 
         {/* 1. Logo Section (Outside Card) */}
-        <div className="h-14 w-14 bg-[#005f56] rounded-[4px] flex items-center justify-center relative shadow-sm mb-6">
-          <span className="text-white text-3xl font-serif font-bold pt-1">
-            P
-          </span>
-          <Crown
-            className="absolute -top-3 text-white h-5 w-5 fill-current"
-            strokeWidth={1.5}
-          />
-        </div>
+        <Image
+          src="/icon.png"
+          alt="Parklink"
+          width={56}
+          height={56}
+          className="rounded-[4px] shadow-sm mb-6"
+          priority
+        />
 
         {/* 2. Login Card */}
         <Card className="w-full max-w-[440px] shadow-lg border-gray-100 rounded-xl bg-white">
@@ -312,7 +232,7 @@ function LoginPageContent() {
                   placeholder="admin123"
                   {...register("email")}
                   disabled={isLoading}
-                  className={`h-11 rounded-md border-gray-300 focus-visible:ring-[#005f56] px-4 ${errors.email ? "border-red-500" : ""}`}
+                  className={`h-11 rounded-md border-gray-300 focus-visible:ring-[#C94B1E] px-4 ${errors.email ? "border-red-500" : ""}`}
                 />
                 {errors.email && (
                   <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
@@ -334,7 +254,7 @@ function LoginPageContent() {
                     placeholder="••••••••"
                     {...register("password")}
                     disabled={isLoading}
-                    className={`h-11 rounded-md border-gray-300 pr-10 focus-visible:ring-[#005f56] px-4 ${errors.password ? "border-red-500" : ""}`}
+                    className={`h-11 rounded-md border-gray-300 pr-10 focus-visible:ring-[#C94B1E] px-4 ${errors.password ? "border-red-500" : ""}`}
                   />
                   <button
                     type="button"
@@ -359,7 +279,7 @@ function LoginPageContent() {
               <div className="pt-2">
                 <Button
                   type="submit"
-                  className="w-full h-11 text-base font-semibold bg-[#005f56] hover:bg-[#004d40] text-white rounded-md"
+                  className="w-full h-11 text-base font-semibold bg-[#C94B1E] hover:bg-[#A83A16] text-white rounded-md"
                   disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}

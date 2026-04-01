@@ -360,7 +360,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
       <div className="flex items-center justify-between gap-8">
 
        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="relative w-[500px]">
+        <form onSubmit={handleSearch} className="relative w-full max-w-[500px]">
           <Search
             size={18}
             className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -370,27 +370,26 @@ export default function Header({ user, onLogout }: HeaderProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search users, listings, drivers, reservations, IDs..."
-            className="w-full bg-gray-50 pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#005f56] focus:border-transparent focus:bg-white outline-none text-gray-700 transition-all"
+            className="w-full bg-gray-50 pl-12 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C94B1E] focus:border-transparent focus:bg-white outline-none text-gray-700 transition-all"
           />
         </form>
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
-          {/* Quick Actions Button */}
-          <div ref={quickActionsRef} className="relative">
+          {/* Quick Actions Button — commented out: duplicates sidebar navigation */}
+          {/* <div ref={quickActionsRef} className="relative">
             <button
               onClick={() => {
                 setShowQuickActions(!showQuickActions);
                 setShowNotifications(false);
               }}
               className={`p-2.5 rounded-lg transition-colors ${
-                showQuickActions ? "bg-[#005f56] text-white" : "hover:bg-gray-100 text-gray-500"
+                showQuickActions ? "bg-[#C94B1E] text-white" : "hover:bg-gray-100 text-gray-500"
               }`}
             >
               <Plus size={20} />
             </button>
 
-            {/* Quick Actions Dropdown */}
             {showQuickActions && (
               <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-xl shadow-lg border border-gray-200 py-1.5 z-50">
                 <div className="px-3 py-1.5 border-b border-gray-100">
@@ -405,8 +404,8 @@ export default function Header({ user, onLogout }: HeaderProps) {
                     }}
                     className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-gray-50 transition-colors text-left"
                   >
-                    <div className="w-7 h-7 bg-[#005f56]/10 rounded-md flex items-center justify-center shrink-0">
-                      <action.icon size={14} className="text-[#005f56]" />
+                    <div className="w-7 h-7 bg-[#C94B1E]/10 rounded-md flex items-center justify-center shrink-0">
+                      <action.icon size={14} className="text-[#C94B1E]" />
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 text-xs">{action.label}</p>
@@ -416,7 +415,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
                 ))}
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Notifications Button */}
           <div ref={notificationsRef} className="relative">
@@ -426,7 +425,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
                 setShowQuickActions(false);
               }}
               className={`p-2.5 rounded-lg relative transition-colors ${
-                showNotifications ? "bg-[#005f56] text-white" : "hover:bg-gray-100 text-gray-500"
+                showNotifications ? "bg-[#C94B1E] text-white" : "hover:bg-gray-100 text-gray-500"
               }`}
             >
               <Bell size={20} />
@@ -445,7 +444,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="text-xs text-[#005f56] hover:text-[#004a43] font-medium"
+                      className="text-xs text-[#C94B1E] hover:text-[#A83A16] font-medium"
                     >
                       Mark all as read
                     </button>
@@ -506,24 +505,25 @@ export default function Header({ user, onLogout }: HeaderProps) {
                   )}
                 </div>
 
-                <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+                {/* View all notifications — commented out: no /notifications page exists yet */}
+                {/* <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
                   <button
                     onClick={() => {
                       setShowNotifications(false);
-                      // Could navigate to a notifications page if you have one
+                      router.push("/notifications");
                     }}
-                    className="w-full text-center text-sm text-[#005f56] hover:text-[#004a43] font-medium"
+                    className="w-full text-center text-sm text-[#C94B1E] hover:text-[#A83A16] font-medium"
                   >
                     View all notifications
                   </button>
-                </div>
+                </div> */}
               </div>
             )}
           </div>
 
           <div className="flex items-center gap-4 pl-4 border-l border-gray-200 ml-3">
             {/* User Avatar */}
-            <div className="w-10 h-10 bg-[#005f56] rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-sm">
+            <div className="w-10 h-10 bg-[#C94B1E] rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-sm">
               {getInitials(user.email)}
             </div>
 

@@ -8,9 +8,13 @@ import {
   MapPin,
   Car,
   CalendarClock,
+  Activity,
+  ArrowLeftRight,
   Loader2,
 } from "lucide-react";
 import api from "../../../src/lib/api";
+
+// --- Types ---
 
 type UserResult = {
   id: string;
@@ -45,31 +49,52 @@ type ReservationResult = {
   status: string;
 };
 
-type UsersResponse = {
-  data: UserResult[];
-  meta: {
-    total: number;
+type SessionResult = {
+  id: string;
+  guestName: string;
+  hostName: string;
+  propertyTitle: string;
+  status: string;
+  sessionStartedAt: string | null;
+  totalAmount: number;
+};
+
+type TopUpResult = {
+  id: string;
+  amount: string;
+  referenceCode: string;
+  status: string;
+  createdAt: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
   };
 };
 
-type ListingsResponse = {
-  data: ListingResult[];
-  pagination: {
-    total: number;
+type WithdrawResult = {
+  id: string;
+  amount: string;
+  status: string;
+  createdAt: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
   };
 };
 
-type DriversResponse = {
-  drivers: DriverResult[];
-  pagination: {
-    total: number;
-  };
-};
+// --- API response shapes ---
 
-type ReservationsResponse = {
-  reservations: ReservationResult[];
-  total: number;
-};
+type UsersResponse = { data: UserResult[]; meta: { total: number } };
+type ListingsResponse = { data: ListingResult[]; pagination: { total: number } };
+type DriversResponse = { drivers: DriverResult[]; pagination: { total: number } };
+type ReservationsResponse = { reservations: ReservationResult[]; total: number };
+type SessionsResponse = { reservations: SessionResult[]; total: number };
+
+// --- Helpers ---
 
 function getUserName(user: UserResult) {
   const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
@@ -81,10 +106,22 @@ function getDriverName(driver: DriverResult) {
   return fullName || driver.user.email;
 }
 
+function getTxUserName(user: { firstName: string | null; lastName: string | null; email: string }) {
+  const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+  return fullName || user.email;
+}
+
 function getListingRoute(listing: ListingResult) {
   const tab = listing.status === "PENDING" ? "pending" : "recent";
   return `/listings?tab=${tab}&listingId=${listing.id}`;
 }
+
+function matchesQuery(query: string, ...fields: (string | null | undefined)[]) {
+  const q = query.toLowerCase();
+  return fields.some((f) => f && f.toLowerCase().includes(q));
+}
+
+// --- Component ---
 
 export default function GlobalSearchPage() {
   const router = useRouter();
@@ -106,17 +143,22 @@ export default function GlobalSearchPage() {
   const [reservations, setReservations] = useState<ReservationResult[]>([]);
   const [reservationsTotal, setReservationsTotal] = useState(0);
 
+  const [sessions, setSessions] = useState<SessionResult[]>([]);
+  const [sessionsTotal, setSessionsTotal] = useState(0);
+
+  const [topUps, setTopUps] = useState<TopUpResult[]>([]);
+  const [withdraws, setWithdraws] = useState<WithdrawResult[]>([]);
+
   useEffect(() => {
     const fetchSearchResults = async () => {
       if (!query) {
-        setUsers([]);
-        setUsersTotal(0);
-        setListings([]);
-        setListingsTotal(0);
-        setDrivers([]);
-        setDriversTotal(0);
-        setReservations([]);
-        setReservationsTotal(0);
+        setUsers([]); setUsersTotal(0);
+        setListings([]); setListingsTotal(0);
+        setDrivers([]); setDriversTotal(0);
+        setReservations([]); setReservationsTotal(0);
+        setSessions([]); setSessionsTotal(0);
+        setTopUps([]);
+        setWithdraws([]);
         setError(null);
         return;
       }
@@ -125,11 +167,24 @@ export default function GlobalSearchPage() {
         setLoading(true);
         setError(null);
 
-        const [usersRes, listingsRes, driversRes, reservationsRes] = await Promise.all([
-          api.get<UsersResponse>(`/users?page=1&limit=5&search=${encodeURIComponent(query)}`),
-          api.get<ListingsResponse>(`/hosts/admin/locations?page=1&limit=5&search=${encodeURIComponent(query)}`),
-          api.get<DriversResponse>(`/drivers/admin/all?page=1&limit=5&search=${encodeURIComponent(query)}`),
-          api.get<ReservationsResponse>(`/dashboard/reservations?page=1&limit=5&search=${encodeURIComponent(query)}`),
+        const encoded = encodeURIComponent(query);
+
+        const [
+          usersRes,
+          listingsRes,
+          driversRes,
+          reservationsRes,
+          sessionsRes,
+          topUpsRes,
+          withdrawsRes,
+        ] = await Promise.all([
+          api.get<UsersResponse>(`/users?page=1&limit=5&search=${encoded}`),
+          api.get<ListingsResponse>(`/hosts/admin/locations?page=1&limit=5&search=${encoded}`),
+          api.get<DriversResponse>(`/drivers/admin/all?page=1&limit=5&search=${encoded}`),
+          api.get<ReservationsResponse>(`/dashboard/reservations?page=1&limit=5&search=${encoded}`),
+          api.get<SessionsResponse>(`/dashboard/reservations?page=1&limit=5&search=${encoded}&status=ACTIVE`),
+          api.get<TopUpResult[]>(`/wallet/top-up/all`),
+          api.get<WithdrawResult[]>(`/wallet/withdraw/all`),
         ]);
 
         setUsers(usersRes.data.data);
@@ -143,6 +198,21 @@ export default function GlobalSearchPage() {
 
         setReservations(reservationsRes.data.reservations);
         setReservationsTotal(reservationsRes.data.total || 0);
+
+        setSessions(sessionsRes.data.reservations);
+        setSessionsTotal(sessionsRes.data.total || 0);
+
+        // Client-side filter for transactions since the endpoints don't support search
+        const filteredTopUps = (topUpsRes.data || []).filter((t) =>
+          matchesQuery(query, t.referenceCode, t.amount, t.user.email, t.user.firstName, t.user.lastName, t.id)
+        ).slice(0, 5);
+        setTopUps(filteredTopUps);
+
+        const filteredWithdraws = (withdrawsRes.data || []).filter((w) =>
+          matchesQuery(query, w.amount, w.user.email, w.user.firstName, w.user.lastName, w.id)
+        ).slice(0, 5);
+        setWithdraws(filteredWithdraws);
+
       } catch (err) {
         console.error("Global search failed:", err);
         setError("Failed to fetch search results");
@@ -155,8 +225,8 @@ export default function GlobalSearchPage() {
   }, [query]);
 
   const totalResults = useMemo(
-    () => usersTotal + listingsTotal + driversTotal + reservationsTotal,
-    [usersTotal, listingsTotal, driversTotal, reservationsTotal]
+    () => usersTotal + listingsTotal + driversTotal + reservationsTotal + sessionsTotal + topUps.length + withdraws.length,
+    [usersTotal, listingsTotal, driversTotal, reservationsTotal, sessionsTotal, topUps.length, withdraws.length]
   );
 
   return (
@@ -171,7 +241,7 @@ export default function GlobalSearchPage() {
       {!query ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-500">
           <Search className="mx-auto mb-2 text-gray-300" size={28} />
-          Start searching users, listings, drivers, reservation IDs, and more.
+          Start searching users, listings, drivers, reservations, sessions, transactions, and more.
         </div>
       ) : loading ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-500">
@@ -188,6 +258,7 @@ export default function GlobalSearchPage() {
             Total matches: <span className="font-semibold text-gray-900">{totalResults}</span>
           </div>
 
+          {/* Users */}
           <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-800 font-semibold">
@@ -195,7 +266,7 @@ export default function GlobalSearchPage() {
               </div>
               <button
                 onClick={() => router.push(`/users?search=${encodeURIComponent(query)}`)}
-                className="text-sm text-[#005f56] hover:underline"
+                className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({usersTotal})
               </button>
@@ -219,6 +290,7 @@ export default function GlobalSearchPage() {
             </div>
           </section>
 
+          {/* Listings */}
           <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-800 font-semibold">
@@ -230,7 +302,7 @@ export default function GlobalSearchPage() {
                     ? router.push(getListingRoute(listings[0]))
                     : router.push(`/listings?search=${encodeURIComponent(query)}`)
                 }
-                className="text-sm text-[#005f56] hover:underline"
+                className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({listingsTotal})
               </button>
@@ -254,14 +326,15 @@ export default function GlobalSearchPage() {
             </div>
           </section>
 
+          {/* Drivers */}
           <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-800 font-semibold">
                 <Car size={16} /> Drivers
               </div>
               <button
-                onClick={() => router.push(`/listings?tab=recentDrivers&search=${encodeURIComponent(query)}`)}
-                className="text-sm text-[#005f56] hover:underline"
+                onClick={() => router.push(`/users?search=${encodeURIComponent(query)}`)}
+                className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({driversTotal})
               </button>
@@ -273,7 +346,7 @@ export default function GlobalSearchPage() {
                 drivers.map((driver) => (
                   <button
                     key={driver.id}
-                    onClick={() => router.push("/listings?tab=recentDrivers")}
+                    onClick={() => router.push(`/users?search=${encodeURIComponent(query)}`)}
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
                     <p className="text-sm font-semibold text-gray-900">{getDriverName(driver)}</p>
@@ -288,6 +361,7 @@ export default function GlobalSearchPage() {
             </div>
           </section>
 
+          {/* Reservations */}
           <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-800 font-semibold">
@@ -295,7 +369,7 @@ export default function GlobalSearchPage() {
               </div>
               <button
                 onClick={() => router.push(`/reservations?search=${encodeURIComponent(query)}`)}
-                className="text-sm text-[#005f56] hover:underline"
+                className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({reservationsTotal})
               </button>
@@ -311,10 +385,103 @@ export default function GlobalSearchPage() {
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
                     <p className="text-sm font-semibold text-gray-900">{reservation.propertyTitle}</p>
-                    <p className="text-xs text-gray-500">Guest: {reservation.guestName} | Host: {reservation.hostName}</p>
+                    <p className="text-xs text-gray-500">
+                      Guest: {reservation.guestName} | Host: {reservation.hostName}
+                    </p>
                     <p className="text-xs text-gray-400">ID: {reservation.id}</p>
                   </button>
                 ))
+              )}
+            </div>
+          </section>
+
+          {/* Live Sessions */}
+          <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                <Activity size={16} /> Live Sessions
+              </div>
+              <button
+                onClick={() => router.push(`/sessions`)}
+                className="text-sm text-[#C94B1E] hover:underline"
+              >
+                View all ({sessionsTotal})
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {sessions.length === 0 ? (
+                <p className="text-sm text-gray-500">No active sessions found.</p>
+              ) : (
+                sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => router.push(`/sessions`)}
+                    className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
+                  >
+                    <p className="text-sm font-semibold text-gray-900">{session.propertyTitle}</p>
+                    <p className="text-xs text-gray-500">
+                      Guest: {session.guestName} | Host: {session.hostName}
+                    </p>
+                    <p className="text-xs text-gray-400">ID: {session.id}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+
+          {/* Transactions */}
+          <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-800 font-semibold">
+                <ArrowLeftRight size={16} /> Transactions
+              </div>
+              <button
+                onClick={() => router.push(`/transactions`)}
+                className="text-sm text-[#C94B1E] hover:underline"
+              >
+                View all ({topUps.length + withdraws.length})
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {topUps.length === 0 && withdraws.length === 0 ? (
+                <p className="text-sm text-gray-500">No transactions found.</p>
+              ) : (
+                <>
+                  {topUps.map((t) => (
+                    <button
+                      key={`topup-${t.id}`}
+                      onClick={() => router.push(`/transactions?tab=topup&requestId=${t.id}`)}
+                      className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-gray-900">{getTxUserName(t.user)}</p>
+                        <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                          Top-Up
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        ₱{t.amount} · Ref: {t.referenceCode}
+                      </p>
+                      <p className="text-xs text-gray-400">ID: {t.id}</p>
+                    </button>
+                  ))}
+                  {withdraws.map((w) => (
+                    <button
+                      key={`withdraw-${w.id}`}
+                      onClick={() => router.push(`/transactions?tab=withdraw&requestId=${w.id}`)}
+                      className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-gray-900">{getTxUserName(w.user)}</p>
+                        <span className="text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full">
+                          Withdraw
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">₱{w.amount}</p>
+                      <p className="text-xs text-gray-400">ID: {w.id}</p>
+                    </button>
+                  ))}
+                </>
               )}
             </div>
           </section>

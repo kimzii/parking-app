@@ -10,7 +10,12 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, router, useFocusEffect } from "expo-router";
+import {
+  Stack,
+  useLocalSearchParams,
+  router,
+  useFocusEffect,
+} from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as reservationsService from "../../src/services/reservations";
 import * as reviewsService from "../../src/services/reviews";
@@ -32,10 +37,10 @@ const STATUS_CONFIG: Record<
     icon: "hourglass-top",
   },
   CONFIRMED: {
-  color: "#D4501E",
-  bg: "#FFF0EC",
-  label: "Confirmed",
-  icon: "directions-car",
+    color: "#D4501E",
+    bg: "#FFF0EC",
+    label: "Confirmed",
+    icon: "directions-car",
   },
   ACTIVE: {
     color: "#D4501E",
@@ -66,7 +71,10 @@ const STATUS_CONFIG: Record<
 function formatDuration(startedAt: string, endedAt?: string | null): string {
   const start = new Date(startedAt);
   const end = endedAt ? new Date(endedAt) : new Date();
-  const totalMins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const totalMins = Math.max(
+    0,
+    Math.round((end.getTime() - start.getTime()) / 60000),
+  );
   const hours = Math.floor(totalMins / 60);
   const mins = totalMins % 60;
   if (hours === 0) return `${mins}m`;
@@ -78,8 +86,11 @@ export default function HostReservationDetailScreen() {
   const params = useLocalSearchParams<{ reservation?: string; id?: string }>();
   const [reservation, setReservation] =
     useState<reservationsService.HostReservation | null>(null);
-  const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
-  const [existingReview, setExistingReview] = useState<reviewsService.Review | null>(null);
+  const [actionLoading, setActionLoading] = useState<
+    "approve" | "reject" | null
+  >(null);
+  const [existingReview, setExistingReview] =
+    useState<reviewsService.Review | null>(null);
   const [locationRate, setLocationRate] = useState<number | null>(null);
 
   const fetchReview = useCallback(async (reservationId: string) => {
@@ -93,10 +104,13 @@ export default function HostReservationDetailScreen() {
   useEffect(() => {
     if (params.reservation) {
       try {
-        const parsed = JSON.parse(params.reservation) as reservationsService.HostReservation;
+        const parsed = JSON.parse(
+          params.reservation,
+        ) as reservationsService.HostReservation;
         setReservation(parsed);
         fetchReview(parsed.id);
-        hostService.getLocation(parsed.parkingLocation.id)
+        hostService
+          .getLocation(parsed.parkingLocation.id)
           .then((loc) => setLocationRate(Number(loc.basePricePerHour)))
           .catch(() => {});
       } catch {
@@ -106,7 +120,9 @@ export default function HostReservationDetailScreen() {
       reservationsService
         .getHostReservation(params.id)
         .then(setReservation)
-        .catch(() => Alert.alert("Error", "Failed to load reservation details."));
+        .catch(() =>
+          Alert.alert("Error", "Failed to load reservation details."),
+        );
     }
   }, [params.reservation, params.id, fetchReview]);
 
@@ -126,9 +142,12 @@ export default function HostReservationDetailScreen() {
           setActionLoading("approve");
           try {
             await reservationsService.approveReservation(reservation.id);
-            setReservation((r) => r ? { ...r, status: "CONFIRMED" } : r);
+            setReservation((r) => (r ? { ...r, status: "CONFIRMED" } : r));
           } catch (err: any) {
-            Alert.alert("Failed", err.response?.data?.message || "Could not approve reservation.");
+            Alert.alert(
+              "Failed",
+              err.response?.data?.message || "Could not approve reservation.",
+            );
           } finally {
             setActionLoading(null);
           }
@@ -139,24 +158,31 @@ export default function HostReservationDetailScreen() {
 
   const handleReject = () => {
     if (!reservation) return;
-    Alert.alert("Reject Booking", "Reject this request? The driver will be refunded.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reject",
-        style: "destructive",
-        onPress: async () => {
-          setActionLoading("reject");
-          try {
-            await reservationsService.rejectReservation(reservation.id);
-            setReservation((r) => r ? { ...r, status: "CANCELLED" } : r);
-          } catch (err: any) {
-            Alert.alert("Failed", err.response?.data?.message || "Could not reject reservation.");
-          } finally {
-            setActionLoading(null);
-          }
+    Alert.alert(
+      "Reject Booking",
+      "Reject this request? The driver will be refunded.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reject",
+          style: "destructive",
+          onPress: async () => {
+            setActionLoading("reject");
+            try {
+              await reservationsService.rejectReservation(reservation.id);
+              setReservation((r) => (r ? { ...r, status: "CANCELLED" } : r));
+            } catch (err: any) {
+              Alert.alert(
+                "Failed",
+                err.response?.data?.message || "Could not reject reservation.",
+              );
+            } finally {
+              setActionLoading(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   if (!reservation) {
@@ -177,6 +203,18 @@ export default function HostReservationDetailScreen() {
 
   const slotName = reservation.parkingSpace.name?.trim() || "Unnamed Spot";
   const bookedSpot = slotName;
+  const grossTotal = Number(
+    reservation.finalAmount ?? reservation.totalAmount ?? 0,
+  );
+  const commissionRate = Number(reservation.commissionRate ?? 0);
+  const platformFee =
+    reservation.platformFee != null
+      ? Number(reservation.platformFee)
+      : Number((grossTotal * commissionRate).toFixed(2));
+  const hostPayoutAmount =
+    reservation.hostPayoutAmount != null
+      ? Number(reservation.hostPayoutAmount)
+      : Number((grossTotal - platformFee).toFixed(2));
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -187,16 +225,25 @@ export default function HostReservationDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Status Badge */}
-        {(reservation.status === "ACTIVE" || reservation.status === "COMPLETED" ||
-          reservation.status === "CANCELLED" || reservation.status === "EXPIRED") && (() => {
-          const cfg = STATUS_CONFIG[reservation.status];
-          return (
-            <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
-              <MaterialIcons name={cfg.icon as any} size={16} color={cfg.color} />
-              <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
-            </View>
-          );
-        })()}
+        {(reservation.status === "ACTIVE" ||
+          reservation.status === "COMPLETED" ||
+          reservation.status === "CANCELLED" ||
+          reservation.status === "EXPIRED") &&
+          (() => {
+            const cfg = STATUS_CONFIG[reservation.status];
+            return (
+              <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+                <MaterialIcons
+                  name={cfg.icon as any}
+                  size={16}
+                  color={cfg.color}
+                />
+                <Text style={[styles.statusBadgeText, { color: cfg.color }]}>
+                  {cfg.label}
+                </Text>
+              </View>
+            );
+          })()}
 
         {/* Driver Profile */}
         <View style={styles.driverCard}>
@@ -317,11 +364,7 @@ export default function HostReservationDetailScreen() {
           <View style={styles.infoCard}>
             <View style={styles.sessionRow}>
               <View style={styles.sessionRowLeft}>
-                <MaterialIcons
-                  name="access-time"
-                  size={18}
-                  color="#D4501E"
-                />
+                <MaterialIcons name="access-time" size={18} color="#D4501E" />
                 <Text style={styles.sessionLabel}>Booked at</Text>
               </View>
               <Text style={styles.sessionValue}>
@@ -339,22 +382,19 @@ export default function HostReservationDetailScreen() {
 
             <View style={styles.sessionRow}>
               <View style={styles.sessionRowLeft}>
-                <MaterialIcons
-                  name="login"
-                  size={18}
-                  color="#D4501E"
-                />
+                <MaterialIcons name="login" size={18} color="#D4501E" />
                 <Text style={styles.sessionLabel}>Checked In</Text>
               </View>
               <Text style={[styles.sessionValue, styles.sessionValueHighlight]}>
                 {reservation.sessionStartedAt
-                  ? new Date(
-                      reservation.sessionStartedAt,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    })
+                  ? new Date(reservation.sessionStartedAt).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      },
+                    )
                   : "-"}
               </Text>
             </View>
@@ -366,7 +406,10 @@ export default function HostReservationDetailScreen() {
               </View>
               <Text style={[styles.sessionValue, styles.sessionValueHighlight]}>
                 {reservation.sessionStartedAt
-                  ? formatDuration(reservation.sessionStartedAt, reservation.sessionEndedAt)
+                  ? formatDuration(
+                      reservation.sessionStartedAt,
+                      reservation.sessionEndedAt,
+                    )
                   : "-"}
               </Text>
             </View>
@@ -396,7 +439,10 @@ export default function HostReservationDetailScreen() {
             <View style={styles.amountMainRow}>
               <Text style={styles.amountLabel}>First Hour (upfront)</Text>
               <Text style={styles.amountValue}>
-                ₱{Number(reservation.escrowAmount ?? reservation.totalAmount ?? 0).toFixed(2)}
+                ₱
+                {Number(
+                  reservation.escrowAmount ?? reservation.totalAmount ?? 0,
+                ).toFixed(2)}
               </Text>
             </View>
 
@@ -417,13 +463,50 @@ export default function HostReservationDetailScreen() {
               </Text>
             )}
 
-            {reservation.status === "COMPLETED" && reservation.finalAmount != null && (
+            {reservation.status === "COMPLETED" && (
               <>
                 <View style={styles.amountDivider} />
                 <View style={styles.amountMainRow}>
-                  <Text style={[styles.amountLabel, { fontWeight: "700", color: "#232230" }]}>Total</Text>
-                  <Text style={[styles.amountValue, { fontWeight: "800", color: "#D4501E", fontSize: 20 }]}>
-                    ₱{Number(reservation.finalAmount).toFixed(2)}
+                  <Text
+                    style={[
+                      styles.amountLabel,
+                      { fontWeight: "700", color: "#232230" },
+                    ]}
+                  >
+                    Gross Total
+                  </Text>
+                  <Text
+                    style={[
+                      styles.amountValue,
+                      { fontWeight: "800", color: "#D4501E", fontSize: 20 },
+                    ]}
+                  >
+                    ₱{grossTotal.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.amountMainRow}>
+                  <Text style={styles.amountLabel}>Commission Rate</Text>
+                  <Text style={styles.amountValue}>
+                    {(commissionRate * 100).toFixed(0)}%
+                  </Text>
+                </View>
+                <View style={styles.amountMainRow}>
+                  <Text style={styles.amountLabel}>Platform Fee</Text>
+                  <Text style={styles.amountValue}>
+                    ₱{platformFee.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.amountMainRow}>
+                  <Text
+                    style={[
+                      styles.amountLabel,
+                      { fontWeight: "700", color: "#232230" },
+                    ]}
+                  >
+                    Host Total
+                  </Text>
+                  <Text style={[styles.amountValue, styles.hostPayoutValue]}>
+                    ₱{hostPayoutAmount.toFixed(2)}
                   </Text>
                 </View>
               </>
@@ -468,7 +551,8 @@ export default function HostReservationDetailScreen() {
         )}
 
         {/* Scan QR */}
-        {(reservation.status === "CONFIRMED" || reservation.status === "ACTIVE") && (
+        {(reservation.status === "CONFIRMED" ||
+          reservation.status === "ACTIVE") && (
           <TouchableOpacity
             style={styles.scanQrBtn}
             onPress={() => router.push("/(modals)/scan-qr")}
@@ -480,17 +564,21 @@ export default function HostReservationDetailScreen() {
         )}
 
         {/* Rate Driver */}
-        {reservation.status === "COMPLETED" && (
-          existingReview ? (
+        {reservation.status === "COMPLETED" &&
+          (existingReview ? (
             <View style={styles.reviewCard}>
               <Text style={styles.reviewCardLabel}>Your Review</Text>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <MaterialIcons
                     key={star}
-                    name={star <= existingReview.rating ? "star" : "star-outline"}
+                    name={
+                      star <= existingReview.rating ? "star" : "star-outline"
+                    }
                     size={28}
-                    color={star <= existingReview.rating ? "#FFB300" : "#D0D0D0"}
+                    color={
+                      star <= existingReview.rating ? "#FFB300" : "#D0D0D0"
+                    }
                   />
                 ))}
               </View>
@@ -518,8 +606,7 @@ export default function HostReservationDetailScreen() {
               <MaterialIcons name="star" size={20} color="#FFB300" />
               <Text style={styles.reviewBtnText}>Rate Driver</Text>
             </TouchableOpacity>
-          )
-        )}
+          ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -528,9 +615,9 @@ export default function HostReservationDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: {
-  paddingHorizontal: 20,
-  paddingTop: 16,
-  paddingBottom: 32,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
 
   // Driver Profile / Session Header
@@ -579,7 +666,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     color: "#232230",
-  marginBottom: 2,
+    marginBottom: 2,
   },
   driverPhone: {
     fontSize: 14,
@@ -616,18 +703,18 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
   },
   sessionChipRowStandalone: {
-  flexDirection: "row",
-  justifyContent: "center",
-  marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 12,
   },
   sessionChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-  borderRadius: 999,
-  backgroundColor: "#F5F4F2",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#F5F4F2",
   },
   sessionChipText: {
     fontSize: 13,
@@ -675,9 +762,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   infoText: {
-  fontSize: 13,
-  fontWeight: "500",
-  color: "#232230",
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#232230",
   },
   timeDivider: {
     height: 1,
@@ -769,6 +856,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#232230",
+  },
+  hostPayoutValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#2E7D32",
   },
   scanQrBtn: {
     flexDirection: "row" as const,

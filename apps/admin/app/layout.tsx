@@ -14,6 +14,10 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Parklink Admin Dashboard",
   description: "Admin dashboard for managing parking locations and reservations",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

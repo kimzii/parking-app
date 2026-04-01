@@ -17,6 +17,9 @@ export interface DashboardStats {
 export interface FinancialStats {
   totalRevenue: number;
   totalCommission: number;
+  totalPlatformFee: number;
+  totalHostPayout: number;
+  commissionRate: number;
   pendingPayouts: number;
   revenueChange: number;
   commissionChange: number;
@@ -38,6 +41,8 @@ export interface RevenueTrendPoint {
   date: string;
   revenue: number;
   commission: number;
+  platformFee: number;
+  hostPayout: number;
 }
 
 export interface RecentListing {
@@ -295,23 +300,51 @@ export class DashboardService {
     const prevStart = new Date(start.getTime() - periodLength);
     const prevEnd = new Date(start.getTime() - 1);
 
-    // Get total revenue this period (completed reservations)
-    const currentRevenue = await this.prisma.reservation.aggregate({
-      where: {
-        status: ReservationStatus.COMPLETED,
-        createdAt: { gte: start, lte: end },
-      },
-      _sum: { totalAmount: true },
-    });
-
-    // Get previous period revenue
-    const previousRevenue = await this.prisma.reservation.aggregate({
-      where: {
-        status: ReservationStatus.COMPLETED,
-        createdAt: { gte: prevStart, lte: prevEnd },
-      },
-      _sum: { totalAmount: true },
-    });
+    // Get total revenue, platformFee, hostPayoutAmount this period (completed reservations)
+    const [currentRevenue, previousRevenue, currentPlatformFees, currentHostPayouts, pendingPayoutsData] = await Promise.all([
+      this.prisma.reservation.aggregate({
+        where: {
+          status: ReservationStatus.COMPLETED,
+          createdAt: { gte: start, lte: end },
+        },
+        _sum: { totalAmount: true },
+        _avg: { commissionRate: true },
+      }),
+      this.prisma.reservation.aggregate({
+        where: {
+          status: ReservationStatus.COMPLETED,
+          createdAt: { gte: prevStart, lte: prevEnd },
+        },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.reservation.aggregate({
+        where: {
+          status: ReservationStatus.COMPLETED,
+          createdAt: { gte: start, lte: end },
+          platformFee: { not: null },
+        },
+        _sum: { platformFee: true },
+      }),
+      this.prisma.reservation.aggregate({
+        where: {
+          status: ReservationStatus.COMPLETED,
+          createdAt: { gte: start, lte: end },
+          hostPayoutAmount: { not: null },
+        },
+        _sum: { hostPayoutAmount: true },
+      }),
+      this.prisma.reservation.aggregate({
+        where: {
+          status: ReservationStatus.COMPLETED,
+          payments: {
+            some: {
+              status: PaymentStatus.PENDING,
+            },
+          },
+        },
+        _sum: { hostPayoutAmount: true, totalAmount: true },
+      }),
+    ]);
 
     const totalRevenue = currentRevenue._sum.totalAmount
       ? parseFloat(currentRevenue._sum.totalAmount.toString())
@@ -321,9 +354,21 @@ export class DashboardService {
       ? parseFloat(previousRevenue._sum.totalAmount.toString())
       : 0;
 
-    // Commission is 10% of revenue
-    const commissionRate = 0.1;
-    const totalCommission = totalRevenue * commissionRate;
+    const commissionRate = currentRevenue._avg.commissionRate
+      ? parseFloat(currentRevenue._avg.commissionRate.toString())
+      : 0.1;
+
+    // Use actual platformFee if available, fall back to calculated
+    const totalPlatformFee = currentPlatformFees._sum.platformFee
+      ? parseFloat(currentPlatformFees._sum.platformFee.toString())
+      : totalRevenue * commissionRate;
+
+    const totalHostPayout = currentHostPayouts._sum.hostPayoutAmount
+      ? parseFloat(currentHostPayouts._sum.hostPayoutAmount.toString())
+      : totalRevenue * (1 - commissionRate);
+
+    // Keep totalCommission as alias for platformFee for backward compat
+    const totalCommission = totalPlatformFee;
     const prevCommission = prevRevenueAmount * commissionRate;
 
     // Calculate percentage changes
@@ -345,28 +390,19 @@ export class DashboardService {
           ? 100
           : 0;
 
-    // Get pending payouts (completed reservations minus commission that haven't been paid out)
-    // For simplicity, we'll calculate as revenue from completed reservations where payment is pending
-    const pendingPayoutsData = await this.prisma.reservation.aggregate({
-      where: {
-        status: ReservationStatus.COMPLETED,
-        payments: {
-          some: {
-            status: PaymentStatus.PENDING,
-          },
-        },
-      },
-      _sum: { totalAmount: true },
-    });
-
-    const pendingPayouts = pendingPayoutsData._sum.totalAmount
-      ? parseFloat(pendingPayoutsData._sum.totalAmount.toString()) *
-        (1 - commissionRate)
-      : 0;
+    // Pending payouts: use actual hostPayoutAmount if available, else calculated
+    const pendingPayouts = pendingPayoutsData._sum.hostPayoutAmount
+      ? parseFloat(pendingPayoutsData._sum.hostPayoutAmount.toString())
+      : pendingPayoutsData._sum.totalAmount
+        ? parseFloat(pendingPayoutsData._sum.totalAmount.toString()) * (1 - commissionRate)
+        : 0;
 
     return {
       totalRevenue,
       totalCommission,
+      totalPlatformFee,
+      totalHostPayout,
+      commissionRate,
       pendingPayouts,
       revenueChange,
       commissionChange,
@@ -478,18 +514,34 @@ export class DashboardService {
       },
       select: {
         totalAmount: true,
+        platformFee: true,
+        hostPayoutAmount: true,
+        commissionRate: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'asc' },
     });
 
     // Group by date
-    const dailyData: Record<string, number> = {};
+    const dailyData: Record<string, { revenue: number; platformFee: number; hostPayout: number; commissionRate: number }> = {};
 
     for (const res of reservations) {
       const dateKey = res.createdAt.toISOString().split('T')[0];
       const amount = parseFloat(res.totalAmount.toString());
-      dailyData[dateKey] = (dailyData[dateKey] || 0) + amount;
+      const rate = res.commissionRate ? parseFloat(res.commissionRate.toString()) : 0.1;
+      const platformFee = res.platformFee
+        ? parseFloat(res.platformFee.toString())
+        : amount * rate;
+      const hostPayout = res.hostPayoutAmount
+        ? parseFloat(res.hostPayoutAmount.toString())
+        : amount * (1 - rate);
+
+      if (!dailyData[dateKey]) {
+        dailyData[dateKey] = { revenue: 0, platformFee: 0, hostPayout: 0, commissionRate: rate };
+      }
+      dailyData[dateKey].revenue += amount;
+      dailyData[dateKey].platformFee += platformFee;
+      dailyData[dateKey].hostPayout += hostPayout;
     }
 
     // Fill in missing dates
@@ -498,13 +550,18 @@ export class DashboardService {
 
     while (currentDate <= end) {
       const dateKey = currentDate.toISOString().split('T')[0];
-      const revenue = dailyData[dateKey] || 0;
-      const commission = revenue * 0.1;
+      const day = dailyData[dateKey];
+      const revenue = day?.revenue || 0;
+      const commission = day?.platformFee || revenue * 0.1;
+      const platformFee = day?.platformFee || revenue * 0.1;
+      const hostPayout = day?.hostPayout || revenue * 0.9;
 
       result.push({
         date: dateKey,
         revenue,
         commission,
+        platformFee,
+        hostPayout,
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
