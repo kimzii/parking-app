@@ -313,7 +313,7 @@ export default function ReservationsOverviewPage() {
           <p>{error}</p>
           <button
             onClick={fetchData}
-            className="px-4 py-2 bg-[#005f56] text-white rounded-lg hover:bg-[#004d40]"
+            className="px-4 py-2 bg-[#C94B1E] text-white rounded-lg hover:bg-[#A83A16]"
           >
             Retry
           </button>
@@ -379,7 +379,7 @@ export default function ReservationsOverviewPage() {
               placeholder="Search reservations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-gray-50 pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#005f56] focus:border-transparent outline-none text-gray-700 transition-all"
+              className="w-full bg-gray-50 pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#C94B1E] focus:border-transparent outline-none text-gray-700 transition-all"
             />
           </form>
 
@@ -495,7 +495,7 @@ export default function ReservationsOverviewPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleViewReservation(reservation.id)}
-                          className="p-2 text-gray-400 hover:text-[#005f56] hover:bg-green-50 rounded-full transition-colors"
+                          className="p-2 text-gray-400 hover:text-[#C94B1E] hover:bg-green-50 rounded-full transition-colors"
                           title="View Details"
                         >
                           <Eye size={18} />

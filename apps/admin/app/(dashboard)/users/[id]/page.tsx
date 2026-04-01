@@ -442,7 +442,7 @@ export default function UserProfileView() {
     return (
       <div className="bg-[#F9FAFB] min-h-full font-sans p-8 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-[#005f56] mx-auto" />
+          <Loader2 className="w-12 h-12 animate-spin text-[#C94B1E] mx-auto" />
           <p className="text-gray-500 mt-4">Loading user profile...</p>
         </div>
       </div>
@@ -458,7 +458,7 @@ export default function UserProfileView() {
           <p className="text-red-600 text-lg">{error || "User not found"}</p>
           <button
             onClick={() => router.push("/users")}
-            className="mt-6 px-6 py-2 bg-[#005f56] text-white rounded-lg hover:bg-[#004a43] transition-colors"
+            className="mt-6 px-6 py-2 bg-[#C94B1E] text-white rounded-lg hover:bg-[#A83A16] transition-colors"
           >
             Back to Users
           </button>
@@ -506,7 +506,7 @@ export default function UserProfileView() {
             onClick={() => setActiveTab("profile")}
             className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-colors border-b-2 ${
               activeTab === "profile"
-                ? "border-[#005f56] text-[#005f56] bg-white"
+                ? "border-[#C94B1E] text-[#C94B1E] bg-white"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
           >
@@ -518,7 +518,7 @@ export default function UserProfileView() {
               onClick={() => setActiveTab("vehicle")}
               className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-colors border-b-2 ${
                 activeTab === "vehicle"
-                  ? "border-[#005f56] text-[#005f56] bg-white"
+                  ? "border-[#C94B1E] text-[#C94B1E] bg-white"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
@@ -531,7 +531,7 @@ export default function UserProfileView() {
               onClick={() => setActiveTab("bookings")}
               className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-colors border-b-2 ${
                 activeTab === "bookings"
-                  ? "border-[#005f56] text-[#005f56] bg-white"
+                  ? "border-[#C94B1E] text-[#C94B1E] bg-white"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
@@ -544,7 +544,7 @@ export default function UserProfileView() {
               onClick={() => setActiveTab("property")}
               className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-colors border-b-2 ${
                 activeTab === "property"
-                  ? "border-[#005f56] text-[#005f56] bg-white"
+                  ? "border-[#C94B1E] text-[#C94B1E] bg-white"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
@@ -556,7 +556,7 @@ export default function UserProfileView() {
             onClick={() => setActiveTab("reviews")}
             className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-colors border-b-2 ${
               activeTab === "reviews"
-                ? "border-[#005f56] text-[#005f56] bg-white"
+                ? "border-[#C94B1E] text-[#C94B1E] bg-white"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
           >
@@ -657,7 +657,7 @@ export default function UserProfileView() {
                 {((isDriver && user?.driver) || isHost) && (
                   <div className="w-full mt-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
                     <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-[#005f56]" />
+                      <ShieldCheck size={16} className="text-[#C94B1E]" />
                       Verification Actions
                     </h3>
 
@@ -824,7 +824,7 @@ export default function UserProfileView() {
                 {/* Legal Consent Status */}
                 <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                   <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <ShieldCheck size={20} className="text-[#005f56]" />
+                    <ShieldCheck size={20} className="text-[#C94B1E]" />
                     Legal Consent
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -872,7 +872,7 @@ export default function UserProfileView() {
                 {isDriver && user.driver && (
                   <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <CarFront size={20} className="text-[#005f56]" />
+                      <CarFront size={20} className="text-[#C94B1E]" />
                       Driver License Information
                     </h3>
 
@@ -1124,7 +1124,7 @@ export default function UserProfileView() {
                   {/* Reviews Received */}
                   <div>
                     <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Star size={16} className="text-[#005f56]" />
+                      <Star size={16} className="text-[#C94B1E]" />
                       Reviews Received
                       <span className="text-sm font-normal text-gray-400">({userReviews?.received.length ?? 0})</span>
                     </h3>
@@ -1181,12 +1181,12 @@ export default function UserProfileView() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Home size={20} className="text-[#005f56]" />
+                  <Home size={20} className="text-[#C94B1E]" />
                   Parking Locations ({user.host.parkingLocations?.length || 0})
                 </h3>
                 <button
                   onClick={() => router.push("/listings")}
-                  className="text-sm text-[#005f56] hover:text-[#004a43] font-medium"
+                  className="text-sm text-[#C94B1E] hover:text-[#A83A16] font-medium"
                 >
                   View All Pending Listings →
                 </button>
@@ -1269,7 +1269,7 @@ export default function UserProfileView() {
                       <div className="p-4 space-y-3">
                         <div className="flex items-start gap-3">
                           <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                            <Home size={18} className="text-[#005f56]" />
+                            <Home size={18} className="text-[#C94B1E]" />
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-gray-900 text-sm leading-tight">{location.title}</p>
@@ -1290,7 +1290,7 @@ export default function UserProfileView() {
 
                         <button
                           onClick={() => router.push(`/listings?listingId=${encodeURIComponent(location.id)}`)}
-                          className="w-full text-sm text-[#005f56] hover:text-[#004a43] font-medium py-1.5 border border-[#005f56]/20 hover:border-[#005f56]/40 rounded-lg transition-colors"
+                          className="w-full text-sm text-[#C94B1E] hover:text-[#A83A16] font-medium py-1.5 border border-[#C94B1E]/20 hover:border-[#C94B1E]/40 rounded-lg transition-colors"
                         >
                           View Listing →
                         </button>
@@ -1324,7 +1324,7 @@ export default function UserProfileView() {
                   <input
                     value={editForm.firstName}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C94B1E]"
                   />
                 </div>
                 <div>
@@ -1332,7 +1332,7 @@ export default function UserProfileView() {
                   <input
                     value={editForm.lastName}
                     onChange={(e) => setEditForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C94B1E]"
                   />
                 </div>
               </div>
@@ -1343,7 +1343,7 @@ export default function UserProfileView() {
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C94B1E]"
                 />
               </div>
 
@@ -1352,7 +1352,7 @@ export default function UserProfileView() {
                 <input
                   value={editForm.phoneNumber}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C94B1E]"
                   placeholder="Optional"
                 />
               </div>
@@ -1369,7 +1369,7 @@ export default function UserProfileView() {
               <button
                 onClick={handleEditUser}
                 disabled={actionLoading}
-                className="px-4 py-2 text-sm font-semibold text-white bg-[#005f56] hover:bg-[#004a43] rounded-lg disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold text-white bg-[#C94B1E] hover:bg-[#A83A16] rounded-lg disabled:opacity-50"
               >
                 {actionLoading ? "Saving..." : "Save Changes"}
               </button>

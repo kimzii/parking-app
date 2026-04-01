@@ -319,7 +319,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
               <div className="p-6 border-b border-gray-50 flex justify-between items-center">
                 <h2 className="font-bold text-lg text-gray-900">Recent Listings</h2>
-                <Link href="/listings" className="text-sm text-[#005f56] font-medium hover:underline">
+                <Link href="/listings" className="text-sm text-[#C94B1E] font-medium hover:underline">
                   View All
                 </Link>
               </div>
@@ -475,7 +475,7 @@ export default function DashboardPage() {
                         router.push(`/listings?listingId=${selectedMapListing.id}`);
                         setSelectedMapListing(null);
                       }}
-                      className="px-3 py-2 text-sm font-medium text-white bg-[#005f56] rounded-md hover:bg-[#004a43]"
+                      className="px-3 py-2 text-sm font-medium text-white bg-[#C94B1E] rounded-md hover:bg-[#A83A16]"
                     >
                       View Listing Details
                     </button>

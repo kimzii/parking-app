@@ -853,7 +853,7 @@ export default function PendingListings() {
                     {selectedListing.acceptedVehicles && selectedListing.acceptedVehicles.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {selectedListing.acceptedVehicles.map((v) => (
-                          <span key={v} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#005f56]/10 text-[#005f56] border border-[#005f56]/20">
+                          <span key={v} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#C94B1E]/10 text-[#C94B1E] border border-[#C94B1E]/20">
                             {v === "CAR" ? "🚗" : v === "MOTORCYCLE" ? "🏍️" : v === "SUV" ? "🚙" : "🚘"}
                             {v.charAt(0) + v.slice(1).toLowerCase()}
                           </span>
@@ -978,7 +978,7 @@ export default function PendingListings() {
                               <button
                                 key={space.id}
                                 onClick={() => setSelectedSpace(space)}
-                                className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#005f56]/40 ${
+                                className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
                                   !space.isActive
                                     ? "bg-gray-50 border-gray-200 opacity-60"
                                     : space.status === "AVAILABLE"

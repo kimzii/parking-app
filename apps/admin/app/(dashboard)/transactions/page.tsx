@@ -380,7 +380,7 @@ export default function TransactionsPage() {
                   <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 transition-all ${
                     req.status === "PENDING" ? "border-l-yellow-400" :
                     req.status === "ACCEPTED" ? "border-l-blue-400" : "border-l-gray-300"
-                  } ${requestId === req.id ? "ring-2 ring-[#005f56] ring-offset-2" : ""}`}>
+                  } ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}>
                     <CardContent className="pt-5 pb-4">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         {/* Left: Info */}
@@ -527,7 +527,7 @@ export default function TransactionsPage() {
                 const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.email;
 
                 return (
-                  <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 border-l-orange-400 transition-all ${requestId === req.id ? "ring-2 ring-[#005f56] ring-offset-2" : ""}`}>
+                  <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 border-l-orange-400 transition-all ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}>
                     <CardContent className="pt-5 pb-4">
                       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
                         {/* Left: Info */}
@@ -620,7 +620,7 @@ export default function TransactionsPage() {
                   return (
                     <Card id={`request-${req.id}`} key={req.id} className={`border-l-4 transition-all ${
                       isTopUp ? "border-l-blue-300" : "border-l-orange-300"
-                    } ${requestId === req.id ? "ring-2 ring-[#005f56] ring-offset-2" : ""}`}>
+                    } ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}>
                       <CardContent className="pt-5 pb-4">
                         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                           <div className="flex-1 space-y-2">

@@ -350,7 +350,7 @@ export default function UsersPage() {
               placeholder="Search by name or email..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full bg-gray-50 pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#005f56] focus:border-transparent outline-none text-gray-700 transition-all"
+              className="w-full bg-gray-50 pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#C94B1E] focus:border-transparent outline-none text-gray-700 transition-all"
             />
           </div>
 
@@ -449,7 +449,7 @@ export default function UsersPage() {
             <p className="text-red-600">{error}</p>
             <button
               onClick={fetchUsers}
-              className="mt-4 px-4 py-2 bg-[#005f56] text-white rounded-lg hover:bg-[#004a43] transition-colors"
+              className="mt-4 px-4 py-2 bg-[#C94B1E] text-white rounded-lg hover:bg-[#A83A16] transition-colors"
             >
               Try Again
             </button>
@@ -459,7 +459,7 @@ export default function UsersPage() {
         {/* Loading State */}
         {loading && !error && (
           <div className="p-12 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#005f56] mx-auto" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#C94B1E] mx-auto" />
             <p className="text-gray-500 mt-2">Loading users...</p>
           </div>
         )}
@@ -568,7 +568,7 @@ export default function UsersPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => router.push(`/users/${user.id}`)}
-                            className="p-2 text-gray-400 hover:text-[#005f56] hover:bg-green-50 rounded-full transition-colors"
+                            className="p-2 text-gray-400 hover:text-[#C94B1E] hover:bg-green-50 rounded-full transition-colors"
                             title="View Profile"
                           >
                             <Eye size={18} />
