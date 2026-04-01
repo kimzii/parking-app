@@ -401,15 +401,20 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    // Check for existing active reservation by this driver
+    // Check for existing active or unpaid reservation by this driver
     const existingReservation = await this.prisma.reservation.findFirst({
       where: {
         driverId: driver.id,
-        status: { in: ['PENDING', 'CONFIRMED', 'ACTIVE'] },
+        status: { in: ['PENDING', 'CONFIRMED', 'ACTIVE', 'PAYMENT_PENDING'] },
       },
     });
 
     if (existingReservation) {
+      if (existingReservation.status === 'PAYMENT_PENDING') {
+        throw new BadRequestException(
+          'You have an outstanding balance from a previous session. Please top up your wallet and settle your due before making a new booking.',
+        );
+      }
       throw new BadRequestException(
         'You already have a pending or active reservation. Please complete or cancel it first.',
       );
@@ -1249,7 +1254,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     // Process exit and payment
     const result: ReservationRecord = await this.prisma.$transaction(
       async (tx) => {
-        // If there's additional charge beyond the first hour, deduct from driver wallet
+        let remainingDue = new Decimal(0);
+
+        // Deduct additional charge from driver wallet (beyond first hour escrow)
         if (additionalCharge.gt(0)) {
           const driverWallet = await tx.wallet.findUnique({
             where: { userId: reservation.driver.userId },
@@ -1258,6 +1265,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           if (driverWallet) {
             const balance = new Decimal(driverWallet.balance);
             const chargeAmount = Decimal.min(additionalCharge, balance);
+            remainingDue = Decimal.max(additionalCharge.sub(chargeAmount), 0).toDecimalPlaces(2);
 
             if (chargeAmount.gt(0)) {
               await tx.walletTransaction.create({
@@ -1279,57 +1287,65 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
                 },
               });
             }
+          } else {
+            // No wallet at all — full additional charge is outstanding
+            remainingDue = additionalCharge.toDecimalPlaces(2);
           }
         }
 
-        // Release total to host wallet
-        const hostWallet = await tx.wallet.findUnique({
-          where: { userId: host.userId },
-        });
+        const isPaymentPending = remainingDue.gt(0);
 
+        // Only pay host if driver paid in full
         let hostPayoutTransactionId: string | null = null;
 
-        if (hostWallet) {
-          const hostPayoutTransaction = await tx.walletTransaction.create({
-            data: {
-              walletId: hostWallet.id,
-              type: 'CREDIT',
-              source: 'BOOKING_PAYOUT',
-              amount: hostPayoutAmount,
-              referenceId: reservation.id,
-              balanceBefore: hostWallet.balance,
-              balanceAfter: new Decimal(hostWallet.balance).add(
-                hostPayoutAmount,
-              ),
-            },
+        if (!isPaymentPending) {
+          const hostWallet = await tx.wallet.findUnique({
+            where: { userId: host.userId },
           });
 
-          hostPayoutTransactionId = hostPayoutTransaction.id;
+          if (hostWallet) {
+            const hostPayoutTransaction = await tx.walletTransaction.create({
+              data: {
+                walletId: hostWallet.id,
+                type: 'CREDIT',
+                source: 'BOOKING_PAYOUT',
+                amount: hostPayoutAmount,
+                referenceId: reservation.id,
+                balanceBefore: hostWallet.balance,
+                balanceAfter: new Decimal(hostWallet.balance).add(
+                  hostPayoutAmount,
+                ),
+              },
+            });
 
-          await tx.wallet.update({
-            where: { id: hostWallet.id },
-            data: {
-              balance: { increment: hostPayoutAmount.toNumber() },
-            },
-          });
+            hostPayoutTransactionId = hostPayoutTransaction.id;
+
+            await tx.wallet.update({
+              where: { id: hostWallet.id },
+              data: {
+                balance: { increment: hostPayoutAmount.toNumber() },
+              },
+            });
+          }
         }
 
-        // Update reservation
+        // Update reservation — PAYMENT_PENDING if driver owes, otherwise COMPLETED
         const updated = await tx.reservation.update({
           where: { id: reservation.id },
           data: {
-            status: 'COMPLETED',
+            status: isPaymentPending ? 'PAYMENT_PENDING' : 'COMPLETED',
             sessionEndedAt: now,
             finalAmount: totalFee,
             totalAmount: totalFee,
             commissionRate: this.PLATFORM_COMMISSION_RATE,
             platformFee: platformCommission,
-            hostPayoutAmount,
+            hostPayoutAmount: isPaymentPending ? null : hostPayoutAmount,
             hostPayoutId: hostPayoutTransactionId,
+            remainingDue: isPaymentPending ? remainingDue : null,
           },
         });
 
-        // Free up the parking space
+        // Free up the parking space regardless of payment status
         await tx.parkingSpace.update({
           where: { id: reservation.parkingSpaceId },
           data: { status: 'AVAILABLE' },
@@ -1343,20 +1359,39 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       },
     );
 
-    // Notify both driver and host of completion
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
-    this.notificationsService
-      .notifyBookingCompleted(
-        reservation.driver.userId,
-        hostUserId,
-        reservation.id,
-        locationTitle,
-      )
-      .catch(() => {});
+    const isPaymentPending = result.status === 'PAYMENT_PENDING';
+
+    if (isPaymentPending) {
+      // Notify driver they owe a balance
+      this.notificationsService
+        .send({
+          userId: reservation.driver.userId,
+          title: 'Insufficient Balance — Payment Due',
+          message: `Your session at ${locationTitle} has ended but your wallet didn't have enough funds. You owe ₱${remainingDueValue?.toFixed(2) ?? '0.00'}. Please top up to clear this before booking again.`,
+          type: 'GENERAL',
+          data: { reservationId: reservation.id, screen: 'payment' },
+        })
+        .catch(() => {});
+    } else {
+      // Notify both driver and host of completion
+      this.notificationsService
+        .notifyBookingCompleted(
+          reservation.driver.userId,
+          hostUserId,
+          reservation.id,
+          locationTitle,
+        )
+        .catch(() => {});
+    }
+
+    const remainingDueValue = (result as any).remainingDue;
 
     return {
       success: true,
-      message: 'Session ended. Payment has been processed.',
+      message: isPaymentPending
+        ? 'Session ended. Insufficient wallet balance — please top up to settle your remaining due.'
+        : 'Session ended. Payment has been processed.',
       reservation: {
         id: result.id,
         status: result.status,
@@ -1367,12 +1402,113 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         commissionRate: result.commissionRate,
         platformFee: toNullable(result.platformFee),
         hostPayoutAmount: toNullable(result.hostPayoutAmount),
+        remainingDue: remainingDueValue ? remainingDueValue.toNumber() : null,
         durationHours,
       },
       additionalCharge: additionalCharge.gt(0)
         ? additionalCharge.toNumber()
         : null,
     };
+  }
+
+  /**
+   * Settle remaining due on a PAYMENT_PENDING reservation
+   */
+  async settleRemainingDue(userId: string, reservationId: string) {
+    const driver = await this.prisma.driver.findUnique({ where: { userId } });
+    if (!driver) throw new ForbiddenException('Only drivers can settle payments.');
+
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: { include: { parkingLocation: { include: { host: true } } } },
+        driver: true,
+      },
+    });
+
+    if (!reservation || reservation.driverId !== driver.id) {
+      throw new NotFoundException('Reservation not found.');
+    }
+    if (reservation.status !== 'PAYMENT_PENDING') {
+      throw new BadRequestException('This reservation has no outstanding balance.');
+    }
+
+    const remainingDue = new Decimal(String(reservation.remainingDue ?? 0));
+    if (remainingDue.lte(0)) {
+      throw new BadRequestException('No remaining due on this reservation.');
+    }
+
+    const driverWallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    if (!driverWallet) throw new BadRequestException('Wallet not found.');
+
+    const balance = new Decimal(driverWallet.balance);
+    if (balance.lt(remainingDue)) {
+      throw new BadRequestException(
+        `Insufficient balance. You need ₱${remainingDue.toFixed(2)} but only have ₱${balance.toFixed(2)}.`,
+      );
+    }
+
+    const host = reservation.parkingSpace.parkingLocation.host;
+    const totalFee = new Decimal(String(reservation.finalAmount ?? reservation.totalAmount));
+    const platformCommission = totalFee.mul(this.PLATFORM_COMMISSION_RATE).toDecimalPlaces(2);
+    const hostPayoutAmount = Decimal.max(totalFee.sub(platformCommission), 0).toDecimalPlaces(2);
+
+    await this.prisma.$transaction(async (tx) => {
+      // Deduct remaining due from driver wallet
+      await tx.walletTransaction.create({
+        data: {
+          walletId: driverWallet.id,
+          type: 'DEBIT',
+          source: 'RESERVATION_PAYMENT',
+          amount: remainingDue,
+          referenceId: reservation.id,
+          balanceBefore: driverWallet.balance,
+          balanceAfter: balance.sub(remainingDue),
+        },
+      });
+      await tx.wallet.update({
+        where: { id: driverWallet.id },
+        data: { balance: { decrement: remainingDue.toNumber() } },
+      });
+
+      // Credit host now that full payment is received
+      const hostWallet = await tx.wallet.findUnique({ where: { userId: host.userId } });
+      if (hostWallet) {
+        await tx.walletTransaction.create({
+          data: {
+            walletId: hostWallet.id,
+            type: 'CREDIT',
+            source: 'BOOKING_PAYOUT',
+            amount: hostPayoutAmount,
+            referenceId: reservation.id,
+            balanceBefore: hostWallet.balance,
+            balanceAfter: new Decimal(hostWallet.balance).add(hostPayoutAmount),
+          },
+        });
+        await tx.wallet.update({
+          where: { id: hostWallet.id },
+          data: { balance: { increment: hostPayoutAmount.toNumber() } },
+        });
+      }
+
+      // Mark reservation as COMPLETED
+      await tx.reservation.update({
+        where: { id: reservation.id },
+        data: {
+          status: 'COMPLETED',
+          remainingDue: null,
+          hostPayoutAmount,
+        },
+      });
+    });
+
+    // Notify driver and host
+    const locationTitle = reservation.parkingSpace.parkingLocation.title;
+    this.notificationsService
+      .notifyBookingCompleted(userId, host.userId, reservation.id, locationTitle)
+      .catch(() => {});
+
+    return { success: true, message: 'Outstanding balance settled. Booking is now complete.' };
   }
 
   /**

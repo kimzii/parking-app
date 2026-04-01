@@ -76,6 +76,17 @@ export class ReservationsController {
   }
 
   /**
+   * Driver: Settle remaining due on a PAYMENT_PENDING reservation
+   */
+  @Post(':id/settle')
+  async settleRemainingDue(
+    @Request() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.reservationsService.settleRemainingDue(req.user.id, id);
+  }
+
+  /**
    * Cancel a reservation (Driver — before session starts)
    */
   @Post(':id/cancel')

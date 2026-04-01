@@ -28,14 +28,19 @@ export interface Reservation {
     | "ACTIVE"
     | "COMPLETED"
     | "CANCELLED"
-    | "EXPIRED";
+    | "EXPIRED"
+    | "PAYMENT_PENDING";
   arrivalDeadline: string;
   sessionStartedAt?: string | null;
   sessionEndedAt?: string | null;
   totalAmount: number;
   escrowAmount?: number | null;
   finalAmount?: number | null;
+  commissionRate?: number | null;
+  platformFee?: number | null;
+  hostPayoutAmount?: number | null;
   overtimeAmount?: number | null;
+  remainingDue?: number | null;
   createdAt: string;
   parkingSpace: {
     id: string;
@@ -158,6 +163,16 @@ export async function getReservation(id: string): Promise<Reservation> {
 }
 
 /**
+ * Settle remaining due on a PAYMENT_PENDING reservation
+ */
+export async function settleRemainingDue(
+  id: string,
+): Promise<{ success: boolean; message: string }> {
+  const response = await api.post(`/reservations/${id}/settle`);
+  return response.data;
+}
+
+/**
  * Cancel a reservation
  */
 export async function cancelReservation(
@@ -192,8 +207,14 @@ export async function rejectReservation(id: string): Promise<{
 /**
  * Host: Scan QR code for entry — starts parking session
  */
-export async function scanEntry(qrCode: string, force = false): Promise<ScanResponse> {
-  const response = await api.post("/reservations/scan/entry", { qrCode, force });
+export async function scanEntry(
+  qrCode: string,
+  force = false,
+): Promise<ScanResponse> {
+  const response = await api.post("/reservations/scan/entry", {
+    qrCode,
+    force,
+  });
   return response.data;
 }
 
@@ -222,9 +243,7 @@ export async function getHostReservations(
 /**
  * Host: Get a single reservation by ID
  */
-export async function getHostReservation(
-  id: string,
-): Promise<HostReservation> {
+export async function getHostReservation(id: string): Promise<HostReservation> {
   const response = await api.get(`/reservations/host/reservations/${id}`);
   return response.data;
 }

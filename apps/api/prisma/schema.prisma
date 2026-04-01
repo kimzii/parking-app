@@ -203,6 +203,7 @@ model Reservation {
   platformFee         Decimal?           @map("platform_fee") @db.Decimal(10, 2)
   hostPayoutAmount    Decimal?           @map("host_payout_amount") @db.Decimal(10, 2)
   overtimeAmount      Decimal?           @map("overtime_amount") @db.Decimal(10, 2)
+  remainingDue        Decimal?           @map("remaining_due") @db.Decimal(10, 2)
   arrivalDeadline     DateTime           @map("arrival_deadline")
   sessionStartedAt    DateTime?          @map("session_started_at")
   sessionEndedAt      DateTime?          @map("session_ended_at")
@@ -392,6 +393,7 @@ enum ReservationStatus {
   COMPLETED
   CANCELLED
   EXPIRED
+  PAYMENT_PENDING
 }
 
 enum PaymentStatus {
