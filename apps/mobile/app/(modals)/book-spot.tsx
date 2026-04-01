@@ -106,6 +106,9 @@ export default function BookSpotScreen() {
   const firstHourFee = spot ? Number(spot.basePricePerHour) : 0;
   const hasInsufficientBalance =
     firstHourFee > 0 && walletBalance < firstHourFee;
+  const affordableHours =
+    firstHourFee > 0 ? Math.floor(walletBalance / firstHourFee) : 0;
+  const hasLowBalance = !hasInsufficientBalance && affordableHours === 1;
 
   const isVehicleIncompatible =
     !!selectedVehicle?.vehicleType &&
@@ -190,9 +193,13 @@ export default function BookSpotScreen() {
       return;
     }
 
+    const lowBalanceWarning = hasLowBalance
+      ? `\n\n⚠️ Warning: Your balance only covers 1 hour. Extra time will be charged at exit. If your wallet is empty, the booking will be marked as unpaid.`
+      : "";
+
     Alert.alert(
       "Confirm Booking",
-      `Book ${spot.title}\nSlot: ${selectedSpace.name || `Slot ${selectedSpace.slotNumber}`}\n\nFirst hour fee: ₱${firstHourFee.toFixed(2)}\nRate: ₱${firstHourFee.toFixed(2)}/hr (pay-as-you-go)\n\nHost has 5 minutes to approve your request.\nOnce approved, you have 60 minutes to arrive.\nThis amount will be deducted from your wallet.`,
+      `Book ${spot.title}\nSlot: ${selectedSpace.name || `Slot ${selectedSpace.slotNumber}`}\n\nFirst hour fee: ₱${firstHourFee.toFixed(2)}\nRate: ₱${firstHourFee.toFixed(2)}/hr (pay-as-you-go)\n\nHost has 5 minutes to approve your request.\nOnce approved, you have 60 minutes to arrive.\nThis amount will be deducted from your wallet.${lowBalanceWarning}`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -353,6 +360,23 @@ export default function BookSpotScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Low Balance Warning */}
+        {hasLowBalance && (
+          <View style={styles.lowBalanceBanner}>
+            <MaterialIcons name="warning" size={20} color="#F57C00" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.lowBalanceTitle}>Balance covers 1 hour only</Text>
+              <Text style={styles.lowBalanceText}>
+                Your current balance (₱{walletBalance.toFixed(2)}) is only enough
+                for 1 hour. If you stay longer, the extra amount will be charged
+                when you exit. If your wallet is empty at that point, your booking
+                will be marked as unpaid and you won't be able to make new bookings
+                until you settle the balance.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Vehicle Section */}
         {vehicles.length === 1 && vehicles[0] && (
@@ -1048,6 +1072,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#E53935",
     fontWeight: "600",
+    lineHeight: 18,
+  },
+  lowBalanceBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "#F57C00",
+  },
+  lowBalanceTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E65100",
+    marginBottom: 4,
+  },
+  lowBalanceText: {
+    fontSize: 12,
+    color: "#BF360C",
     lineHeight: 18,
   },
 });
