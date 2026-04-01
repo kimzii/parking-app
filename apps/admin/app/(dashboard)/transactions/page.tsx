@@ -163,6 +163,8 @@ export default function TransactionsPage() {
     fetchTopUps();
     fetchWithdrawals();
     fetchAllTransactions();
+    // Poll every 10 seconds so pending top-up/withdrawal statuses stay current
+    // without requiring a manual page refresh
     const interval = setInterval(() => {
       fetchTopUps();
       fetchWithdrawals();
