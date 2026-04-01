@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Download,
   TrendingUp,
@@ -36,7 +42,7 @@ ChartJS.register(
   Tooltip,
   Legend,
   ArcElement,
-  Filler
+  Filler,
 );
 
 // --- Interfaces ---
@@ -81,10 +87,14 @@ const formatCurrencyPlain = (amount: number) =>
   }).format(amount);
 
 export default function FinancialReportsPage() {
-  const [financialStats, setFinancialStats] = useState<FinancialStats | null>(null);
+  const [financialStats, setFinancialStats] = useState<FinancialStats | null>(
+    null,
+  );
   const [transactions, setTransactions] = useState<RecentTransaction[]>([]);
   const [revenueTrend, setRevenueTrend] = useState<RevenueTrendPoint[]>([]);
-  const [transactionActorFilter, setTransactionActorFilter] = useState<"ALL" | "DRIVER" | "HOST">("ALL");
+  const [transactionActorFilter, setTransactionActorFilter] = useState<
+    "ALL" | "DRIVER" | "HOST"
+  >("ALL");
   const [startDate, setStartDate] = useState(getDefaultStartDate());
   const [endDate, setEndDate] = useState(getDefaultEndDate());
   const [currentPage, setCurrentPage] = useState(1);
@@ -98,7 +108,10 @@ export default function FinancialReportsPage() {
   // Close export dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(e.target as Node)
+      ) {
         setShowExportMenu(false);
       }
     };
@@ -114,9 +127,15 @@ export default function FinancialReportsPage() {
       const endOfDay = `${endDate}T23:59:59`;
 
       const [statsRes, transactionsRes, trendRes] = await Promise.all([
-        api.get<FinancialStats>(`/dashboard/financial-stats?startDate=${startDate}&endDate=${endOfDay}`),
-        api.get<RecentTransaction[]>(`/dashboard/recent-transactions?includeAll=true&actorType=${transactionActorFilter}&startDate=${startDate}&endDate=${endOfDay}`),
-        api.get<RevenueTrendPoint[]>(`/dashboard/revenue-trend?startDate=${startDate}&endDate=${endOfDay}`),
+        api.get<FinancialStats>(
+          `/dashboard/financial-stats?startDate=${startDate}&endDate=${endOfDay}`,
+        ),
+        api.get<RecentTransaction[]>(
+          `/dashboard/recent-transactions?includeAll=true&actorType=${transactionActorFilter}&startDate=${startDate}&endDate=${endOfDay}`,
+        ),
+        api.get<RevenueTrendPoint[]>(
+          `/dashboard/revenue-trend?startDate=${startDate}&endDate=${endOfDay}`,
+        ),
       ]);
 
       setFinancialStats(statsRes.data);
@@ -145,10 +164,22 @@ export default function FinancialReportsPage() {
     summary: [
       ["Metric", "Value"],
       ["Total Revenue", formatCurrencyPlain(financialStats?.totalRevenue || 0)],
-      ["Total Commission (10%)", formatCurrencyPlain(financialStats?.totalCommission || 0)],
-      ["Pending Payouts to Hosts", formatCurrencyPlain(financialStats?.pendingPayouts || 0)],
-      ["Revenue Change vs Prior Period", `${(financialStats?.revenueChange || 0) >= 0 ? "+" : ""}${financialStats?.revenueChange || 0}%`],
-      ["Commission Change vs Prior Period", `${(financialStats?.commissionChange || 0) >= 0 ? "+" : ""}${financialStats?.commissionChange || 0}%`],
+      [
+        "Total Commission (10%)",
+        formatCurrencyPlain(financialStats?.totalCommission || 0),
+      ],
+      [
+        "Pending Payouts to Hosts",
+        formatCurrencyPlain(financialStats?.pendingPayouts || 0),
+      ],
+      [
+        "Revenue Change vs Prior Period",
+        `${(financialStats?.revenueChange || 0) >= 0 ? "+" : ""}${financialStats?.revenueChange || 0}%`,
+      ],
+      [
+        "Commission Change vs Prior Period",
+        `${(financialStats?.commissionChange || 0) >= 0 ? "+" : ""}${financialStats?.commissionChange || 0}%`,
+      ],
     ],
     trend: [
       ["Date", "Revenue (PHP)", "Commission (PHP)"],
@@ -197,13 +228,22 @@ export default function FinancialReportsPage() {
         startY: 38,
         head: [data.summary[0] as string[]],
         body: data.summary.slice(1) as string[][],
-        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: "bold" },
+        headStyles: {
+          fillColor: headerColor,
+          textColor: 255,
+          fontStyle: "bold",
+        },
         alternateRowStyles: { fillColor: [245, 250, 249] },
         margin: { left: 14, right: 14 },
       });
 
       // Revenue trend table
-      const afterSummary = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+      const afterSummary =
+        ((
+          doc as InstanceType<typeof jsPDF> & {
+            lastAutoTable?: { finalY: number };
+          }
+        ).lastAutoTable?.finalY ?? 38) + 10;
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
       doc.text("Daily Revenue & Commission Trend", 14, afterSummary);
@@ -212,7 +252,11 @@ export default function FinancialReportsPage() {
         startY: afterSummary + 4,
         head: [data.trend[0] as string[]],
         body: data.trend.slice(1) as (string | number)[][],
-        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: "bold" },
+        headStyles: {
+          fillColor: headerColor,
+          textColor: 255,
+          fontStyle: "bold",
+        },
         alternateRowStyles: { fillColor: [245, 250, 249] },
         margin: { left: 14, right: 14 },
       });
@@ -227,7 +271,11 @@ export default function FinancialReportsPage() {
         startY: 22,
         head: [data.transactions[0] as string[]],
         body: data.transactions.slice(1) as (string | number)[][],
-        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: "bold" },
+        headStyles: {
+          fillColor: headerColor,
+          textColor: 255,
+          fontStyle: "bold",
+        },
         alternateRowStyles: { fillColor: [245, 250, 249] },
         margin: { left: 14, right: 14 },
         columnStyles: { 0: { cellWidth: 60 } },
@@ -266,7 +314,14 @@ export default function FinancialReportsPage() {
 
       // Transactions sheet
       const trxWs = XLSX.utils.aoa_to_sheet(data.transactions);
-      trxWs["!cols"] = [{ wch: 38 }, { wch: 22 }, { wch: 10 }, { wch: 30 }, { wch: 22 }, { wch: 16 }];
+      trxWs["!cols"] = [
+        { wch: 38 },
+        { wch: 22 },
+        { wch: 10 },
+        { wch: 30 },
+        { wch: 22 },
+        { wch: 16 },
+      ];
       XLSX.utils.book_append_sheet(wb, trxWs, "Transactions");
 
       XLSX.writeFile(wb, `financial-report-${startDate}-${endDate}.xlsx`);
@@ -278,64 +333,76 @@ export default function FinancialReportsPage() {
   };
 
   // Line chart data
-  const lineChartData = useMemo(() => ({
-    labels: revenueTrend.map((point) => {
-      const date = new Date(point.date);
-      return date.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+  const lineChartData = useMemo(
+    () => ({
+      labels: revenueTrend.map((point) => {
+        const date = new Date(point.date);
+        return date.toLocaleDateString("en-PH", {
+          month: "short",
+          day: "numeric",
+        });
+      }),
+      datasets: [
+        {
+          label: "Revenue",
+          data: revenueTrend.map((point) => point.revenue),
+          borderColor: "#005f56",
+          backgroundColor: "rgba(0, 95, 86, 0.1)",
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: "#005f56",
+        },
+        {
+          label: "Commission",
+          data: revenueTrend.map((point) => point.commission),
+          borderColor: "#f59e0b",
+          backgroundColor: "rgba(245, 158, 11, 0.1)",
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: "#f59e0b",
+        },
+      ],
     }),
-    datasets: [
-      {
-        label: "Revenue",
-        data: revenueTrend.map((point) => point.revenue),
-        borderColor: "#005f56",
-        backgroundColor: "rgba(0, 95, 86, 0.1)",
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4,
-        pointBackgroundColor: "#005f56",
-      },
-      {
-        label: "Commission",
-        data: revenueTrend.map((point) => point.commission),
-        borderColor: "#f59e0b",
-        backgroundColor: "rgba(245, 158, 11, 0.1)",
-        fill: true,
-        tension: 0.4,
-        pointRadius: 4,
-        pointBackgroundColor: "#f59e0b",
-      },
-    ],
-  }), [revenueTrend]);
+    [revenueTrend],
+  );
 
-  const lineChartOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top" as const,
-        labels: { usePointStyle: true, padding: 20 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (context: { dataset: { label?: string }; parsed: { y: number | null } }) => {
-            const label = context.dataset.label || "";
-            const value = context.parsed.y;
-            return `${label}: ${formatCurrencyPlain(value || 0)}`;
+  const lineChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top" as const,
+          labels: { usePointStyle: true, padding: 20 },
+        },
+        tooltip: {
+          callbacks: {
+            label: (context: {
+              dataset: { label?: string };
+              parsed: { y: number | null };
+            }) => {
+              const label = context.dataset.label || "";
+              const value = context.parsed.y;
+              return `${label}: ${formatCurrencyPlain(value || 0)}`;
+            },
           },
         },
       },
-    },
-    scales: {
-      x: { grid: { display: false } },
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: (value: number | string) =>
-            typeof value === "number" ? `₱${value.toLocaleString()}` : value,
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: (value: number | string) =>
+              typeof value === "number" ? `₱${value.toLocaleString()}` : value,
+          },
         },
       },
-    },
-  }), []);
+    }),
+    [],
+  );
 
   const doughnutChartData = useMemo(() => {
     const totalRevenue = financialStats?.totalRevenue || 0;
@@ -343,33 +410,38 @@ export default function FinancialReportsPage() {
     const hostPayout = totalRevenue - totalCommission;
     return {
       labels: ["Host Payout (90%)", "Platform Commission (10%)"],
-      datasets: [{
-        data: [hostPayout, totalCommission],
-        backgroundColor: ["#005f56", "#f59e0b"],
-        borderColor: ["#ffffff", "#ffffff"],
-        borderWidth: 3,
-        hoverOffset: 8,
-      }],
+      datasets: [
+        {
+          data: [hostPayout, totalCommission],
+          backgroundColor: ["#005f56", "#f59e0b"],
+          borderColor: ["#ffffff", "#ffffff"],
+          borderWidth: 3,
+          hoverOffset: 8,
+        },
+      ],
     };
   }, [financialStats]);
 
-  const doughnutChartOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: "60%",
-    plugins: {
-      legend: {
-        position: "bottom" as const,
-        labels: { usePointStyle: true, padding: 20 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (context: { label?: string; parsed: number }) =>
-            `${context.label || ""}: ${formatCurrencyPlain(context.parsed || 0)}`,
+  const doughnutChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "60%",
+      plugins: {
+        legend: {
+          position: "bottom" as const,
+          labels: { usePointStyle: true, padding: 20 },
+        },
+        tooltip: {
+          callbacks: {
+            label: (context: { label?: string; parsed: number }) =>
+              `${context.label || ""}: ${formatCurrencyPlain(context.parsed || 0)}`,
+          },
         },
       },
-    },
-  }), []);
+    }),
+    [],
+  );
 
   if (loading) {
     return (
@@ -401,7 +473,6 @@ export default function FinancialReportsPage() {
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
-
       {/* Page Header & Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Financial Reports</h1>
@@ -409,23 +480,33 @@ export default function FinancialReportsPage() {
         <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
           {/* Date Range Filter */}
           <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-sm">
-            <label className="text-xs font-medium text-gray-500 shrink-0">From</label>
+            <label className="text-xs font-medium text-gray-500 shrink-0">
+              From
+            </label>
             <input
               type="date"
               value={startDate}
               max={endDate}
-              onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setCurrentPage(1);
+              }}
               className="text-sm text-gray-700 outline-none bg-transparent cursor-pointer"
             />
           </div>
           <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-sm">
-            <label className="text-xs font-medium text-gray-500 shrink-0">To</label>
+            <label className="text-xs font-medium text-gray-500 shrink-0">
+              To
+            </label>
             <input
               type="date"
               value={endDate}
               min={startDate}
               max={new Date().toISOString().split("T")[0]}
-              onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setCurrentPage(1);
+              }}
               className="text-sm text-gray-700 outline-none bg-transparent cursor-pointer"
             />
           </div>
@@ -438,7 +519,11 @@ export default function FinancialReportsPage() {
               className="flex items-center gap-2 px-3 py-2 bg-[#005f56] hover:bg-[#004d40] disabled:opacity-60 text-white rounded-lg transition-colors shadow-sm text-sm font-medium"
               title="Export Report"
             >
-              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {exporting ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
               Export
             </button>
 
@@ -456,7 +541,9 @@ export default function FinancialReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800">PDF</p>
-                    <p className="text-[10px] text-gray-400">Formatted report</p>
+                    <p className="text-[10px] text-gray-400">
+                      Formatted report
+                    </p>
                   </div>
                 </button>
                 <button
@@ -468,7 +555,9 @@ export default function FinancialReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800">Excel</p>
-                    <p className="text-[10px] text-gray-400">3 sheets: summary, trend, transactions</p>
+                    <p className="text-[10px] text-gray-400">
+                      3 sheets: summary, trend, transactions
+                    </p>
                   </div>
                 </button>
               </div>
@@ -479,36 +568,59 @@ export default function FinancialReportsPage() {
 
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Total Revenue</h3>
+          <h3 className="text-gray-500 text-sm font-medium mb-2">
+            Total Revenue
+          </h3>
           <p className="text-3xl font-bold text-gray-900 mb-4">
             {formatCurrency(financialStats?.totalRevenue || 0)}
           </p>
-          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${
-            (financialStats?.revenueChange || 0) >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}>
-            {(financialStats?.revenueChange || 0) >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            {(financialStats?.revenueChange || 0) >= 0 ? "+" : ""}{financialStats?.revenueChange || 0}%
+          <div
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${
+              (financialStats?.revenueChange || 0) >= 0
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {(financialStats?.revenueChange || 0) >= 0 ? (
+              <TrendingUp size={16} />
+            ) : (
+              <TrendingDown size={16} />
+            )}
+            {(financialStats?.revenueChange || 0) >= 0 ? "+" : ""}
+            {financialStats?.revenueChange || 0}%
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">Total Commission (10%)</h3>
+          <h3 className="text-gray-500 text-sm font-medium mb-2">
+            Total Commission (10%)
+          </h3>
           <p className="text-3xl font-bold text-gray-900 mb-4">
             {formatCurrency(financialStats?.totalCommission || 0)}
           </p>
-          <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${
-            (financialStats?.commissionChange || 0) >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}>
-            {(financialStats?.commissionChange || 0) >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            {(financialStats?.commissionChange || 0) >= 0 ? "+" : ""}{financialStats?.commissionChange || 0}%
+          <div
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${
+              (financialStats?.commissionChange || 0) >= 0
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {(financialStats?.commissionChange || 0) >= 0 ? (
+              <TrendingUp size={16} />
+            ) : (
+              <TrendingDown size={16} />
+            )}
+            {(financialStats?.commissionChange || 0) >= 0 ? "+" : ""}
+            {financialStats?.commissionChange || 0}%
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
           <div>
-            <h3 className="text-gray-500 text-sm font-medium mb-2">Pending Payouts to Hosts</h3>
+            <h3 className="text-gray-500 text-sm font-medium mb-2">
+              Pending Payouts to Hosts
+            </h3>
             <p className="text-3xl font-bold text-gray-900">
               {formatCurrency(financialStats?.pendingPayouts || 0)}
             </p>
@@ -517,14 +629,14 @@ export default function FinancialReportsPage() {
             <Hourglass size={24} />
           </div>
         </div>
-
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Revenue & Commission Trend</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">
+            Revenue & Commission Trend
+          </h3>
           <div className="w-full h-[300px]">
             {revenueTrend.length > 0 ? (
               <Line data={lineChartData} options={lineChartOptions} />
@@ -537,10 +649,15 @@ export default function FinancialReportsPage() {
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">Revenue Distribution</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">
+            Revenue Distribution
+          </h3>
           <div className="w-full h-[300px]">
             {(financialStats?.totalRevenue || 0) > 0 ? (
-              <Doughnut data={doughnutChartData} options={doughnutChartOptions} />
+              <Doughnut
+                data={doughnutChartData}
+                options={doughnutChartOptions}
+              />
             ) : (
               <div className="w-full h-full bg-gray-50 rounded-lg border border-gray-100 flex flex-col items-center justify-center text-gray-400">
                 <p className="text-sm font-medium">No revenue data available</p>
@@ -548,7 +665,6 @@ export default function FinancialReportsPage() {
             )}
           </div>
         </div>
-
       </div>
 
       {/* Recent Transactions Table */}
@@ -561,7 +677,9 @@ export default function FinancialReportsPage() {
               <select
                 value={transactionActorFilter}
                 onChange={(e) => {
-                  setTransactionActorFilter(e.target.value as "ALL" | "DRIVER" | "HOST");
+                  setTransactionActorFilter(
+                    e.target.value as "ALL" | "DRIVER" | "HOST",
+                  );
                   setCurrentPage(1);
                 }}
                 className="bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#005f56]"
@@ -589,7 +707,10 @@ export default function FinancialReportsPage() {
             <tbody className="divide-y divide-gray-100 text-sm">
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
                     No transactions found
                   </td>
                 </tr>
@@ -597,18 +718,32 @@ export default function FinancialReportsPage() {
                 transactions
                   .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
                   .map((trx) => (
-                    <tr key={trx.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-gray-900">{trx.id}</td>
-                      <td className="px-6 py-4 font-semibold text-gray-900">{trx.userName}</td>
-                      <td className="px-6 py-4 text-gray-600">{trx.userRole}</td>
+                    <tr
+                      key={trx.id}
+                      className="hover:bg-gray-50/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 font-medium text-gray-900">
+                        {trx.id}
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-gray-900">
+                        {trx.userName}
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        {trx.userRole}
+                      </td>
                       <td className="px-6 py-4 text-gray-600">{trx.email}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          trx.status === "HOST_PAYOUT" ? "bg-green-100 text-green-700" :
-                          trx.status === "RESERVATION_PAYMENT" ? "bg-blue-100 text-blue-700" :
-                          trx.status === "REFUND" ? "bg-yellow-100 text-yellow-700" :
-                          "bg-gray-100 text-gray-700"
-                        }`}>
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            trx.status === "HOST_PAYOUT"
+                              ? "bg-green-100 text-green-700"
+                              : trx.status === "RESERVATION_PAYMENT"
+                                ? "bg-blue-100 text-blue-700"
+                                : trx.status === "REFUND"
+                                  ? "bg-yellow-100 text-yellow-700"
+                                  : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
                           {trx.status.replace(/_/g, " ")}
                         </span>
                       </td>
@@ -622,37 +757,39 @@ export default function FinancialReportsPage() {
           </table>
         </div>
 
-        {transactions.length > 0 && (() => {
-          const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
-          const start = (currentPage - 1) * PAGE_SIZE + 1;
-          const end = Math.min(currentPage * PAGE_SIZE, transactions.length);
-          return (
-            <div className="p-4 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500 bg-gray-50/30">
-              <span>Showing {start}–{end} of {transactions.length} entries</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <span className="px-3 py-1 text-gray-600 font-medium">
-                  {currentPage} / {totalPages}
+        {transactions.length > 0 &&
+          (() => {
+            const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
+            const start = (currentPage - 1) * PAGE_SIZE + 1;
+            const end = Math.min(currentPage * PAGE_SIZE, transactions.length);
+            return (
+              <div className="p-4 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500 bg-gray-50/30">
+                <span>
+                  Showing {start}–{end} of {transactions.length} entries
                 </span>
-                <button
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-3 py-1 text-gray-600 font-medium">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
       </div>
-
     </div>
   );
 }
