@@ -16,39 +16,37 @@ import {
   AlertCircle,
   FileText,
   Sheet,
+  DollarSign,
+  Percent,
 } from "lucide-react";
 import api from "../../../src/lib/api";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-  ArcElement,
-  Filler,
-} from "chart.js";
-import { Line, Doughnut } from "react-chartjs-2";
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement,
-  Filler,
-);
+  ResponsiveContainer,
+} from "recharts";
+import {
+  ChartContainer,
+  type ChartConfig,
+} from "../../../src/components/ui/chart";
 
 // --- Interfaces ---
 interface FinancialStats {
   totalRevenue: number;
   totalCommission: number;
+  totalPlatformFee: number;
+  totalHostPayout: number;
+  commissionRate: number;
   pendingPayouts: number;
   revenueChange: number;
   commissionChange: number;
@@ -68,6 +66,8 @@ interface RevenueTrendPoint {
   date: string;
   revenue: number;
   commission: number;
+  platformFee: number;
+  hostPayout: number;
 }
 
 const getDefaultStartDate = () => {
@@ -85,6 +85,72 @@ const formatCurrencyPlain = (amount: number) =>
     currency: "PHP",
     minimumFractionDigits: 2,
   }).format(amount);
+
+// Chart configs
+const trendChartConfig: ChartConfig = {
+  revenue: { label: "Total Revenue", color: "#C94B1E" },
+  platformFee: { label: "Platform Fee", color: "#f59e0b" },
+  hostPayout: { label: "Host Payout", color: "#3b82f6" },
+};
+
+const distributionChartConfig: ChartConfig = {
+  platformFee: { label: "Platform Fee", color: "#f59e0b" },
+  hostPayout: { label: "Host Payout", color: "#C94B1E" },
+};
+
+const PIE_COLORS = ["#C94B1E", "#f59e0b"];
+
+// Custom tooltip for area chart
+const AreaTooltipContent = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
+      <p className="mb-1.5 font-medium text-foreground">{label}</p>
+      {payload.map((entry) => (
+        <div key={entry.name} className="flex items-center gap-2 py-0.5">
+          <span
+            className="h-2 w-2 shrink-0 rounded-[2px]"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-muted-foreground">
+            {trendChartConfig[entry.name]?.label ?? entry.name}:
+          </span>
+          <span className="ml-auto font-mono font-medium tabular-nums">
+            {formatCurrencyPlain(entry.value)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Custom tooltip for pie chart
+const PieTooltipContent = ({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number }>;
+}) => {
+  if (!active || !payload?.length) return null;
+  const entry = payload[0];
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
+      <p className="font-medium">{entry.name}</p>
+      <p className="font-mono font-medium tabular-nums text-muted-foreground">
+        {formatCurrencyPlain(entry.value)}
+      </p>
+    </div>
+  );
+};
 
 export default function FinancialReportsPage() {
   const [financialStats, setFinancialStats] = useState<FinancialStats | null>(
@@ -153,20 +219,58 @@ export default function FinancialReportsPage() {
     fetchFinancialData();
   }, [fetchFinancialData]);
 
-  const formatCurrency = (amount: number) => formatCurrencyPlain(amount);
-
   const dateRangeLabel = `${startDate} to ${endDate}`;
   const reportTitle = `Financial Report — ${dateRangeLabel}`;
 
-  // --- Export helpers ---
+  // Chart data derived from trend
+  const trendChartData = useMemo(
+    () =>
+      revenueTrend.map((point) => ({
+        date: new Date(point.date).toLocaleDateString("en-PH", {
+          month: "short",
+          day: "numeric",
+        }),
+        revenue: point.revenue,
+        platformFee: point.platformFee,
+        hostPayout: point.hostPayout,
+      })),
+    [revenueTrend],
+  );
 
+  const distributionData = useMemo(() => {
+    const platformFee =
+      financialStats?.totalPlatformFee ?? financialStats?.totalCommission ?? 0;
+    const hostPayout = financialStats?.totalHostPayout ?? 0;
+    return [
+      { name: "Host Payout", value: hostPayout },
+      { name: "Platform Fee", value: platformFee },
+    ];
+  }, [financialStats]);
+
+  // Bar chart: daily platformFee vs hostPayout breakdown (last 7 data points)
+  const breakdownData = useMemo(() => {
+    const sliced = trendChartData.slice(-Math.min(14, trendChartData.length));
+    return sliced.filter((d) => d.revenue > 0);
+  }, [trendChartData]);
+
+  // --- Export helpers ---
   const getExportData = () => ({
     summary: [
       ["Metric", "Value"],
       ["Total Revenue", formatCurrencyPlain(financialStats?.totalRevenue || 0)],
       [
-        "Total Commission (10%)",
-        formatCurrencyPlain(financialStats?.totalCommission || 0),
+        "Total Platform Fee",
+        formatCurrencyPlain(
+          financialStats?.totalPlatformFee ?? financialStats?.totalCommission ?? 0,
+        ),
+      ],
+      [
+        "Total Host Payout",
+        formatCurrencyPlain(financialStats?.totalHostPayout || 0),
+      ],
+      [
+        "Commission Rate",
+        `${((financialStats?.commissionRate || 0.1) * 100).toFixed(1)}%`,
       ],
       [
         "Pending Payouts to Hosts",
@@ -176,14 +280,10 @@ export default function FinancialReportsPage() {
         "Revenue Change vs Prior Period",
         `${(financialStats?.revenueChange || 0) >= 0 ? "+" : ""}${financialStats?.revenueChange || 0}%`,
       ],
-      [
-        "Commission Change vs Prior Period",
-        `${(financialStats?.commissionChange || 0) >= 0 ? "+" : ""}${financialStats?.commissionChange || 0}%`,
-      ],
     ],
     trend: [
-      ["Date", "Revenue (PHP)", "Commission (PHP)"],
-      ...revenueTrend.map((p) => [p.date, p.revenue, p.commission]),
+      ["Date", "Revenue (PHP)", "Platform Fee (PHP)", "Host Payout (PHP)"],
+      ...revenueTrend.map((p) => [p.date, p.revenue, p.platformFee, p.hostPayout]),
     ],
     transactions: [
       ["Transaction ID", "Username", "Role", "Email", "Type", "Amount (PHP)"],
@@ -210,7 +310,6 @@ export default function FinancialReportsPage() {
 
       const headerColor: [number, number, number] = [0, 95, 86];
 
-      // Title
       doc.setFontSize(18);
       doc.setTextColor(30, 30, 30);
       doc.text(reportTitle, 14, 18);
@@ -219,7 +318,6 @@ export default function FinancialReportsPage() {
       doc.setTextColor(100, 100, 100);
       doc.text(`Generated: ${new Date().toLocaleString("en-PH")}`, 14, 25);
 
-      // Summary table
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
       doc.text("Summary", 14, 34);
@@ -228,16 +326,11 @@ export default function FinancialReportsPage() {
         startY: 38,
         head: [data.summary[0] as string[]],
         body: data.summary.slice(1) as string[][],
-        headStyles: {
-          fillColor: headerColor,
-          textColor: 255,
-          fontStyle: "bold",
-        },
+        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [245, 250, 249] },
         margin: { left: 14, right: 14 },
       });
 
-      // Revenue trend table
       const afterSummary =
         ((
           doc as InstanceType<typeof jsPDF> & {
@@ -246,22 +339,17 @@ export default function FinancialReportsPage() {
         ).lastAutoTable?.finalY ?? 38) + 10;
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
-      doc.text("Daily Revenue & Commission Trend", 14, afterSummary);
+      doc.text("Daily Revenue Trend", 14, afterSummary);
 
       autoTable(doc, {
         startY: afterSummary + 4,
         head: [data.trend[0] as string[]],
         body: data.trend.slice(1) as (string | number)[][],
-        headStyles: {
-          fillColor: headerColor,
-          textColor: 255,
-          fontStyle: "bold",
-        },
+        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [245, 250, 249] },
         margin: { left: 14, right: 14 },
       });
 
-      // Transactions table — new page
       doc.addPage();
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
@@ -271,11 +359,7 @@ export default function FinancialReportsPage() {
         startY: 22,
         head: [data.transactions[0] as string[]],
         body: data.transactions.slice(1) as (string | number)[][],
-        headStyles: {
-          fillColor: headerColor,
-          textColor: 255,
-          fontStyle: "bold",
-        },
+        headStyles: { fillColor: headerColor, textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [245, 250, 249] },
         margin: { left: 14, right: 14 },
         columnStyles: { 0: { cellWidth: 60 } },
@@ -297,7 +381,6 @@ export default function FinancialReportsPage() {
       const data = getExportData();
       const wb = XLSX.utils.book_new();
 
-      // Summary sheet
       const summaryWs = XLSX.utils.aoa_to_sheet([
         [reportTitle],
         [`Generated: ${new Date().toLocaleString("en-PH")}`],
@@ -307,12 +390,10 @@ export default function FinancialReportsPage() {
       summaryWs["!cols"] = [{ wch: 36 }, { wch: 22 }];
       XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
 
-      // Trend sheet
       const trendWs = XLSX.utils.aoa_to_sheet(data.trend);
-      trendWs["!cols"] = [{ wch: 14 }, { wch: 18 }, { wch: 18 }];
+      trendWs["!cols"] = [{ wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 18 }];
       XLSX.utils.book_append_sheet(wb, trendWs, "Daily Trend");
 
-      // Transactions sheet
       const trxWs = XLSX.utils.aoa_to_sheet(data.transactions);
       trxWs["!cols"] = [
         { wch: 38 },
@@ -332,122 +413,11 @@ export default function FinancialReportsPage() {
     }
   };
 
-  // Line chart data
-  const lineChartData = useMemo(
-    () => ({
-      labels: revenueTrend.map((point) => {
-        const date = new Date(point.date);
-        return date.toLocaleDateString("en-PH", {
-          month: "short",
-          day: "numeric",
-        });
-      }),
-      datasets: [
-        {
-          label: "Revenue",
-          data: revenueTrend.map((point) => point.revenue),
-          borderColor: "#005f56",
-          backgroundColor: "rgba(0, 95, 86, 0.1)",
-          fill: true,
-          tension: 0.4,
-          pointRadius: 4,
-          pointBackgroundColor: "#005f56",
-        },
-        {
-          label: "Commission",
-          data: revenueTrend.map((point) => point.commission),
-          borderColor: "#f59e0b",
-          backgroundColor: "rgba(245, 158, 11, 0.1)",
-          fill: true,
-          tension: 0.4,
-          pointRadius: 4,
-          pointBackgroundColor: "#f59e0b",
-        },
-      ],
-    }),
-    [revenueTrend],
-  );
-
-  const lineChartOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "top" as const,
-          labels: { usePointStyle: true, padding: 20 },
-        },
-        tooltip: {
-          callbacks: {
-            label: (context: {
-              dataset: { label?: string };
-              parsed: { y: number | null };
-            }) => {
-              const label = context.dataset.label || "";
-              const value = context.parsed.y;
-              return `${label}: ${formatCurrencyPlain(value || 0)}`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: { grid: { display: false } },
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: (value: number | string) =>
-              typeof value === "number" ? `₱${value.toLocaleString()}` : value,
-          },
-        },
-      },
-    }),
-    [],
-  );
-
-  const doughnutChartData = useMemo(() => {
-    const totalRevenue = financialStats?.totalRevenue || 0;
-    const totalCommission = financialStats?.totalCommission || 0;
-    const hostPayout = totalRevenue - totalCommission;
-    return {
-      labels: ["Host Payout (90%)", "Platform Commission (10%)"],
-      datasets: [
-        {
-          data: [hostPayout, totalCommission],
-          backgroundColor: ["#005f56", "#f59e0b"],
-          borderColor: ["#ffffff", "#ffffff"],
-          borderWidth: 3,
-          hoverOffset: 8,
-        },
-      ],
-    };
-  }, [financialStats]);
-
-  const doughnutChartOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: "60%",
-      plugins: {
-        legend: {
-          position: "bottom" as const,
-          labels: { usePointStyle: true, padding: 20 },
-        },
-        tooltip: {
-          callbacks: {
-            label: (context: { label?: string; parsed: number }) =>
-              `${context.label || ""}: ${formatCurrencyPlain(context.parsed || 0)}`,
-          },
-        },
-      },
-    }),
-    [],
-  );
-
   if (loading) {
     return (
       <div className="bg-[#F9FAFB] min-h-full font-sans p-8 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-[#005f56]" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#C94B1E]" />
           <p className="text-gray-600">Loading financial data...</p>
         </div>
       </div>
@@ -462,7 +432,7 @@ export default function FinancialReportsPage() {
           <p>{error}</p>
           <button
             onClick={fetchFinancialData}
-            className="px-4 py-2 bg-[#005f56] text-white rounded-lg hover:bg-[#004d40]"
+            className="px-4 py-2 bg-[#C94B1E] text-white rounded-lg hover:bg-[#A83A16]"
           >
             Retry
           </button>
@@ -471,6 +441,12 @@ export default function FinancialReportsPage() {
     );
   }
 
+  const platformFee =
+    financialStats?.totalPlatformFee ?? financialStats?.totalCommission ?? 0;
+  const hostPayout = financialStats?.totalHostPayout ?? 0;
+  const commissionRatePct = ((financialStats?.commissionRate ?? 0.1) * 100).toFixed(1);
+  const hostRatePct = (100 - parseFloat(commissionRatePct)).toFixed(1);
+
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
       {/* Page Header & Filters */}
@@ -478,7 +454,6 @@ export default function FinancialReportsPage() {
         <h1 className="text-3xl font-bold text-gray-900">Financial Reports</h1>
 
         <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-          {/* Date Range Filter */}
           <div className="flex items-center gap-2 bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-sm">
             <label className="text-xs font-medium text-gray-500 shrink-0">
               From
@@ -511,12 +486,11 @@ export default function FinancialReportsPage() {
             />
           </div>
 
-          {/* Export Button with dropdown */}
           <div ref={exportMenuRef} className="relative">
             <button
               onClick={() => setShowExportMenu((v) => !v)}
               disabled={exporting}
-              className="flex items-center gap-2 px-3 py-2 bg-[#005f56] hover:bg-[#004d40] disabled:opacity-60 text-white rounded-lg transition-colors shadow-sm text-sm font-medium"
+              className="flex items-center gap-2 px-3 py-2 bg-[#C94B1E] hover:bg-[#A83A16] disabled:opacity-60 text-white rounded-lg transition-colors shadow-sm text-sm font-medium"
               title="Export Report"
             >
               {exporting ? (
@@ -541,9 +515,7 @@ export default function FinancialReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800">PDF</p>
-                    <p className="text-[10px] text-gray-400">
-                      Formatted report
-                    </p>
+                    <p className="text-[10px] text-gray-400">Formatted report</p>
                   </div>
                 </button>
                 <button
@@ -566,108 +538,267 @@ export default function FinancialReportsPage() {
         </div>
       </div>
 
-      {/* Top Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">
-            Total Revenue
-          </h3>
-          <p className="text-3xl font-bold text-gray-900 mb-4">
-            {formatCurrency(financialStats?.totalRevenue || 0)}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+        {/* Total Revenue */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Total Revenue</h3>
+            <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center">
+              <DollarSign size={18} className="text-[#C94B1E]" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 mb-3">
+            {formatCurrencyPlain(financialStats?.totalRevenue || 0)}
           </p>
           <div
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
               (financialStats?.revenueChange || 0) >= 0
                 ? "bg-green-100 text-green-700"
                 : "bg-red-100 text-red-700"
             }`}
           >
             {(financialStats?.revenueChange || 0) >= 0 ? (
-              <TrendingUp size={16} />
+              <TrendingUp size={13} />
             ) : (
-              <TrendingDown size={16} />
+              <TrendingDown size={13} />
             )}
             {(financialStats?.revenueChange || 0) >= 0 ? "+" : ""}
-            {financialStats?.revenueChange || 0}%
+            {financialStats?.revenueChange || 0}% vs prior period
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
-          <h3 className="text-gray-500 text-sm font-medium mb-2">
-            Total Commission (10%)
-          </h3>
-          <p className="text-3xl font-bold text-gray-900 mb-4">
-            {formatCurrency(financialStats?.totalCommission || 0)}
+        {/* Platform Fee */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Platform Fee</h3>
+            <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Percent size={18} className="text-amber-500" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 mb-3">
+            {formatCurrencyPlain(platformFee)}
           </p>
-          <div
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${
-              (financialStats?.commissionChange || 0) >= 0
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            {(financialStats?.commissionChange || 0) >= 0 ? (
-              <TrendingUp size={16} />
-            ) : (
-              <TrendingDown size={16} />
-            )}
-            {(financialStats?.commissionChange || 0) >= 0 ? "+" : ""}
-            {financialStats?.commissionChange || 0}%
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+            <span className="font-semibold">{commissionRatePct}%</span>
+            <span>commission rate</span>
           </div>
         </div>
 
+        {/* Host Payout */}
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Host Payout</h3>
+            <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
+              <DollarSign size={18} className="text-blue-500" />
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 mb-3">
+            {formatCurrencyPlain(hostPayout)}
+          </p>
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+            <span className="font-semibold">{hostRatePct}%</span>
+            <span>of total revenue</span>
+          </div>
+        </div>
+
+        {/* Pending Payouts */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
           <div>
-            <h3 className="text-gray-500 text-sm font-medium mb-2">
-              Pending Payouts to Hosts
+            <h3 className="text-gray-500 text-sm font-medium mb-3">
+              Pending Payouts
             </h3>
-            <p className="text-3xl font-bold text-gray-900">
-              {formatCurrency(financialStats?.pendingPayouts || 0)}
+            <p className="text-2xl font-bold text-gray-900 mb-3">
+              {formatCurrencyPlain(financialStats?.pendingPayouts || 0)}
             </p>
+            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-600">
+              Awaiting host payout
+            </div>
           </div>
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 shrink-0">
-            <Hourglass size={24} />
+          <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+            <Hourglass size={18} className="text-orange-500" />
           </div>
         </div>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">
-            Revenue & Commission Trend
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Area Chart: Revenue Trend */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <h3 className="text-base font-bold text-gray-900 mb-1">
+            Revenue Trend
           </h3>
-          <div className="w-full h-[300px]">
-            {revenueTrend.length > 0 ? (
-              <Line data={lineChartData} options={lineChartOptions} />
-            ) : (
-              <div className="w-full h-full bg-gray-50 rounded-lg border border-gray-100 flex flex-col items-center justify-center text-gray-400">
-                <p className="text-sm font-medium">No data available</p>
-              </div>
-            )}
-          </div>
+          <p className="text-xs text-gray-400 mb-5">
+            Daily breakdown of total revenue, platform fee, and host payout
+          </p>
+          {trendChartData.filter((d) => d.revenue > 0).length > 0 ? (
+            <ChartContainer config={trendChartConfig} className="h-[280px] w-full">
+              <AreaChart
+                data={trendChartData}
+                margin={{ top: 4, right: 8, left: 8, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                  width={48}
+                />
+                <Tooltip content={<AreaTooltipContent />} />
+                <Legend
+                  formatter={(value) =>
+                    trendChartConfig[value]?.label ?? value
+                  }
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 12 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#C94B1E"
+                  fill="rgba(201,75,30,0.1)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="platformFee"
+                  stroke="#f59e0b"
+                  fill="rgba(245,158,11,0.1)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="hostPayout"
+                  stroke="#3b82f6"
+                  fill="rgba(59,130,246,0.08)"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ChartContainer>
+          ) : (
+            <div className="h-[280px] bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400 text-sm">
+              No revenue data in this period
+            </div>
+          )}
         </div>
 
+        {/* Pie Chart: Revenue Distribution */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-6">
-            Revenue Distribution
+          <h3 className="text-base font-bold text-gray-900 mb-1">
+            Revenue Split
           </h3>
-          <div className="w-full h-[300px]">
-            {(financialStats?.totalRevenue || 0) > 0 ? (
-              <Doughnut
-                data={doughnutChartData}
-                options={doughnutChartOptions}
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-50 rounded-lg border border-gray-100 flex flex-col items-center justify-center text-gray-400">
-                <p className="text-sm font-medium">No revenue data available</p>
+          <p className="text-xs text-gray-400 mb-5">
+            Platform fee vs host payout
+          </p>
+          {(financialStats?.totalRevenue || 0) > 0 ? (
+            <>
+              <div className="flex justify-center">
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={distributionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {distributionData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PieTooltipContent />} />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            )}
-          </div>
+              <div className="flex flex-col gap-2 mt-3">
+                {distributionData.map((entry, idx) => (
+                  <div key={entry.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-[2px] shrink-0"
+                        style={{ backgroundColor: PIE_COLORS[idx] }}
+                      />
+                      <span className="text-gray-600">{entry.name}</span>
+                    </div>
+                    <span className="font-mono font-semibold text-gray-800">
+                      {formatCurrencyPlain(entry.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="h-[200px] bg-gray-50 rounded-lg border border-gray-100 flex items-center justify-center text-gray-400 text-sm">
+              No revenue data
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Recent Transactions Table */}
+      {/* Bar Chart: Daily Fee Breakdown */}
+      {breakdownData.length > 0 && (
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
+          <h3 className="text-base font-bold text-gray-900 mb-1">
+            Daily Fee Breakdown
+          </h3>
+          <p className="text-xs text-gray-400 mb-5">
+            Comparison of platform fee vs host payout per active day
+          </p>
+          <ChartContainer config={distributionChartConfig} className="h-[240px] w-full">
+            <BarChart
+              data={breakdownData}
+              margin={{ top: 4, right: 8, left: 8, bottom: 4 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `₱${(v / 1000).toFixed(0)}k`}
+                width={48}
+              />
+              <Tooltip content={<AreaTooltipContent />} />
+              <Legend
+                formatter={(value) =>
+                  distributionChartConfig[value]?.label ?? value
+                }
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 12 }}
+              />
+              <Bar dataKey="platformFee" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="hostPayout" fill="#C94B1E" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        </div>
+      )}
+
+      {/* Transactions Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
         <div className="p-6 border-b border-gray-50">
           <div className="flex items-center justify-between gap-3">
@@ -682,7 +813,7 @@ export default function FinancialReportsPage() {
                   );
                   setCurrentPage(1);
                 }}
-                className="bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#005f56]"
+                className="bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#C94B1E]"
               >
                 <option value="ALL">All</option>
                 <option value="DRIVER">Drivers</option>
@@ -707,10 +838,7 @@ export default function FinancialReportsPage() {
             <tbody className="divide-y divide-gray-100 text-sm">
               {transactions.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     No transactions found
                   </td>
                 </tr>
@@ -728,9 +856,7 @@ export default function FinancialReportsPage() {
                       <td className="px-6 py-4 font-semibold text-gray-900">
                         {trx.userName}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        {trx.userRole}
-                      </td>
+                      <td className="px-6 py-4 text-gray-600">{trx.userRole}</td>
                       <td className="px-6 py-4 text-gray-600">{trx.email}</td>
                       <td className="px-6 py-4">
                         <span
@@ -748,7 +874,7 @@ export default function FinancialReportsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-gray-900">
-                        {formatCurrency(trx.amount)}
+                        {formatCurrencyPlain(trx.amount)}
                       </td>
                     </tr>
                   ))
