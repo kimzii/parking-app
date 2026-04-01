@@ -1361,6 +1361,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
 
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
     const isPaymentPending = result.status === 'PAYMENT_PENDING';
+    const remainingDueValue = (result as any).remainingDue;
 
     if (isPaymentPending) {
       // Notify driver they owe a balance
@@ -1384,8 +1385,6 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         )
         .catch(() => {});
     }
-
-    const remainingDueValue = (result as any).remainingDue;
 
     return {
       success: true,
