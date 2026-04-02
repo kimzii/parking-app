@@ -272,7 +272,7 @@ export default function UsersPage() {
       </div>
 
       {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           title="Total Users"
           value={statistics?.total.toLocaleString() || 0}
@@ -308,7 +308,7 @@ export default function UsersPage() {
       </div>
 
       {/* Verification Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-yellow-600" />

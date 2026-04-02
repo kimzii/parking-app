@@ -283,7 +283,7 @@ export default function TransactionsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="">
+          <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-yellow-50">
                 <Clock className="h-5 w-5 text-yellow-600" />

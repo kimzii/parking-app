@@ -539,12 +539,12 @@ export default function FinancialReportsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         {/* Total Revenue */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Total Revenue</h3>
-            <div className="w-9 h-9 bg-teal-50 rounded-lg flex items-center justify-center">
+            <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center">
               <DollarSign size={18} className="text-[#C94B1E]" />
             </div>
           </div>
@@ -569,7 +569,7 @@ export default function FinancialReportsPage() {
         </div>
 
         {/* Platform Fee */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Platform Fee</h3>
             <div className="w-9 h-9 bg-amber-50 rounded-lg flex items-center justify-center">
@@ -586,7 +586,7 @@ export default function FinancialReportsPage() {
         </div>
 
         {/* Host Payout */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-500 text-sm font-medium">Host Payout</h3>
             <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -603,20 +603,18 @@ export default function FinancialReportsPage() {
         </div>
 
         {/* Pending Payouts */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-start justify-between">
-          <div>
-            <h3 className="text-gray-500 text-sm font-medium mb-3">
-              Pending Payouts
-            </h3>
-            <p className="text-2xl font-bold text-gray-900 mb-3">
-              {formatCurrencyPlain(financialStats?.pendingPayouts || 0)}
-            </p>
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-600">
-              Awaiting host payout
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-gray-500 text-sm font-medium">Pending Payouts</h3>
+            <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
+              <Hourglass size={18} className="text-orange-500" />
             </div>
           </div>
-          <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
-            <Hourglass size={18} className="text-orange-500" />
+          <p className="text-2xl font-bold text-gray-900 mb-3">
+            {formatCurrencyPlain(financialStats?.pendingPayouts || 0)}
+          </p>
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-600">
+            Awaiting host payout
           </div>
         </div>
       </div>
