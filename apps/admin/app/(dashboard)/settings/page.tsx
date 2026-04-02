@@ -350,8 +350,8 @@ export default function SettingsPage() {
       {/* Settings Content */}
       <div className="space-y-6">
         <div>
-          {/* General Settings */}
-          <div>
+          {/* General Settings — commented out: no backend settings endpoint exists yet */}
+          {/* <div>
             <Card className="shadow-sm border-gray-100">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -442,8 +442,9 @@ export default function SettingsPage() {
                 />
               </CardContent>
             </Card>
+          </div> */}
 
-            {/* Change Password Card */}
+          {/* Change Password Card */}
             <Card className="shadow-sm border-gray-100 mt-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -659,7 +660,7 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          {/* </div> — closing tag commented out alongside General Settings wrapper */}
 
           {/* Future settings tabs are preserved below and temporarily disabled */}
           {false && (
