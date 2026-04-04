@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -16,19 +17,26 @@ import { userService } from "../../src/services/user";
 import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
 import MenuItem from "../../src/components/MenuItem";
+import { getMyReservations, settleRemainingDue, Reservation } from "../../src/services/reservations";
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [infoHeight, setInfoHeight] = useState(0);
+  const [pendingPayment, setPendingPayment] = useState<Reservation | null>(null);
+  const [settling, setSettling] = useState(false);
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);
     const token = await SecureStore.getItemAsync("accessToken");
     if (token) {
       try {
-        const data = await userService.getProfile();
+        const [data, reservations] = await Promise.all([
+          userService.getProfile(),
+          getMyReservations("PAYMENT_PENDING").catch(() => [] as Reservation[]),
+        ]);
         setUser(data);
+        setPendingPayment(reservations.length > 0 ? reservations[0] : null);
       } catch (err) {
         console.error("Failed to fetch user profile:", err);
         setUser(null);
@@ -40,6 +48,32 @@ export default function ProfileScreen() {
       setLoading(false);
     }
   }, []);
+
+  const handleSettle = useCallback(async () => {
+    if (!pendingPayment) return;
+    Alert.alert(
+      "Settle Outstanding Balance",
+      `Pay ₱${(pendingPayment.remainingDue ?? 0).toFixed(2)} from your wallet to complete this booking?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Settle Now",
+          onPress: async () => {
+            setSettling(true);
+            try {
+              await settleRemainingDue(pendingPayment.id);
+              Alert.alert("Done", "Outstanding balance settled. Booking is now complete.");
+              fetchUserIfToken();
+            } catch (err: any) {
+              Alert.alert("Failed", err?.response?.data?.message ?? "Could not settle payment.");
+            } finally {
+              setSettling(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [pendingPayment, fetchUserIfToken]);
 
   useFocusEffect(
     useCallback(() => {
@@ -125,6 +159,10 @@ export default function ProfileScreen() {
                   : router.push("/(modals)/driver-verification")
               }
               locked={!isDriverVerified}
+              hasOutstandingBalance={pendingPayment != null}
+              pendingDue={pendingPayment?.remainingDue}
+              onSettleDue={handleSettle}
+              settling={settling}
             />
 
             <View style={styles.menuSection}>
