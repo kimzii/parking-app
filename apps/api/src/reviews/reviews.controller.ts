@@ -72,14 +72,13 @@ export class ReviewsController {
   //   });
   // }
 
-  // UNUSED ADMIN ENDPOINT — not called by the admin dashboard
-  // @Get('admin/user/:userId')
-  // @UseGuards(RolesGuard)
-  // @Roles(RoleName.ADMIN)
-  // @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
-  // async getUserReviews(@Param('userId') userId: string) {
-  //   return this.reviewsService.getUserReviewsAdmin(userId);
-  // }
+  @Get('admin/user/:userId')
+  @UseGuards(RolesGuard)
+  @Roles(RoleName.ADMIN)
+  @ApiOperation({ summary: 'Admin: Get all reviews given and received by a user' })
+  async getUserReviews(@Param('userId') userId: string) {
+    return this.reviewsService.getUserReviewsAdmin(userId);
+  }
 
   @Delete('admin/:id')
   @UseGuards(RolesGuard)

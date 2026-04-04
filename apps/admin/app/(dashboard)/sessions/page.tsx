@@ -472,7 +472,7 @@ export default function LiveSessionsPage() {
             </span>
           </div>
           <p className="text-gray-500 text-sm">
-            Real-time view of all parking sessions — active, incoming, completed, and cancelled.
+            Real-time view of all parking sessions; active, incoming, completed, and cancelled.
           </p>
         </div>
 
@@ -501,7 +501,7 @@ export default function LiveSessionsPage() {
       )}
 
       {/* Stat pills */}
-      <div className="flex flex-wrap gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
           <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
             <Activity size={20} className="text-green-600" />
@@ -531,7 +531,7 @@ export default function LiveSessionsPage() {
         </div>
         <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
           <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-            <XCircle size={20} className="text-red-400" />
+            <XCircle size={20} className="text-red-500" />
           </div>
           <div>
             <p className="text-xs text-gray-500 font-medium">Cancelled</p>

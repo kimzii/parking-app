@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { walletService, Transaction } from "../../src/services/wallet";
 import { getUnreadCount } from "../../src/services/notifications";
 import { useSocketEvent } from "../../src/hooks/useSocket";
+import { getHostReservations, HostReservation } from "../../src/services/reservations";
 
 const SOURCE_CONFIG: Record<
   string,
@@ -55,11 +56,18 @@ const SOURCE_CONFIG: Record<
     color: "#A09A94",
     bg: "#F5F5F5",
   },
+  PENDING_PAYOUT: {
+    label: "Payout On Hold",
+    icon: "hourglass-top",
+    color: "#F57C00",
+    bg: "#FFF3E0",
+  },
 };
 
 export default function EarningsScreen() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [pendingPayouts, setPendingPayouts] = useState<HostReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -70,13 +78,15 @@ export default function EarningsScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [balanceData, txns] = await Promise.all([
+      const [balanceData, txns, pendingRes] = await Promise.all([
         walletService.getBalance(),
         walletService.getTransactions(20),
+        getHostReservations(undefined, "PAYMENT_PENDING").catch(() => [] as HostReservation[]),
         getUnreadCount().then(setUnreadCount).catch(() => {}),
       ]);
       setBalance(parseFloat(balanceData.balance));
       setTransactions(txns);
+      setPendingPayouts(pendingRes);
     } catch (err) {
       console.error("Failed to fetch earnings data:", err);
     } finally {
@@ -102,9 +112,10 @@ export default function EarningsScreen() {
     const isCredit = item.type === "CREDIT";
     const amount = Number(item.amount);
     const date = new Date(item.createdAt);
+    const isPendingPayout = item.source === "PENDING_PAYOUT";
 
     return (
-      <View style={styles.txnCard}>
+      <View style={[styles.txnCard, isPendingPayout && styles.txnCardPending]}>
         <View style={[styles.txnIconBg, { backgroundColor: config.bg }]}>
           <MaterialIcons
             name={config.icon as any}
@@ -113,7 +124,14 @@ export default function EarningsScreen() {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.txnLabel}>{config.label}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={styles.txnLabel}>{config.label}</Text>
+            {isPendingPayout && (
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>On Hold</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.txnDate}>
             {date.toLocaleDateString(undefined, {
               month: "short",
@@ -130,7 +148,7 @@ export default function EarningsScreen() {
         <Text
           style={[
             styles.txnAmount,
-            { color: isCredit ? "#4CAF50" : "#E53935" },
+            { color: isPendingPayout ? "#F57C00" : isCredit ? "#4CAF50" : "#E53935" },
           ]}
         >
           {isCredit ? "+" : "-"}₱{amount.toFixed(2)}
@@ -217,7 +235,18 @@ export default function EarningsScreen() {
           />
         ) : (
           <FlatList
-            data={transactions}
+            data={[
+              ...pendingPayouts.map((r) => ({
+                id: `pending-payout-${r.id}`,
+                type: "CREDIT" as const,
+                source: "PENDING_PAYOUT",
+                amount: String(r.hostPayoutAmount ?? 0),
+                balanceBefore: "0",
+                balanceAfter: "0",
+                createdAt: r.sessionEndedAt ?? r.createdAt,
+              })),
+              ...transactions,
+            ]}
             keyExtractor={(item) => item.id}
             renderItem={renderTransaction}
             ListHeaderComponent={renderHeader}
@@ -434,5 +463,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#A09A94",
     textAlign: "center",
+  },
+  txnCardPending: {
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    backgroundColor: "#FFFDE7",
+  },
+  pendingBadge: {
+    backgroundColor: "#F57C00",
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  pendingBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#fff",
+    textTransform: "uppercase",
   },
 });

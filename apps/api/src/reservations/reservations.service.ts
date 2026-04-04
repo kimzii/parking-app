@@ -644,6 +644,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       platformFee: toNullable(r.platformFee),
       hostPayoutAmount: toNullable(r.hostPayoutAmount),
       overtimeAmount: toNullable(r.overtimeAmount),
+      remainingDue: (r as any).remainingDue != null ? Number((r as any).remainingDue) : null,
       createdAt: r.createdAt,
       parkingSpace: {
         id: r.parkingSpace.id,
@@ -1374,6 +1375,16 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           data: { reservationId: reservation.id, screen: 'payment' },
         })
         .catch(() => {});
+      // Notify host their payout is on hold
+      this.notificationsService
+        .send({
+          userId: hostUserId,
+          title: 'Payout On Hold',
+          message: `A driver's session at ${locationTitle} has ended but they had insufficient funds. Your payout of ₱${hostPayoutAmount.toFixed(2)} will be released once they settle their balance.`,
+          type: 'GENERAL',
+          data: { reservationId: reservation.id },
+        })
+        .catch(() => {});
     } else {
       // Notify both driver and host of completion
       this.notificationsService
@@ -1432,7 +1443,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('This reservation has no outstanding balance.');
     }
 
-    const remainingDue = new Decimal(String(reservation.remainingDue ?? 0));
+    const remainingDue = new Decimal(String((reservation as any).remainingDue ?? 0));
     if (remainingDue.lte(0)) {
       throw new BadRequestException('No remaining due on this reservation.');
     }
@@ -1774,6 +1785,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       platformFee: toNullable(r.platformFee),
       hostPayoutAmount: toNullable(r.hostPayoutAmount),
       overtimeAmount: toNullable(r.overtimeAmount),
+      remainingDue: (r as any).remainingDue != null ? Number((r as any).remainingDue) : null,
       createdAt: r.createdAt,
       parkingSpace: {
         id: r.parkingSpace.id,

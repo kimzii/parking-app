@@ -16,6 +16,7 @@ import { walletService, Transaction } from "../../src/services/wallet";
 import { userService } from "../../src/services/user";
 import { useSocketEvent } from "../../src/hooks/useSocket";
 import { getMyReservations, settleRemainingDue, Reservation } from "../../src/services/reservations";
+import { EWallet } from "../../src/components/EWallet";
 
 const SOURCE_CONFIG: Record<
   string,
@@ -50,6 +51,24 @@ const SOURCE_CONFIG: Record<
     icon: "tune",
     color: "#A09A94",
     bg: "#F5F5F5",
+  },
+  OUTSTANDING_BALANCE: {
+    label: "Outstanding Balance",
+    icon: "warning",
+    color: "#E53935",
+    bg: "#FFEBEE",
+  },
+  BOOKING_PAYOUT: {
+    label: "Booking Earnings",
+    icon: "local-parking",
+    color: "#4CAF50",
+    bg: "#E8F5E9",
+  },
+  WITHDRAW: {
+    label: "Withdrawal",
+    icon: "account-balance",
+    color: "#1976D2",
+    bg: "#E3F2FD",
   },
 };
 
@@ -146,9 +165,10 @@ export default function PaymentScreen() {
     const isCredit = item.type === "CREDIT";
     const amount = Number(item.amount);
     const date = new Date(item.createdAt);
+    const isOutstanding = item.source === "OUTSTANDING_BALANCE";
 
     return (
-      <View style={styles.txnCard}>
+      <View style={[styles.txnCard, isOutstanding && styles.txnCardOutstanding]}>
         <View style={[styles.txnIconBg, { backgroundColor: config.bg }]}>
           <MaterialIcons
             name={config.icon as any}
@@ -157,7 +177,14 @@ export default function PaymentScreen() {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.txnLabel}>{config.label}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={styles.txnLabel}>{config.label}</Text>
+            {isOutstanding && (
+              <View style={styles.unpaidBadge}>
+                <Text style={styles.unpaidBadgeText}>Unpaid</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.txnDate}>
             {date.toLocaleDateString(undefined, {
               month: "short",
@@ -205,64 +232,19 @@ export default function PaymentScreen() {
         </TouchableOpacity>
       )}
 
-      {/* Outstanding Balance Banner */}
-      {pendingPayment && (
-        <View style={styles.debtBanner}>
-          <MaterialIcons name="warning" size={20} color="#E53935" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.debtBannerTitle}>Outstanding Balance</Text>
-            <Text style={styles.debtBannerText}>
-              You owe ₱{(pendingPayment.remainingDue ?? 0).toFixed(2)} from your last session.
-              Settle this to unlock new bookings.
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.settleBt}
-            onPress={handleSettle}
-            disabled={settling}
-            activeOpacity={0.8}
-          >
-            {settling ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.settleBtText}>Pay</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Balance Card */}
-      <View style={styles.balanceCard}>
-        <View style={styles.balanceIconRow}>
-          <View style={styles.walletIconBg}>
-            <MaterialIcons name="account-balance-wallet" size={24} color="#fff" />
-          </View>
-          <Text style={styles.balanceLabel}>Available Balance</Text>
-        </View>
-        {loading ? (
-          <ActivityIndicator
-            size="small"
-            color="#fff"
-            style={{ marginTop: 8 }}
-          />
-        ) : (
-          <Text style={styles.balanceAmount}>₱ {balance.toFixed(2)}</Text>
-        )}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() =>
-              isDriverVerified
-                ? router.push("/(modals)/top-up" as any)
-                : router.push("/(modals)/driver-verification")
-            }
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="add" size={18} color="#fff" />
-            <Text style={styles.actionBtnText}>Top Up</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <EWallet
+        balance={balance}
+        loading={loading}
+        onTopUp={() =>
+          isDriverVerified
+            ? router.push("/(modals)/top-up" as any)
+            : router.push("/(modals)/driver-verification")
+        }
+        hasOutstandingBalance={pendingPayment != null}
+        pendingDue={pendingPayment?.remainingDue}
+        onSettleDue={handleSettle}
+        settling={settling}
+      />
 
       {/* Recent Transactions Title */}
       <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -297,7 +279,20 @@ export default function PaymentScreen() {
           />
         ) : (
           <FlatList
-            data={transactions}
+            data={[
+              ...(pendingPayment
+                ? [{
+                    id: `outstanding-${pendingPayment.id}`,
+                    type: "DEBIT" as const,
+                    source: "OUTSTANDING_BALANCE",
+                    amount: String(pendingPayment.remainingDue ?? 0),
+                    balanceBefore: "0",
+                    balanceAfter: "0",
+                    createdAt: pendingPayment.sessionEndedAt ?? pendingPayment.createdAt,
+                  }]
+                : []),
+              ...transactions,
+            ]}
             keyExtractor={(item) => item.id}
             renderItem={renderTransaction}
             ListHeaderComponent={renderHeader}
@@ -345,63 +340,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
     gap: 10,
-  },
-  balanceCard: {
-    backgroundColor: "#D4501E",
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: "#D4501E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
-    marginBottom: 6,
-  },
-  balanceIconRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 4,
-  },
-  walletIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  balanceLabel: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "500",
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: -0.5,
-    marginVertical: 8,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  actionBtnText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#fff",
   },
   sectionTitle: {
     fontSize: 13,
@@ -499,39 +437,21 @@ const styles = StyleSheet.create({
     color: "#A09A94",
     marginTop: 2,
   },
-  debtBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#FFEBEE",
-    borderRadius: 12,
+  txnCardOutstanding: {
     borderWidth: 1,
-    borderColor: "#E53935",
-    padding: 14,
-    marginHorizontal: 20,
-    marginBottom: 12,
+    borderColor: "#FFCDD2",
+    backgroundColor: "#FFF8F8",
   },
-  debtBannerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#E53935",
-  },
-  debtBannerText: {
-    fontSize: 12,
-    color: "#B71C1C",
-    marginTop: 2,
-  },
-  settleBt: {
+  unpaidBadge: {
     backgroundColor: "#E53935",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 48,
-    alignItems: "center",
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
   },
-  settleBtText: {
-    color: "#fff",
+  unpaidBadgeText: {
+    fontSize: 9,
     fontWeight: "700",
-    fontSize: 13,
+    color: "#fff",
+    textTransform: "uppercase",
   },
 });
