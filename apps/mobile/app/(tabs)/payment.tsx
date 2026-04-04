@@ -129,11 +129,7 @@ export default function PaymentScreen() {
   const handleSettle = async () => {
     if (!pendingPayment) return;
     if (balance < (pendingPayment.remainingDue ?? 0)) {
-      Alert.alert(
-        "Insufficient Balance",
-        `You need ₱${(pendingPayment.remainingDue ?? 0).toFixed(2)} to settle this. Please top up first.`,
-        [{ text: "OK" }],
-      );
+      router.push("/(modals)/top-up" as any);
       return;
     }
     Alert.alert(
