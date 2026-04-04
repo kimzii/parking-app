@@ -65,7 +65,12 @@ export default function ProfileScreen() {
               Alert.alert("Done", "Outstanding balance settled. Booking is now complete.");
               fetchUserIfToken();
             } catch (err: any) {
-              Alert.alert("Failed", err?.response?.data?.message ?? "Could not settle payment.");
+              const msg: string = err?.response?.data?.message ?? "";
+              if (msg.toLowerCase().includes("insufficient")) {
+                router.push("/(modals)/top-up" as any);
+              } else {
+                Alert.alert("Failed", msg || "Could not settle payment.");
+              }
             } finally {
               setSettling(false);
             }

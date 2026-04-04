@@ -642,7 +642,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       finalAmount: toNullable(r.finalAmount),
       commissionRate: r.commissionRate,
       platformFee: toNullable(r.platformFee),
-      hostPayoutAmount: toNullable(r.hostPayoutAmount),
+      hostPayoutAmount:
+        r.hostPayoutAmount != null ? Number(r.hostPayoutAmount) : null,
       overtimeAmount: toNullable(r.overtimeAmount),
       remainingDue: (r as any).remainingDue != null ? Number((r as any).remainingDue) : null,
       createdAt: r.createdAt,
@@ -1517,6 +1518,18 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     this.notificationsService
       .notifyBookingCompleted(userId, host.userId, reservation.id, locationTitle)
       .catch(() => {});
+    this.notificationsService
+      .send({
+        userId: host.userId,
+        title: 'Payout Released',
+        message: `The driver has settled their outstanding balance for ${locationTitle}. ₱${hostPayoutAmount.toFixed(2)} has been credited to your wallet.`,
+        type: 'BOOKING_COMPLETED',
+        data: {
+          reservationId: reservation.id,
+          screen: 'host-reservation-detail',
+        },
+      })
+      .catch(() => {});
 
     return { success: true, message: 'Outstanding balance settled. Booking is now complete.' };
   }
@@ -1783,7 +1796,8 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       finalAmount: toNullable(r.finalAmount),
       commissionRate: r.commissionRate,
       platformFee: toNullable(r.platformFee),
-      hostPayoutAmount: toNullable(r.hostPayoutAmount),
+      hostPayoutAmount:
+        r.hostPayoutAmount != null ? Number(r.hostPayoutAmount) : null,
       overtimeAmount: toNullable(r.overtimeAmount),
       remainingDue: (r as any).remainingDue != null ? Number((r as any).remainingDue) : null,
       createdAt: r.createdAt,
