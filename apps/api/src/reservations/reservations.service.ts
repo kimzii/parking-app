@@ -1340,7 +1340,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             totalAmount: totalFee,
             commissionRate: this.PLATFORM_COMMISSION_RATE,
             platformFee: platformCommission,
-            hostPayoutAmount: isPaymentPending ? null : hostPayoutAmount,
+            hostPayoutAmount: hostPayoutAmount,
             hostPayoutId: hostPayoutTransactionId,
             remainingDue: isPaymentPending ? remainingDue : null,
           },

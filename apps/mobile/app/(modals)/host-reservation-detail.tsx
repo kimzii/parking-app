@@ -66,6 +66,12 @@ const STATUS_CONFIG: Record<
     label: "Expired",
     icon: "timer-off",
   },
+  PAYMENT_PENDING: {
+    color: "#E53935",
+    bg: "#FFEBEE",
+    label: "Payment Pending",
+    icon: "warning",
+  },
 };
 
 function formatDuration(startedAt: string, endedAt?: string | null): string {
@@ -228,7 +234,8 @@ export default function HostReservationDetailScreen() {
         {(reservation.status === "ACTIVE" ||
           reservation.status === "COMPLETED" ||
           reservation.status === "CANCELLED" ||
-          reservation.status === "EXPIRED") &&
+          reservation.status === "EXPIRED" ||
+          reservation.status === "PAYMENT_PENDING") &&
           (() => {
             const cfg = STATUS_CONFIG[reservation.status];
             return (
@@ -457,29 +464,25 @@ export default function HostReservationDetailScreen() {
               </Text>
             </View>
 
-            {reservation.status !== "COMPLETED" && (
+            {reservation.status !== "COMPLETED" &&
+              reservation.status !== "PAYMENT_PENDING" && (
               <Text style={styles.overtimeText}>
                 Additional charges apply based on session duration
               </Text>
             )}
 
-            {reservation.status === "COMPLETED" && (
+            {(reservation.status === "COMPLETED" ||
+              reservation.status === "PAYMENT_PENDING") && (
               <>
                 <View style={styles.amountDivider} />
                 <View style={styles.amountMainRow}>
                   <Text
-                    style={[
-                      styles.amountLabel,
-                      { fontWeight: "700", color: "#232230" },
-                    ]}
+                    style={[styles.amountLabel, { fontWeight: "700", color: "#232230" }]}
                   >
                     Gross Total
                   </Text>
                   <Text
-                    style={[
-                      styles.amountValue,
-                      { fontWeight: "800", color: "#D4501E", fontSize: 20 },
-                    ]}
+                    style={[styles.amountValue, { fontWeight: "800", color: "#D4501E", fontSize: 20 }]}
                   >
                     ₱{grossTotal.toFixed(2)}
                   </Text>
@@ -492,23 +495,37 @@ export default function HostReservationDetailScreen() {
                 </View>
                 <View style={styles.amountMainRow}>
                   <Text style={styles.amountLabel}>Platform Fee</Text>
-                  <Text style={styles.amountValue}>
-                    ₱{platformFee.toFixed(2)}
-                  </Text>
+                  <Text style={styles.amountValue}>₱{platformFee.toFixed(2)}</Text>
                 </View>
                 <View style={styles.amountMainRow}>
-                  <Text
-                    style={[
-                      styles.amountLabel,
-                      { fontWeight: "700", color: "#232230" },
-                    ]}
-                  >
+                  <Text style={[styles.amountLabel, { fontWeight: "700", color: "#232230" }]}>
                     Host Total
                   </Text>
                   <Text style={[styles.amountValue, styles.hostPayoutValue]}>
                     ₱{hostPayoutAmount.toFixed(2)}
                   </Text>
                 </View>
+
+                {reservation.status === "PAYMENT_PENDING" && (
+                  <View style={styles.payoutHoldBox}>
+                    <View style={styles.payoutHoldRow}>
+                      <MaterialIcons name="hourglass-top" size={16} color="#F57C00" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.payoutHoldTitle}>Payout On Hold</Text>
+                        <Text style={styles.payoutHoldSubtext}>
+                          Driver has an outstanding balance. Your payout of ₱{hostPayoutAmount.toFixed(2)} will be released once they settle.
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {reservation.status === "COMPLETED" && (
+                  <View style={styles.payoutReleasedRow}>
+                    <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+                    <Text style={styles.payoutReleasedText}>Payout Released</Text>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -1013,5 +1030,40 @@ const styles = StyleSheet.create({
   sessionValueHighlight: {
     color: "#D4501E",
     fontWeight: "600",
+  },
+  payoutHoldBox: {
+    backgroundColor: "#FFF8E1",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FFE082",
+  },
+  payoutHoldRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  payoutHoldTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E65100",
+  },
+  payoutHoldSubtext: {
+    fontSize: 12,
+    color: "#BF360C",
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  payoutReleasedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  payoutReleasedText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4CAF50",
   },
 });
