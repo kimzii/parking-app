@@ -22,6 +22,7 @@ import QRCode from "react-native-qrcode-svg";
 import * as reservationsService from "../../src/services/reservations";
 import * as reviewsService from "../../src/services/reviews";
 import { startGeofencing, stopGeofencing } from "../../src/services/geofencing";
+import { settleRemainingDue } from "../../src/services/reservations";
 
 const STATUS_CONFIG: Record<
   string,
@@ -30,9 +31,10 @@ const STATUS_CONFIG: Record<
   PENDING: { color: "#A09A94", bg: "#FFF0EC", label: "Awaiting Approval" },
   CONFIRMED: { color: "#1976D2", bg: "#E3F2FD", label: "Awaiting Arrival" },
   ACTIVE: { color: "#D4501E", bg: "#F5F4F2", label: "Session Active" },
-  COMPLETED: { color: "#A09A94", bg: "#F5F5F5", label: "Completed" },
+  COMPLETED: { color: "#4CAF50", bg: "#E8F5E9", label: "Completed" },
   CANCELLED: { color: "#E53935", bg: "#FFEBEE", label: "Cancelled" },
   EXPIRED: { color: "#D4501E", bg: "#FFF0EC", label: "Expired" },
+  PAYMENT_PENDING: { color: "#E53935", bg: "#FFEBEE", label: "Payment Pending" },
 };
 
 function formatCountdown(ms: number): string {
@@ -59,6 +61,7 @@ export default function ReservationQRScreen() {
   const [now, setNow] = useState(new Date());
   const [existingReview, setExistingReview] =
     useState<reviewsService.Review | null>(null);
+  const [settling, setSettling] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reservationStatus = reservation?.status;
 
@@ -97,7 +100,8 @@ export default function ReservationQRScreen() {
     if (
       reservationStatus !== "PENDING" &&
       reservationStatus !== "CONFIRMED" &&
-      reservationStatus !== "ACTIVE"
+      reservationStatus !== "ACTIVE" &&
+      reservationStatus !== "PAYMENT_PENDING"
     ) {
       return;
     }
@@ -232,6 +236,33 @@ export default function ReservationQRScreen() {
       </SafeAreaView>
     );
   }
+
+  const handleSettle = () => {
+    if (!reservation) return;
+    const due = reservation.remainingDue ?? 0;
+    Alert.alert(
+      "Settle Outstanding Balance",
+      `Pay ₱${due.toFixed(2)} from your wallet to complete this booking?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Pay Now",
+          onPress: async () => {
+            setSettling(true);
+            try {
+              await settleRemainingDue(reservation.id);
+              Alert.alert("Done", "Outstanding balance settled. Booking is now complete.");
+              fetchReservation();
+            } catch (err: any) {
+              Alert.alert("Failed", err?.response?.data?.message ?? "Could not settle payment.");
+            } finally {
+              setSettling(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const status = STATUS_CONFIG[reservation.status] || STATUS_CONFIG.CANCELLED;
   const canCancel = ["PENDING", "CONFIRMED"].includes(reservation.status);
@@ -509,6 +540,43 @@ export default function ReservationQRScreen() {
                 Additional charges apply based on session duration
               </Text>
             )}
+            {reservation.status === "PAYMENT_PENDING" && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.outstandingBox}>
+                  <View style={styles.outstandingRow}>
+                    <MaterialIcons name="warning" size={18} color="#E53935" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.outstandingTitle}>Outstanding Balance</Text>
+                      <Text style={styles.outstandingSubtext}>
+                        ₱{(reservation.remainingDue ?? 0).toFixed(2)} unpaid — wallet was insufficient at exit
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.settleBtn}
+                    onPress={handleSettle}
+                    disabled={settling}
+                    activeOpacity={0.8}
+                  >
+                    {settling ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <MaterialIcons name="payments" size={18} color="#fff" />
+                        <Text style={styles.settleBtnText}>Settle Now — ₱{(reservation.remainingDue ?? 0).toFixed(2)}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+            {reservation.status === "COMPLETED" && (
+              <View style={styles.paidRow}>
+                <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+                <Text style={styles.paidText}>Fully Paid</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -773,6 +841,55 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: "#E0E0E0", marginVertical: 6 },
   totalLabel: { fontSize: 16, fontWeight: "700", color: "#232230" },
   totalValue: { fontSize: 18, fontWeight: "800", color: "#D4501E" },
+  outstandingBox: {
+    backgroundColor: "#FFF5F5",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 4,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#FFCDD2",
+  },
+  outstandingRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  outstandingTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E53935",
+  },
+  outstandingSubtext: {
+    fontSize: 12,
+    color: "#C62828",
+    marginTop: 2,
+  },
+  settleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#E53935",
+    borderRadius: 10,
+    paddingVertical: 11,
+  },
+  settleBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  paidRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  paidText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4CAF50",
+  },
 
   // Cancel Button
   cancelBtn: {
