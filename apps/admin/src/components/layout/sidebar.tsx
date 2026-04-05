@@ -24,7 +24,7 @@ const navigationItems: { href: string; icon: React.ComponentType<{ size?: number
   {
     href: "/listings",
     icon: FileText,
-    label: "Listings",
+    label: "Approvals",
     // badge: "Pending/Active",
   },
   {
