@@ -980,16 +980,18 @@ export default function PendingListings() {
                             </p>
                           )}
                           <div className="grid grid-cols-2 gap-2">
-                            {spaces.map((space) => (
+                            {spaces.map((space) => {
+                              const effectiveStatus = !space.isActive ? "DISABLED" : (space.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
+                              return (
                               <button
                                 key={space.id}
                                 onClick={() => setSelectedSpace(space)}
                                 className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
-                                  !space.isActive
+                                  effectiveStatus === "DISABLED"
                                     ? "bg-gray-50 border-gray-200 opacity-60"
-                                    : space.status === "AVAILABLE"
+                                    : effectiveStatus === "AVAILABLE"
                                     ? "bg-green-50 border-green-200"
-                                    : space.status === "OCCUPIED"
+                                    : effectiveStatus === "OCCUPIED"
                                     ? "bg-blue-50 border-blue-200"
                                     : "bg-gray-50 border-gray-300"
                                 }`}
@@ -999,20 +1001,21 @@ export default function PendingListings() {
                                     {space.name || `Slot ${space.slotNumber}`}
                                   </span>
                                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                    !space.isActive
+                                    effectiveStatus === "DISABLED"
                                       ? "bg-gray-200 text-gray-500"
-                                      : space.status === "AVAILABLE"
+                                      : effectiveStatus === "AVAILABLE"
                                       ? "bg-green-100 text-green-700"
-                                      : space.status === "OCCUPIED"
+                                      : effectiveStatus === "OCCUPIED"
                                       ? "bg-blue-100 text-blue-700"
                                       : "bg-gray-200 text-gray-600"
                                   }`}>
-                                    {!space.isActive ? "Disabled" : space.status.charAt(0) + space.status.slice(1).toLowerCase()}
+                                    {effectiveStatus === "DISABLED" ? "Disabled" : effectiveStatus.charAt(0) + effectiveStatus.slice(1).toLowerCase()}
                                   </span>
                                 </div>
                                 <p className="text-xs text-gray-400">#{space.slotNumber}</p>
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -1445,17 +1448,22 @@ export default function PendingListings() {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Status</p>
-                  <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
-                    !selectedSpace.isActive
-                      ? "bg-gray-200 text-gray-600"
-                      : selectedSpace.status === "AVAILABLE"
-                      ? "bg-green-100 text-green-700"
-                      : selectedSpace.status === "OCCUPIED"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-gray-200 text-gray-600"
-                  }`}>
-                    {!selectedSpace.isActive ? "Disabled" : selectedSpace.status.charAt(0) + selectedSpace.status.slice(1).toLowerCase()}
-                  </span>
+                  {(() => {
+                    const eff = !selectedSpace.isActive ? "DISABLED" : (selectedSpace.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
+                    return (
+                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
+                        eff === "DISABLED"
+                          ? "bg-gray-200 text-gray-600"
+                          : eff === "AVAILABLE"
+                          ? "bg-green-100 text-green-700"
+                          : eff === "OCCUPIED"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-200 text-gray-600"
+                      }`}>
+                        {eff === "DISABLED" ? "Disabled" : eff.charAt(0) + eff.slice(1).toLowerCase()}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Active</p>
