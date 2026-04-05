@@ -1894,9 +1894,6 @@ export default function PendingListings() {
       {activeTab === "pending" && (
         <>
           <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-600">
-              {total} pending listing{total !== 1 ? "s" : ""}
-            </span>
             <Button
               onClick={fetchListings}
               variant="outline"
