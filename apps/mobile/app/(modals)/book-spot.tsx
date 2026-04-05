@@ -71,16 +71,19 @@ export default function BookSpotScreen() {
   const [booking, setBooking] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [hasOutstandingBalance, setHasOutstandingBalance] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!locationId) return;
     try {
-      const [spotData, balanceData] = await Promise.all([
+      const [spotData, balanceData, pendingReservations] = await Promise.all([
         hostService.getPublicLocation(locationId),
         walletService.getBalance(),
+        reservationsService.getMyReservations("PAYMENT_PENDING").catch(() => []),
       ]);
       setSpot(spotData);
       setWalletBalance(Number(balanceData.balance));
+      setHasOutstandingBalance(pendingReservations.length > 0);
 
       // Fetch vehicles (silently — if it fails, we handle at booking time)
       try {
@@ -719,10 +722,10 @@ export default function BookSpotScreen() {
           <TouchableOpacity
             style={[
               styles.bookBtn,
-              (booking || hasInsufficientBalance || isVehicleIncompatible) && styles.bookBtnDisabled,
+              (booking || hasOutstandingBalance || hasInsufficientBalance || isVehicleIncompatible) && styles.bookBtnDisabled,
             ]}
             onPress={handleBooking}
-            disabled={!!booking || !!hasInsufficientBalance || isVehicleIncompatible}
+            disabled={!!booking || hasOutstandingBalance || !!hasInsufficientBalance || isVehicleIncompatible}
             activeOpacity={0.8}
           >
             {booking ? (
@@ -737,9 +740,11 @@ export default function BookSpotScreen() {
                 <Text style={styles.bookBtnText}>
                   {isVehicleIncompatible
                     ? "Vehicle Not Compatible"
-                    : hasInsufficientBalance
-                      ? "Insufficient Balance"
-                      : `Pay ₱${firstHourFee.toFixed(2)} & Book Now`}
+                    : hasOutstandingBalance
+                      ? "Settle Outstanding Balance First"
+                      : hasInsufficientBalance
+                        ? "Insufficient Balance"
+                        : `Pay ₱${firstHourFee.toFixed(2)} & Book Now`}
                 </Text>
               </>
             )}

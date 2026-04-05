@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Image,
   Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
@@ -67,6 +68,165 @@ function formatCountdown(ms: number): string {
   return `${mins}m ${secs.toString().padStart(2, "0")}s`;
 }
 
+const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+function CalendarPicker({
+  value,
+  onChange,
+}: {
+  value: Date;
+  onChange: (d: Date) => void;
+}) {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  const [viewYear, setViewYear] = useState(value.getFullYear());
+  const [viewMonth, setViewMonth] = useState(value.getMonth());
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    const next = new Date(viewYear, viewMonth + 1, 1);
+    if (next > today) return;
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  // pad to full weeks
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const isSelected = (day: number) =>
+    value.getFullYear() === viewYear &&
+    value.getMonth() === viewMonth &&
+    value.getDate() === day;
+
+  const isToday = (day: number) => {
+    const t = new Date();
+    return t.getFullYear() === viewYear && t.getMonth() === viewMonth && t.getDate() === day;
+  };
+
+  const isFuture = (day: number) => new Date(viewYear, viewMonth, day) > today;
+
+  const isNextMonthFuture = new Date(viewYear, viewMonth + 1, 1) > today;
+
+  return (
+    <View style={calStyles.container}>
+      {/* Month nav */}
+      <View style={calStyles.navRow}>
+        <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn}>
+          <MaterialIcons name="chevron-left" size={24} color="#232230" />
+        </TouchableOpacity>
+        <Text style={calStyles.monthLabel}>
+          {MONTHS[viewMonth]} {viewYear}
+        </Text>
+        <TouchableOpacity
+          onPress={nextMonth}
+          style={calStyles.navBtn}
+          disabled={isNextMonthFuture}
+        >
+          <MaterialIcons
+            name="chevron-right"
+            size={24}
+            color={isNextMonthFuture ? "#D0D0D0" : "#232230"}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Day headers */}
+      <View style={calStyles.row}>
+        {DAYS_OF_WEEK.map(d => (
+          <Text key={d} style={calStyles.dayHeader}>{d}</Text>
+        ))}
+      </View>
+
+      {/* Day grid */}
+      {Array.from({ length: cells.length / 7 }, (_, row) => (
+        <View key={row} style={calStyles.row}>
+          {cells.slice(row * 7, row * 7 + 7).map((day, col) => {
+            if (!day) return <View key={col} style={calStyles.dayCell} />;
+            const future = isFuture(day);
+            const selected = isSelected(day);
+            const todayCell = isToday(day);
+            return (
+              <TouchableOpacity
+                key={col}
+                style={[
+                  calStyles.dayCell,
+                  selected && calStyles.dayCellSelected,
+                  todayCell && !selected && calStyles.dayCellToday,
+                ]}
+                onPress={() => {
+                  if (!future) onChange(new Date(viewYear, viewMonth, day));
+                }}
+                disabled={future}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    calStyles.dayText,
+                    selected && calStyles.dayTextSelected,
+                    future && calStyles.dayTextFuture,
+                    todayCell && !selected && calStyles.dayTextToday,
+                  ]}
+                >
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  container: { width: "100%", gap: 4 },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  navBtn: { padding: 4 },
+  monthLabel: { fontSize: 15, fontWeight: "700", color: "#232230" },
+  row: { flexDirection: "row" },
+  dayHeader: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#A09A94",
+    paddingBottom: 4,
+  },
+  dayCell: {
+    flex: 1,
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  dayCellSelected: { backgroundColor: "#D4501E" },
+  dayCellToday: { backgroundColor: "#FFF0EC" },
+  dayText: { fontSize: 13, fontWeight: "600", color: "#232230" },
+  dayTextSelected: { color: "#fff" },
+  dayTextFuture: { color: "#D0D0D0" },
+  dayTextToday: { color: "#D4501E" },
+});
+
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "Upcoming", label: "Upcoming" },
@@ -86,6 +246,9 @@ export default function HostHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(new Date());
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date>(new Date());
 
   // Real-time: bump unread badge when a new notification arrives
   useSocketEvent("notification", () => {
@@ -428,6 +591,17 @@ export default function HostHomeScreen() {
     );
   };
 
+  const filteredReservations = selectedDate
+    ? reservations.filter((r) => {
+        const date = new Date(r.createdAt);
+        return (
+          date.getFullYear() === selectedDate.getFullYear() &&
+          date.getMonth() === selectedDate.getMonth() &&
+          date.getDate() === selectedDate.getDate()
+        );
+      })
+    : reservations;
+
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <MaterialIcons name="event-note" size={64} color="#C7C7CC" />
@@ -443,31 +617,77 @@ export default function HostHomeScreen() {
       {/* Reservations Section Title */}
       <Text style={styles.sectionTitle}>Reservations</Text>
 
-      {/* Filters */}
-      <View style={styles.filters}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[
-              styles.filterBtn,
-              filter === f.key && styles.filterBtnActive,
-            ]}
-            onPress={() => {
-              setFilter(f.key);
-              setLoading(true);
-            }}
-          >
-            <Text
+      {/* Status Filters */}
+      <View style={styles.filterRow}>
+        <View style={styles.filters}>
+          {FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f.key}
               style={[
-                styles.filterText,
-                filter === f.key && styles.filterTextActive,
+                styles.filterBtn,
+                filter === f.key && styles.filterBtnActive,
               ]}
+              onPress={() => {
+                setFilter(f.key);
+                setLoading(true);
+              }}
             >
-              {f.label}
+              <Text
+                style={[
+                  styles.filterText,
+                  filter === f.key && styles.filterTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Date Filter Button */}
+        <TouchableOpacity
+          style={[styles.dateBtn, selectedDate != null && styles.dateBtnActive]}
+          onPress={() => {
+            setTempDate(selectedDate ?? new Date());
+            setShowDatePicker(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <MaterialIcons
+            name="calendar-today"
+            size={16}
+            color={selectedDate != null ? "#fff" : "#D4501E"}
+          />
+          {selectedDate != null && (
+            <Text style={styles.dateBtnText}>
+              {selectedDate.toLocaleDateString("en-PH", {
+                month: "short",
+                day: "numeric",
+              })}
             </Text>
-          </TouchableOpacity>
-        ))}
+          )}
+        </TouchableOpacity>
       </View>
+
+      {/* Active date badge + clear */}
+      {selectedDate != null && (
+        <View style={styles.activeDateRow}>
+          <MaterialIcons name="filter-list" size={14} color="#D4501E" />
+          <Text style={styles.activeDateText}>
+            Showing:{" "}
+            {selectedDate.toLocaleDateString("en-PH", {
+              weekday: "short",
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </Text>
+          <TouchableOpacity onPress={() => setSelectedDate(null)}>
+            <MaterialIcons name="close" size={16} color="#A09A94" />
+          </TouchableOpacity>
+        </View>
+      )}
+
     </>
   );
 
@@ -508,7 +728,7 @@ export default function HostHomeScreen() {
           />
         ) : (
           <FlatList
-            data={reservations}
+            data={filteredReservations}
             keyExtractor={(item) => item.id}
             renderItem={renderReservationItem}
             ListHeaderComponent={renderHeader}
@@ -534,6 +754,40 @@ export default function HostHomeScreen() {
       >
         <MaterialIcons name="qr-code-scanner" size={26} color="#fff" />
       </TouchableOpacity>
+
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.dateModalOverlay}>
+          <View style={styles.dateModalCard}>
+            <Text style={styles.dateModalTitle}>Select Date</Text>
+            <CalendarPicker
+              value={tempDate}
+              onChange={setTempDate}
+            />
+            <View style={styles.dateModalBtns}>
+              <TouchableOpacity
+                style={styles.dateModalCancel}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={styles.dateModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateModalConfirm}
+                onPress={() => {
+                  setSelectedDate(tempDate);
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={styles.dateModalConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -623,12 +877,106 @@ const styles = StyleSheet.create({
   },
 
   // Filters
-  filters: {
+  filterRow: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  filters: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
+  dateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#FFF0EC",
+    borderWidth: 1,
+    borderColor: "#D4501E",
+  },
+  dateBtnActive: {
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
+  },
+  dateBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  activeDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFF0EC",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 8,
+  },
+  activeDateText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#D4501E",
+  },
+  dateModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  dateModalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+    alignItems: "center",
+    gap: 16,
+  },
+  dateModalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#232230",
+    alignSelf: "flex-start",
+  },
+  dateModalBtns: {
+    flexDirection: "row",
+    gap: 10,
+    alignSelf: "stretch",
+  },
+  dateModalCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#F5F4F2",
+    alignItems: "center",
+  },
+  dateModalCancelText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#A09A94",
+  },
+  dateModalConfirm: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#D4501E",
+    alignItems: "center",
+  },
+  dateModalConfirmText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#fff",
+  },
   filterBtn: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: "#fff",

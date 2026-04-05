@@ -7,6 +7,7 @@ import {
   Modal,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 
 export const TERMS_CONTENT = `PARKLINK TERMS AND CONDITIONS
@@ -269,7 +270,7 @@ export default function LegalModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Legal Documents</Text>
@@ -344,7 +345,7 @@ export default function LegalModal({
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
