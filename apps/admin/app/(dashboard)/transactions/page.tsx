@@ -23,6 +23,7 @@ import {
   History,
 } from "lucide-react";
 import api from "../../../src/lib/api";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // ─── Types ───────────────────────────────────────
 
@@ -272,6 +273,9 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Transactions" }]} />
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>

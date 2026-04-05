@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import api from "../../../src/lib/api";
 import Image from "next/image";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // --- Interfaces ---
 interface ReservationStats {
@@ -323,6 +324,9 @@ export default function ReservationsOverviewPage() {
   }
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
+
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Reservations" }]} />
 
       {/* Page Title */}
       <div className="mb-8">

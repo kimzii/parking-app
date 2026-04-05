@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Activity,
   Clock,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import api from "../../../src/lib/api";
 import Image from "next/image";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // --- Types ---
 type RawSession = {
@@ -366,6 +368,7 @@ function HistoryCard({
 
 // --- Main Page ---
 export default function LiveSessionsPage() {
+  const searchParams = useSearchParams();
   const [activeSessions, setActiveSessions] = useState<Session[]>([]);
   const [confirmedSessions, setConfirmedSessions] = useState<Session[]>([]);
   const [completedSessions, setCompletedSessions] = useState<Session[]>([]);
@@ -384,6 +387,7 @@ export default function LiveSessionsPage() {
   const [settleLoading, setSettleLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoOpenedRef = useRef(false);
 
   const fetchSessions = useCallback(async (showLoading = true) => {
     try {
@@ -426,6 +430,16 @@ export default function LiveSessionsPage() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [fetchSessions]);
+
+  // Auto-open session detail when ?session=<id> is in the URL
+  useEffect(() => {
+    if (autoOpenedRef.current || loading) return;
+    const sessionId = searchParams.get("session");
+    if (sessionId) {
+      autoOpenedRef.current = true;
+      handleViewDetails(sessionId);
+    }
+  }, [loading, searchParams]);
 
   // "Last updated X seconds ago" ticker
   useEffect(() => {
@@ -501,6 +515,9 @@ export default function LiveSessionsPage() {
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
+
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Sessions" }]} />
 
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">

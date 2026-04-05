@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import api from "../../../src/lib/api";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // --- Types ---
 
@@ -231,6 +232,8 @@ export default function GlobalSearchPage() {
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans">
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Search Results" }]} />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Search Results</h1>
         <p className="text-sm text-gray-500 mt-1">

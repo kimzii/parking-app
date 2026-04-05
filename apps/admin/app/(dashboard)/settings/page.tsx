@@ -35,6 +35,7 @@ import {
   Mail,
 } from "lucide-react";
 import api from "../../../src/lib/api";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // --- Types ---
 interface GeneralSettings {
@@ -134,7 +135,7 @@ const SettingToggle = ({
 );
 
 export default function SettingsPage() {
-  const [saving, setSaving] = useState(false);
+  // const [saving, setSaving] = useState(false);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -212,13 +213,13 @@ export default function SettingsPage() {
     alertOnFlaggedContent: true,
   });
 
-  const handleSave = async () => {
-    setSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    // TODO: Implement actual API call to save settings
-  };
+  // const handleSave = async () => {
+  //   setSaving(true);
+  //   // Simulate API call
+  //   await new Promise((resolve) => setTimeout(resolve, 1000));
+  //   setSaving(false);
+  //   // TODO: Implement actual API call to save settings
+  // };
 
   const handleChangePassword = async () => {
     setPasswordError(null);
@@ -320,6 +321,9 @@ export default function SettingsPage() {
 
   return (
     <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Settings" }]} />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -328,6 +332,7 @@ export default function SettingsPage() {
             Configure application settings and preferences
           </p>
         </div>
+        {/* Save Changes button commented out — handleSave is not yet implemented
         <Button
           onClick={handleSave}
           disabled={saving}
@@ -345,6 +350,7 @@ export default function SettingsPage() {
             </>
           )}
         </Button>
+        */}
       </div>
 
       {/* Settings Content */}

@@ -26,6 +26,7 @@ import {
 import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import api from "../../../src/lib/api";
 import Image from "next/image";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 type TabType = "pending" | "recent" | "recentDrivers";
 
@@ -280,6 +281,8 @@ export default function PendingListings() {
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>("pending");
+  const [listingStatusFilter, setListingStatusFilter] = useState<"ALL" | "APPROVED" | "REJECTED">("ALL");
+  const [driverStatusFilter, setDriverStatusFilter] = useState<"ALL" | "APPROVED" | "REJECTED">("ALL");
   const [listings, setListings] = useState<ParkingLocation[]>([]);
   const [recentListings, setRecentListings] = useState<ParkingLocation[]>([]);
   const [recentDrivers, setRecentDrivers] = useState<Driver[]>([]);
@@ -737,6 +740,9 @@ export default function PendingListings() {
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals", href: "/listings" }, { label: selectedListing.title }]} />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -1615,6 +1621,9 @@ export default function PendingListings() {
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals", href: "/listings" }, { label: `${selectedDriver.user.firstName} ${selectedDriver.user.lastName}` }]} />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -1807,9 +1816,11 @@ export default function PendingListings() {
   // --- 2. MAIN LIST VIEW RENDER ---
   return (
     <div className="bg-[#F8F9FA] min-h-screen p-8 font-sans">
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals" }]} />
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#1a202c]">
-          Parking Location Listings
+          Approvals
         </h1>
       </div>
 
@@ -2015,10 +2026,16 @@ export default function PendingListings() {
       {/* Recent Tab Content */}
       {activeTab === "recent" && (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-600">
-              {recentTotal} recently verified/rejected listing{recentTotal !== 1 ? "s" : ""}
-            </span>
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4 mb-4">
+            <select
+              value={listingStatusFilter}
+              onChange={(e) => setListingStatusFilter(e.target.value as "ALL" | "APPROVED" | "REJECTED")}
+              className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
+            >
+              <option value="ALL">Any Status</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
             <Button
               onClick={fetchRecentListings}
               variant="outline"
@@ -2059,7 +2076,7 @@ export default function PendingListings() {
 
           {/* Recent Listing Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {recentListings.map((listing) => {
+            {recentListings.filter((l) => listingStatusFilter === "ALL" || l.status === listingStatusFilter).map((listing) => {
               const primaryImage = getPrimaryImage(listing.images);
 
               return (
@@ -2173,10 +2190,16 @@ export default function PendingListings() {
       {/* Recent Drivers Tab Content */}
       {activeTab === "recentDrivers" && (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-600">
-              {driversTotal} recently verified/rejected driver application{driversTotal !== 1 ? "s" : ""}
-            </span>
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4 mb-4">
+            <select
+              value={driverStatusFilter}
+              onChange={(e) => setDriverStatusFilter(e.target.value as "ALL" | "APPROVED" | "REJECTED")}
+              className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
+            >
+              <option value="ALL">Any Status</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
             <Button
               onClick={fetchRecentDrivers}
               variant="outline"
@@ -2217,7 +2240,11 @@ export default function PendingListings() {
 
           {/* Recent Drivers Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {recentDrivers.map((driver) => (
+            {recentDrivers.filter((d) => {
+              if (driverStatusFilter === "ALL") return true;
+              if (driverStatusFilter === "APPROVED") return d.verificationStatus === "VERIFIED";
+              return d.verificationStatus === "REJECTED";
+            }).map((driver) => (
               <div
                 key={driver.id}
                 onClick={() => setSelectedDriver(driver)}

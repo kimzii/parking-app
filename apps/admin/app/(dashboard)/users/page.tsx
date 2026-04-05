@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import api from "../../../src/lib/api";
 import Image from "next/image";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // --- Types aligned with Prisma schema ---
 type RoleName = "DRIVER" | "HOST" | "ADMIN";
@@ -266,6 +267,9 @@ export default function UsersPage() {
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "User Management" }]} />
+
       {/* Page Title */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
