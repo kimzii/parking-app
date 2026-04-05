@@ -209,6 +209,7 @@ model Reservation {
   sessionEndedAt      DateTime?          @map("session_ended_at")
   cancelledBy         CancelledBy?       @map("cancelled_by")
   cancellationReason  String?            @map("cancellation_reason")
+  driverRefundId      String?            @map("driver_refund_id") @db.Uuid
   walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
   hostPayoutId        String?            @map("host_payout_id") @db.Uuid
   createdAt           DateTime           @default(now()) @map("created_at")

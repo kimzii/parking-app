@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
   TextInput,
@@ -293,24 +292,9 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Section Title */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Parking Spaces Near You</Text>
-          <Text style={styles.sectionCount}>
-            {spots.length} spot{spots.length !== 1 ? "s" : ""}
-          </Text>
-        </View>
-
-        {loading && (
-          <ActivityIndicator
-            size="large"
-            color="#D4501E"
-            style={{ marginTop: 40 }}
-          />
-        )}
       </>
     ),
-    [activeBookings, spots.length, loading],
+    [activeBookings],
   );
 
   return (
@@ -370,6 +354,14 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
+      </View>
+
+      {/* Section header — fixed outside FlatList */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Parking Spaces Near You</Text>
+        <Text style={styles.sectionCount}>
+          {loading ? "..." : `${spots.length} spot${spots.length !== 1 ? "s" : ""}`}
+        </Text>
       </View>
 
       <FlatList
@@ -475,17 +467,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0EDE8",
   },
   sectionTitle: {
-    paddingTop: 12,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     color: "#232230",
     letterSpacing: -0.3,
   },
   sectionCount: {
-    paddingTop: 12,
     fontSize: 13,
     color: "#A09A94",
     fontWeight: "500",

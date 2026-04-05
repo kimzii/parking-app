@@ -69,6 +69,8 @@ interface SessionDetails {
   cancellationReason: string | null;
   hostPayoutAmount: number | null;
   hostPayoutSettled: boolean;
+  driverRefundAmount: number | null;
+  driverRefunded: boolean;
 }
 
 // --- Live elapsed timer (updates every second) ---
@@ -492,11 +494,24 @@ export default function LiveSessionsPage() {
     try {
       setSettleLoading(true);
       await api.post(`/dashboard/reservations/${reservationId}/settle-payout`);
-      // Refresh details
       await handleViewDetails(reservationId);
       await fetchSessions(false);
     } catch {
       alert("Failed to settle payout. Please try again.");
+    } finally {
+      setSettleLoading(false);
+    }
+  };
+
+  const handleRefundDriver = async (reservationId: string) => {
+    if (!confirm("Issue refund to the driver for this cancelled session?")) return;
+    try {
+      setSettleLoading(true);
+      await api.post(`/dashboard/reservations/${reservationId}/refund-driver`);
+      await handleViewDetails(reservationId);
+      await fetchSessions(false);
+    } catch {
+      alert("Failed to refund driver. Please try again.");
     } finally {
       setSettleLoading(false);
     }
@@ -801,32 +816,56 @@ export default function LiveSessionsPage() {
                 {/* Admin cancellation info */}
                 {selectedSession.status === "CANCELLED" && selectedSession.cancelledBy === "ADMIN" && (
                   <div className="p-4 rounded-lg bg-orange-50 border border-orange-200 md:col-span-2">
-                    <p className="text-xs uppercase text-orange-600 font-semibold mb-2">Cancelled by Admin</p>
+                    <p className="text-xs uppercase text-orange-600 font-semibold mb-3">Cancelled by Admin</p>
                     {selectedSession.cancellationReason && (
-                      <p className="text-sm text-orange-800 mb-2">
+                      <p className="text-sm text-orange-800 mb-3">
                         <span className="font-medium">Reason:</span> {selectedSession.cancellationReason}
                       </p>
                     )}
-                    {selectedSession.hostPayoutAmount != null && selectedSession.hostPayoutAmount > 0 && (
-                      <div className="flex items-center justify-between mt-2">
+
+                    <div className="space-y-3">
+                      {/* Driver Refund */}
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5 border border-orange-100">
                         <p className="text-sm text-gray-700">
-                          Host payout: <span className="font-semibold">{formatCurrency(selectedSession.hostPayoutAmount)}</span>
-                          {selectedSession.hostPayoutSettled
-                            ? <span className="ml-2 text-green-600 text-xs font-semibold">(Settled)</span>
-                            : <span className="ml-2 text-yellow-600 text-xs font-semibold">(Pending)</span>}
+                          Driver refund: <span className="font-semibold">{formatCurrency(selectedSession.driverRefundAmount ?? selectedSession.totalAmount)}</span>
+                          {selectedSession.driverRefunded
+                            ? <span className="ml-2 text-green-600 text-xs font-semibold">(Refunded)</span>
+                            : <span className="ml-2 text-yellow-600 text-xs font-semibold">(Not refunded)</span>}
                         </p>
-                        {!selectedSession.hostPayoutSettled && (
+                        {!selectedSession.driverRefunded && (
                           <button
-                            onClick={() => handleSettlePayout(selectedSession.id)}
+                            onClick={() => handleRefundDriver(selectedSession.id)}
                             disabled={settleLoading}
-                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
                           >
                             {settleLoading ? <Loader2 size={12} className="animate-spin" /> : null}
-                            Release Payout
+                            Refund Driver
                           </button>
                         )}
                       </div>
-                    )}
+
+                      {/* Host Payout */}
+                      {selectedSession.hostPayoutAmount != null && selectedSession.hostPayoutAmount > 0 && (
+                        <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5 border border-orange-100">
+                          <p className="text-sm text-gray-700">
+                            Host payout: <span className="font-semibold">{formatCurrency(selectedSession.hostPayoutAmount)}</span>
+                            {selectedSession.hostPayoutSettled
+                              ? <span className="ml-2 text-green-600 text-xs font-semibold">(Settled)</span>
+                              : <span className="ml-2 text-yellow-600 text-xs font-semibold">(Pending)</span>}
+                          </p>
+                          {!selectedSession.hostPayoutSettled && (
+                            <button
+                              onClick={() => handleSettlePayout(selectedSession.id)}
+                              disabled={settleLoading}
+                              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                              {settleLoading ? <Loader2 size={12} className="animate-spin" /> : null}
+                              Release Payout
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
