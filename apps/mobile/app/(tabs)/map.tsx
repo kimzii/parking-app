@@ -310,6 +310,7 @@ export default function MapScreen() {
                 const carOnly = av.length === 1 && av.includes("CAR");
                 const motoOnly = av.length === 1 && av.includes("MOTORCYCLE");
                 const markerColor = motoOnly ? "#FF9800" : carOnly ? "#1976D2" : "#D4501E";
+                const isSelected = selectedSpot?.id === spot.id;
                 return (
                   <Marker
                     key={spot.id}
@@ -320,6 +321,7 @@ export default function MapScreen() {
                     title={spot.title}
                     description={`₱${Number(spot.basePricePerHour).toFixed(2)}/hr`}
                     onPress={() => setSelectedSpot(spot)}
+                    tracksViewChanges={isSelected}
                   >
                     <View style={styles.markerContainer}>
                       <View style={[styles.markerBubble, { backgroundColor: markerColor }]}>

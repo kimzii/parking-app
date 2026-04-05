@@ -47,9 +47,9 @@ export const EWallet: React.FC<EWalletProps> = ({
       {/* Balance amount */}
       {loading ? (
         <ActivityIndicator size="small" color="#fff" style={{ marginVertical: 12 }} />
-      ) : !hasOutstanding ? (
+      ) : (
         <Text style={styles.amount}>₱ {Number(balance).toFixed(2)}</Text>
-      ) : null}
+      )}
 
       {/* Locked banner */}
       {locked && !hasOutstanding && (

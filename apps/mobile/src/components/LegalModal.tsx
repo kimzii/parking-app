@@ -7,12 +7,13 @@ import {
   Modal,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 
 export const TERMS_CONTENT = `PARKLINK TERMS AND CONDITIONS
 
-Effective Date: [Insert Date]
-Last Updated: [Insert Date]
+Effective Date: 05/04/2026
+Last Updated: 05/04/2026
 
 1. ACCEPTANCE OF TERMS
 
@@ -64,7 +65,24 @@ All fees are subject to applicable taxes and may be updated with prior notice to
 
 ParkLink uses an in-app wallet system for processing payments, top-ups, and withdrawals. Users are responsible for ensuring that the mobile number registered on their account is actively linked to a valid GCash or supported e-wallet account. ParkLink shall not be liable for failed or misdirected transactions resulting from an incorrect, inactive, or unlinked mobile number.
 
-6. USER RESPONSIBILITIES
+6. WALLET AND PAYMENT POLICIES
+
+6.1 In-App Wallet
+ParkLink uses an in-app credit wallet system for all transactions. Drivers must maintain a funded wallet to make bookings and pay for parking sessions.
+
+6.2 Minimum Balance Requirement
+Drivers can only book a parking space if their wallet has sufficient balance to cover at least one (1) hour of the applicable parking fee. Booking requests will be declined if the wallet balance is insufficient.
+
+6.3 Overstay Policy
+If a Driver exceeds their reserved parking time, they may continue parking but will receive warning notifications to top up their wallet. Additional charges will accrue for every hour beyond the original reservation period.
+
+6.4 Negative Balance & Auto-Deduction
+If parking charges exceed a Driver's available wallet balance at the time of session end, the account will incur an outstanding balance. Upon the next wallet top-up, the outstanding balance will be automatically deducted before any remaining credits become available for new bookings. Drivers with an outstanding balance are restricted from making new reservations until the balance is fully settled.
+
+6.5 Refunds & Cancellations
+Refund eligibility is subject to the Host's cancellation terms. ParkLink reserves the right to retain the applicable platform commission for bookings that have been confirmed and subsequently cancelled.
+
+7. USER RESPONSIBILITIES
 
 Drivers agree to:
 • Provide accurate vehicle and personal information
@@ -72,6 +90,8 @@ Drivers agree to:
 • Comply with parking rules set by the Host
 • Vacate the parking space upon reservation expiry
 • Treat Host property with care and respect
+• Maintain sufficient wallet balance before making a booking
+• Top up wallet promptly to settle any outstanding balance incurred from overstay
 
 Hosts agree to:
 • Provide accurate information about parking space availability, dimensions, and access
@@ -79,7 +99,7 @@ Hosts agree to:
 • Honor confirmed reservations
 • Have proper authority or ownership to list the parking space
 
-7. LIMITATION OF LIABILITY
+9. LIMITATION OF LIABILITY
 
 ParkLink is a platform that facilitates connections between Drivers and Hosts. ParkLink shall not be liable for:
 • Damages, theft, or loss to vehicles or property during parking
@@ -90,7 +110,7 @@ ParkLink is a platform that facilitates connections between Drivers and Hosts. P
 
 Users acknowledge that parking transactions are conducted at their own risk.
 
-8. PROHIBITED ACTIVITIES
+10. PROHIBITED ACTIVITIES
 
 Users shall not:
 • Provide false, misleading, or fraudulent information
@@ -100,19 +120,19 @@ Users shall not:
 • List parking spaces without proper authorization
 • Violate any applicable local, national, or international laws
 
-9. TERMINATION
+11. TERMINATION
 
 ParkLink reserves the right to suspend or terminate your account at any time, with or without notice, for violations of these Terms or for any conduct that ParkLink deems harmful to the platform or its users.
 
-10. MODIFICATIONS TO TERMS
+12. MODIFICATIONS TO TERMS
 
 ParkLink may modify these Terms at any time. Users will be notified of material changes through the App or via email. Continued use of the App after modifications constitutes acceptance of the updated Terms.
 
-11. GOVERNING LAW AND DISPUTE RESOLUTION
+13. GOVERNING LAW AND DISPUTE RESOLUTION
 
 These Terms shall be governed by and construed in accordance with the laws of the Republic of the Philippines. Any disputes arising from or related to these Terms or the use of ParkLink shall be resolved through mediation or, if necessary, before the appropriate courts of Davao City, Philippines.
 
-12. CONTACT INFORMATION
+14. CONTACT INFORMATION
 
 For questions, concerns, or complaints regarding these Terms, please contact:
 
@@ -269,7 +289,7 @@ export default function LegalModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Legal Documents</Text>
@@ -344,7 +364,7 @@ export default function LegalModal({
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
