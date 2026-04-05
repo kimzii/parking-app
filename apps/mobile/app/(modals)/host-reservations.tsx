@@ -54,9 +54,9 @@ const STATUS_CONFIG = {
 
 const FILTERS = [
   { key: "all", label: "All" },
-  { key: "CONFIRMED", label: "Upcoming" },
-  { key: "ACTIVE", label: "Active" },
-  { key: "COMPLETED", label: "Past" },
+  { key: "Upcoming", label: "Upcoming" },
+  { key: "Active", label: "Active" },
+  { key: "Past", label: "Past" },
 ];
 
 export default function HostReservationsScreen() {

@@ -23,6 +23,7 @@ import * as reservationsService from "../../src/services/reservations";
 import * as reviewsService from "../../src/services/reviews";
 import { startGeofencing, stopGeofencing } from "../../src/services/geofencing";
 import { settleRemainingDue } from "../../src/services/reservations";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 const STATUS_CONFIG: Record<
   string,
@@ -112,6 +113,17 @@ export default function ReservationQRScreen() {
 
     return () => clearInterval(interval);
   }, [reservationStatus, fetchReservation]);
+
+  // Listen for real-time admin cancellation via socket
+  useSocketEvent("reservation-cancelled", (data: { reservationId: string; cancelledBy: string; reason?: string }) => {
+    if (data.reservationId === id) {
+      Alert.alert(
+        "Session Cancelled",
+        `Your session has been cancelled by an administrator.${data.reason ? `\n\nReason: ${data.reason}` : ""}`,
+      );
+      fetchReservation();
+    }
+  });
 
   // Start/stop geofencing based on reservation status
   useEffect(() => {

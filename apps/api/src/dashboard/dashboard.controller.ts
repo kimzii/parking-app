@@ -1,7 +1,8 @@
 import {
   Controller,
   Get,
-  Delete,
+  Post,
+  Body,
   UseGuards,
   Query,
   Param,
@@ -117,9 +118,18 @@ export class DashboardController {
     return reservation;
   }
 
-  @Delete('reservations/:id')
+  @Post('reservations/:id/cancel')
   @Roles(RoleName.ADMIN)
-  async deleteReservation(@Param('id', ParseUUIDPipe) id: string) {
-    return this.dashboardService.deleteReservationById(id);
+  async cancelReservation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.dashboardService.adminCancelReservation(id, body.reason);
+  }
+
+  @Post('reservations/:id/settle-payout')
+  @Roles(RoleName.ADMIN)
+  async settleHostPayout(@Param('id', ParseUUIDPipe) id: string) {
+    return this.dashboardService.adminSettleHostPayout(id);
   }
 }

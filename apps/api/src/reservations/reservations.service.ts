@@ -189,6 +189,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             where: { id: reservation.id },
             data: {
               status: 'CANCELLED',
+              cancelledBy: 'SYSTEM',
               escrowAmount: 0,
             },
           });
@@ -1043,6 +1044,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         where: { id: reservation.id },
         data: {
           status: 'CANCELLED',
+          cancelledBy: 'HOST',
           escrowAmount: 0,
         },
       });
@@ -1622,6 +1624,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         where: { id: reservationId },
         data: {
           status: 'CANCELLED',
+          cancelledBy: 'DRIVER',
           escrowAmount: 0,
         },
       });

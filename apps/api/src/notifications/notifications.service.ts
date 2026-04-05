@@ -198,6 +198,41 @@ export class NotificationsService {
     });
   }
 
+  async notifyBookingCancelledByAdmin(
+    driverUserId: string,
+    hostUserId: string,
+    reservationId: string,
+    locationTitle: string,
+    reason?: string,
+  ) {
+    const reasonSuffix = reason ? ` Reason: ${reason}` : '';
+
+    await Promise.all([
+      this.send({
+        userId: driverUserId,
+        title: 'Session Cancelled by Admin',
+        message: `Your parking session at ${locationTitle} has been cancelled by an administrator.${reasonSuffix}`,
+        type: 'BOOKING_CANCELLED_BY_ADMIN',
+        data: {
+          reservationId,
+          cancelledBy: 'admin',
+          screen: 'reservation-qr',
+        },
+      }),
+      this.send({
+        userId: hostUserId,
+        title: 'Session Cancelled by Admin',
+        message: `A parking session at ${locationTitle} has been cancelled by an administrator.${reasonSuffix}`,
+        type: 'BOOKING_CANCELLED_BY_ADMIN',
+        data: {
+          reservationId,
+          cancelledBy: 'admin',
+          screen: 'host-reservation-detail',
+        },
+      }),
+    ]);
+  }
+
   async notifyBookingPending(
     hostUserId: string,
     reservationId: string,

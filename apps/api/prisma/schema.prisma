@@ -207,6 +207,8 @@ model Reservation {
   arrivalDeadline     DateTime           @map("arrival_deadline")
   sessionStartedAt    DateTime?          @map("session_started_at")
   sessionEndedAt      DateTime?          @map("session_ended_at")
+  cancelledBy         CancelledBy?       @map("cancelled_by")
+  cancellationReason  String?            @map("cancellation_reason")
   walletTransactionId String?            @unique @map("wallet_transaction_id") @db.Uuid
   hostPayoutId        String?            @map("host_payout_id") @db.Uuid
   createdAt           DateTime           @default(now()) @map("created_at")
@@ -272,6 +274,7 @@ enum NotificationType {
   GENERAL
   BOOKING_COMPLETED
   BOOKING_CANCELLED
+  BOOKING_CANCELLED_BY_ADMIN
   BOOKING_PENDING
   BOOKING_APPROVED
   DRIVER_NEARBY
@@ -394,6 +397,13 @@ enum ReservationStatus {
   CANCELLED
   EXPIRED
   PAYMENT_PENDING
+}
+
+enum CancelledBy {
+  DRIVER
+  HOST
+  ADMIN
+  SYSTEM
 }
 
 enum PaymentStatus {

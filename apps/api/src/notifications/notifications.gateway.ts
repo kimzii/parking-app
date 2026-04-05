@@ -62,4 +62,14 @@ export class NotificationsGateway
   sendBalanceUpdate(userId: string, balance: string) {
     this.server.to(userId).emit('balance-update', { balance });
   }
+
+  /**
+   * Emit a reservation-cancelled event to a specific user
+   */
+  sendReservationCancelled(
+    userId: string,
+    data: { reservationId: string; cancelledBy: string; reason?: string },
+  ) {
+    this.server.to(userId).emit('reservation-cancelled', data);
+  }
 }

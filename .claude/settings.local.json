@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npx prisma:*)",
-      "Bash(npx nest:*)"
+      "Bash(npx nest:*)",
+      "Bash(find /d/Documents/Github/parking-app/apps/mobile/hooks -type f -name *.ts -o -name *.tsx)"
     ]
   }
 }
