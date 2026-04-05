@@ -305,7 +305,6 @@ export default function PendingListings() {
   const [driversPage, setDriversPage] = useState(1);
   const [driversTotalPages, setDriversTotalPages] = useState(1);
   const [driversTotal, setDriversTotal] = useState(0);
-  const [lastListingSyncAt, setLastListingSyncAt] = useState<Date | null>(null);
   const [listingActiveSessions, setListingActiveSessions] = useState<ListingSession[]>([]);
   const [listingConfirmedSessions, setListingConfirmedSessions] = useState<ListingSession[]>([]);
   const [listingSessionsLoading, setListingSessionsLoading] = useState(false);
@@ -371,7 +370,7 @@ export default function PendingListings() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, normalizeLocation]);
 
   // Fetch recently verified/rejected listings from API
   const fetchRecentListings = useCallback(async () => {
@@ -411,7 +410,7 @@ export default function PendingListings() {
     } finally {
       setRecentLoading(false);
     }
-  }, [recentPage]);
+  }, [recentPage, normalizeLocation]);
 
   // Fetch recently verified/rejected drivers from API
   const fetchRecentDrivers = useCallback(async () => {
@@ -472,7 +471,6 @@ export default function PendingListings() {
 
         if (matchedListing) {
           setSelectedListing(matchedListing);
-          setLastListingSyncAt(new Date());
           setActiveTab(matchedListing.status === "PENDING" ? "pending" : "recent");
         }
       } catch (err) {
@@ -506,7 +504,6 @@ export default function PendingListings() {
 
           return latestListing;
         });
-        setLastListingSyncAt(new Date());
       } catch (err) {
         if (!isCancelled) {
           console.error("Error syncing listing realtime data:", err);
@@ -729,15 +726,6 @@ export default function PendingListings() {
       : `${formatOperatingTime(selectedListing.openTime)} - ${formatOperatingTime(
           selectedListing.closeTime
         )}`;
-    const acceptedVehiclesLabel = (() => {
-      const av = selectedListing.acceptedVehicles ?? [];
-      if (av.length === 0 || (av.includes("CAR") && av.includes("MOTORCYCLE")))
-        return "Cars & Motorcycles";
-      if (av.includes("CAR")) return "Cars only";
-      if (av.includes("MOTORCYCLE")) return "Motorcycles only";
-      return av.join(", ");
-    })();
-
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
         {/* Breadcrumb */}
