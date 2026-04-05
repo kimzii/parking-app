@@ -31,6 +31,8 @@ type RawSession = {
   sessionEndedAt?: string | null;
   arrivalDeadline?: string | null;
   totalAmount?: number | string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
 };
 
 type SessionStatus = "ACTIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
@@ -46,6 +48,8 @@ interface Session {
   sessionEndedAt: string | null;
   arrivalDeadline: string | null;
   totalAmount: number;
+  cancelledBy: string | null;
+  cancellationReason: string | null;
 }
 
 interface SessionDetails {
@@ -59,6 +63,10 @@ interface SessionDetails {
   guest: { name: string; email: string; phone: string | null };
   host: { name: string; email: string; phone: string | null };
   property: { title: string; address: string; slotNumber: number };
+  cancelledBy: string | null;
+  cancellationReason: string | null;
+  hostPayoutAmount: number | null;
+  hostPayoutSettled: boolean;
 }
 
 // --- Live elapsed timer (updates every second) ---
@@ -135,6 +143,8 @@ function normalizeSession(raw: RawSession): Session {
     sessionEndedAt: raw.sessionEndedAt || null,
     arrivalDeadline: raw.arrivalDeadline || null,
     totalAmount: parseAmount(raw.totalAmount),
+    cancelledBy: raw.cancelledBy || null,
+    cancellationReason: raw.cancellationReason || null,
   };
 }
 
@@ -281,6 +291,11 @@ function HistoryCard({
           <span className={`text-xs font-semibold uppercase tracking-wide ${isCompleted ? "text-blue-700" : "text-red-500"}`}>
             {isCompleted ? "Completed" : "Cancelled"}
           </span>
+          {!isCompleted && session.cancelledBy === "ADMIN" && (
+            <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold rounded uppercase">
+              By Admin
+            </span>
+          )}
         </div>
         <span className="text-xs text-gray-400 font-mono">{session.id.slice(0, 8).toUpperCase()}</span>
       </div>
@@ -324,6 +339,12 @@ function HistoryCard({
           </div>
         </div>
 
+        {!isCompleted && session.cancellationReason && (
+          <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 text-xs text-orange-700">
+            <span className="font-semibold">Reason:</span> {session.cancellationReason}
+          </div>
+        )}
+
         <div className="flex items-center justify-between text-sm">
           <span className="text-xs text-gray-400">Amount</span>
           <span className={`font-semibold text-sm ${isCompleted ? "text-gray-900" : "text-gray-400 line-through"}`}>
@@ -358,7 +379,9 @@ export default function LiveSessionsPage() {
   const [selectedSession, setSelectedSession] = useState<SessionDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Session | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [settleLoading, setSettleLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -437,13 +460,31 @@ export default function LiveSessionsPage() {
     if (!cancelTarget) return;
     try {
       setCancelLoading(true);
-      await api.delete(`/dashboard/reservations/${cancelTarget.id}`);
+      await api.post(`/dashboard/reservations/${cancelTarget.id}/cancel`, {
+        reason: cancelReason.trim() || undefined,
+      });
       setCancelTarget(null);
+      setCancelReason("");
       await fetchSessions(false);
     } catch {
       alert("Failed to cancel session. Please try again.");
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const handleSettlePayout = async (reservationId: string) => {
+    if (!confirm("Release host payout for this cancelled session?")) return;
+    try {
+      setSettleLoading(true);
+      await api.post(`/dashboard/reservations/${reservationId}/settle-payout`);
+      // Refresh details
+      await handleViewDetails(reservationId);
+      await fetchSessions(false);
+    } catch {
+      alert("Failed to settle payout. Please try again.");
+    } finally {
+      setSettleLoading(false);
     }
   };
 
@@ -739,6 +780,38 @@ export default function LiveSessionsPage() {
                     Amount Paid: {formatCurrency(selectedSession.totalAmount)}
                   </p>
                 </div>
+
+                {/* Admin cancellation info */}
+                {selectedSession.status === "CANCELLED" && selectedSession.cancelledBy === "ADMIN" && (
+                  <div className="p-4 rounded-lg bg-orange-50 border border-orange-200 md:col-span-2">
+                    <p className="text-xs uppercase text-orange-600 font-semibold mb-2">Cancelled by Admin</p>
+                    {selectedSession.cancellationReason && (
+                      <p className="text-sm text-orange-800 mb-2">
+                        <span className="font-medium">Reason:</span> {selectedSession.cancellationReason}
+                      </p>
+                    )}
+                    {selectedSession.hostPayoutAmount != null && selectedSession.hostPayoutAmount > 0 && (
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-sm text-gray-700">
+                          Host payout: <span className="font-semibold">{formatCurrency(selectedSession.hostPayoutAmount)}</span>
+                          {selectedSession.hostPayoutSettled
+                            ? <span className="ml-2 text-green-600 text-xs font-semibold">(Settled)</span>
+                            : <span className="ml-2 text-yellow-600 text-xs font-semibold">(Pending)</span>}
+                        </p>
+                        {!selectedSession.hostPayoutSettled && (
+                          <button
+                            onClick={() => handleSettlePayout(selectedSession.id)}
+                            disabled={settleLoading}
+                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {settleLoading ? <Loader2 size={12} className="animate-spin" /> : null}
+                            Release Payout
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
@@ -747,7 +820,7 @@ export default function LiveSessionsPage() {
 
       {/* Cancel Confirmation Modal */}
       {cancelTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !cancelLoading && setCancelTarget(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { if (!cancelLoading) { setCancelTarget(null); setCancelReason(""); } }}>
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-4 mb-5">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
@@ -756,16 +829,27 @@ export default function LiveSessionsPage() {
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Cancel Session</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  This will permanently cancel the session for <span className="font-semibold text-gray-700">{cancelTarget.guestName}</span> at <span className="font-semibold text-gray-700">{cancelTarget.propertyTitle}</span>. This action cannot be undone.
+                  This will cancel the session for <span className="font-semibold text-gray-700">{cancelTarget.guestName}</span> at <span className="font-semibold text-gray-700">{cancelTarget.propertyTitle}</span>. Both the driver and host will be notified.
                 </p>
               </div>
             </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Cancellation Reason</label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., Duplicate booking, emergency, policy violation..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-red-200 focus:border-red-400 outline-none resize-none"
+              />
+            </div>
             <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-5 text-sm text-red-700">
-              <strong>Warning:</strong> Only cancel sessions in case of a genuine error or emergency. The driver will be notified.
+              <strong>Warning:</strong> This will immediately cancel the session, free up the parking space, and notify both parties.
+              {cancelTarget.status === "ACTIVE" && " The host payout will need to be settled manually."}
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setCancelTarget(null)}
+                onClick={() => { setCancelTarget(null); setCancelReason(""); }}
                 disabled={cancelLoading}
                 className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >

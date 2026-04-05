@@ -20,6 +20,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import * as reservationsService from "../../src/services/reservations";
 import * as reviewsService from "../../src/services/reviews";
 import { hostService } from "../../src/services/hosts";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 const VEHICLE_IMAGES: Record<string, any> = {
   CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
@@ -137,6 +138,17 @@ export default function HostReservationDetailScreen() {
       if (reservation) fetchReview(reservation.id);
     }, [reservation, fetchReview]),
   );
+
+  // Listen for real-time admin cancellation via socket
+  useSocketEvent("reservation-cancelled", (data: { reservationId: string; cancelledBy: string; reason?: string }) => {
+    if (reservation && data.reservationId === reservation.id) {
+      Alert.alert(
+        "Session Cancelled",
+        `This session has been cancelled by an administrator.${data.reason ? `\n\nReason: ${data.reason}` : ""}`,
+      );
+      setReservation((r) => (r ? { ...r, status: "CANCELLED" } : r));
+    }
+  });
 
   const handleApprove = () => {
     if (!reservation) return;

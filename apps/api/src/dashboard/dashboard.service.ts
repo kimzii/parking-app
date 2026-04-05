@@ -1,11 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import {
   LocationStatus,
   ReservationStatus,
   PaymentStatus,
   Prisma,
 } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export interface DashboardStats {
   totalActiveListings: number;
@@ -81,11 +84,19 @@ export interface ReservationListItem {
   sessionEndedAt: Date | null;
   status: ReservationStatus;
   totalAmount: number;
+  cancelledBy: string | null;
+  cancellationReason: string | null;
 }
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  private readonly PLATFORM_COMMISSION_RATE = new Decimal(0.1);
+
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+    private notificationsGateway: NotificationsGateway,
+  ) {}
 
   async getStats(): Promise<DashboardStats> {
     // Get total active listings (APPROVED status)
@@ -711,6 +722,8 @@ export class DashboardService {
           sessionEndedAt: res.sessionEndedAt,
           status: res.status,
           totalAmount: parseFloat(res.totalAmount.toString()),
+          cancelledBy: res.cancelledBy ?? null,
+          cancellationReason: res.cancellationReason ?? null,
         };
       }),
       total,
@@ -822,23 +835,282 @@ export class DashboardService {
         comment: r.comment,
         createdAt: r.createdAt,
       })),
+      cancelledBy: reservation.cancelledBy ?? null,
+      cancellationReason: reservation.cancellationReason ?? null,
+      hostPayoutAmount: reservation.hostPayoutAmount
+        ? parseFloat(reservation.hostPayoutAmount.toString())
+        : null,
+      hostPayoutSettled: !!reservation.hostPayoutId,
     };
   }
 
-  async deleteReservationById(id: string) {
-    const existingReservation = await this.prisma.reservation.findUnique({
+  async adminCancelReservation(id: string, reason?: string) {
+    const reservation = await this.prisma.reservation.findUnique({
       where: { id },
-      select: { id: true },
+      include: {
+        parkingSpace: {
+          include: {
+            parkingLocation: {
+              include: { host: true },
+            },
+          },
+        },
+        driver: {
+          include: { user: true },
+        },
+      },
     });
 
-    if (!existingReservation) {
+    if (!reservation) {
       throw new NotFoundException('Reservation not found');
     }
 
-    await this.prisma.reservation.delete({
-      where: { id },
+    if (['CANCELLED', 'EXPIRED', 'COMPLETED'].includes(reservation.status)) {
+      throw new BadRequestException(
+        `Cannot cancel a reservation with status: ${reservation.status}`,
+      );
+    }
+
+    const wasActive = reservation.status === 'ACTIVE';
+    const now = new Date();
+
+    // Calculate pro-rated amounts for active sessions
+    let finalAmount = new Decimal(0);
+    let platformFee = new Decimal(0);
+    let hostPayoutAmount = new Decimal(0);
+
+    if (wasActive && reservation.sessionStartedAt) {
+      const sessionStart = new Date(reservation.sessionStartedAt);
+      const pricePerHour = new Decimal(
+        reservation.parkingSpace.parkingLocation.basePricePerHour,
+      );
+      const durationMs = now.getTime() - sessionStart.getTime();
+      const durationHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
+
+      finalAmount = pricePerHour.mul(durationHours);
+      platformFee = finalAmount
+        .mul(this.PLATFORM_COMMISSION_RATE)
+        .toDecimalPlaces(2);
+      hostPayoutAmount = Decimal.max(
+        finalAmount.sub(platformFee),
+        0,
+      ).toDecimalPlaces(2);
+    }
+
+    // Perform the cancellation in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      // If PENDING, refund escrow to driver wallet
+      if (reservation.status === 'PENDING' && reservation.escrowAmount) {
+        const driverWallet = await tx.wallet.findUnique({
+          where: { userId: reservation.driver.userId },
+        });
+
+        if (driverWallet) {
+          const refundAmount = new Decimal(String(reservation.escrowAmount));
+
+          await tx.walletTransaction.create({
+            data: {
+              walletId: driverWallet.id,
+              type: 'CREDIT',
+              source: 'REFUND',
+              amount: refundAmount,
+              referenceId: reservation.id,
+              balanceBefore: driverWallet.balance,
+              balanceAfter: new Decimal(driverWallet.balance).add(refundAmount),
+            },
+          });
+
+          await tx.wallet.update({
+            where: { id: driverWallet.id },
+            data: {
+              balance: { increment: refundAmount.toNumber() },
+            },
+          });
+        }
+      }
+
+      // Free up the parking space
+      await tx.parkingSpace.update({
+        where: { id: reservation.parkingSpaceId },
+        data: { status: 'AVAILABLE' },
+      });
+
+      // Sync available slot count
+      const space = await tx.parkingSpace.findUnique({
+        where: { id: reservation.parkingSpaceId },
+        select: { parkingLocationId: true },
+      });
+      if (space) {
+        const availableCount = await tx.parkingSpace.count({
+          where: {
+            parkingLocationId: space.parkingLocationId,
+            status: 'AVAILABLE',
+          },
+        });
+        await tx.parkingLocation.update({
+          where: { id: space.parkingLocationId },
+          data: { availableSlots: availableCount },
+        });
+      }
+
+      // Update the reservation
+      return tx.reservation.update({
+        where: { id },
+        data: {
+          status: 'CANCELLED',
+          cancelledBy: 'ADMIN',
+          cancellationReason: reason || null,
+          sessionEndedAt: wasActive ? now : undefined,
+          escrowAmount: reservation.status === 'PENDING' ? 0 : undefined,
+          ...(wasActive
+            ? {
+                finalAmount,
+                platformFee,
+                hostPayoutAmount,
+              }
+            : {}),
+        },
+      });
     });
 
-    return { message: 'Reservation deleted successfully' };
+    // Send notifications to driver and host
+    const driverUserId = reservation.driver.userId;
+    const hostUserId = reservation.parkingSpace.parkingLocation.host.userId;
+    const locationTitle = reservation.parkingSpace.parkingLocation.title;
+
+    this.notificationsService
+      .notifyBookingCancelledByAdmin(
+        driverUserId,
+        hostUserId,
+        id,
+        locationTitle,
+        reason,
+      )
+      .catch(() => {});
+
+    // Emit real-time socket events for instant mobile UI updates
+    const socketPayload = { reservationId: id, cancelledBy: 'admin', reason };
+    this.notificationsGateway.sendReservationCancelled(driverUserId, socketPayload);
+    this.notificationsGateway.sendReservationCancelled(hostUserId, socketPayload);
+
+    return {
+      success: true,
+      message: 'Reservation cancelled by admin.',
+      reservation: {
+        id: result.id,
+        status: result.status,
+        cancelledBy: 'ADMIN',
+        cancellationReason: reason || null,
+      },
+      ...(wasActive
+        ? {
+            settlement: {
+              finalAmount: finalAmount.toFixed(2),
+              platformFee: platformFee.toFixed(2),
+              hostPayoutAmount: hostPayoutAmount.toFixed(2),
+              note: 'Host payout pending admin settlement.',
+            },
+          }
+        : {}),
+    };
+  }
+
+  /**
+   * Admin: Settle host payout for an admin-cancelled active session
+   */
+  async adminSettleHostPayout(reservationId: string) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        parkingSpace: {
+          include: {
+            parkingLocation: { include: { host: true } },
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (reservation.status !== 'CANCELLED' || reservation.cancelledBy !== 'ADMIN') {
+      throw new BadRequestException(
+        'Can only settle payouts for admin-cancelled reservations',
+      );
+    }
+
+    if (reservation.hostPayoutId) {
+      throw new BadRequestException('Host payout has already been settled');
+    }
+
+    const hostPayoutAmount = new Decimal(String(reservation.hostPayoutAmount ?? 0));
+    if (hostPayoutAmount.lte(0)) {
+      throw new BadRequestException('No host payout amount to settle');
+    }
+
+    const hostUserId = reservation.parkingSpace.parkingLocation.host.userId;
+
+    await this.prisma.$transaction(async (tx) => {
+      const hostWallet = await tx.wallet.findUnique({
+        where: { userId: hostUserId },
+      });
+
+      if (!hostWallet) {
+        throw new BadRequestException('Host wallet not found');
+      }
+
+      const payoutTx = await tx.walletTransaction.create({
+        data: {
+          walletId: hostWallet.id,
+          type: 'CREDIT',
+          source: 'BOOKING_PAYOUT',
+          amount: hostPayoutAmount,
+          referenceId: reservationId,
+          balanceBefore: hostWallet.balance,
+          balanceAfter: new Decimal(hostWallet.balance).add(hostPayoutAmount),
+        },
+      });
+
+      await tx.wallet.update({
+        where: { id: hostWallet.id },
+        data: {
+          balance: { increment: hostPayoutAmount.toNumber() },
+        },
+      });
+
+      await tx.reservation.update({
+        where: { id: reservationId },
+        data: { hostPayoutId: payoutTx.id },
+      });
+    });
+
+    // Notify host of payout
+    const locationTitle = reservation.parkingSpace.parkingLocation.title;
+    this.notificationsService
+      .send({
+        userId: hostUserId,
+        title: 'Payout Settled',
+        message: `Your payout of ₱${hostPayoutAmount.toFixed(2)} for the cancelled session at ${locationTitle} has been released to your wallet.`,
+        type: 'GENERAL',
+        data: { reservationId },
+      })
+      .catch(() => {});
+
+    // Emit balance update
+    const updatedWallet = await this.prisma.wallet.findUnique({
+      where: { userId: hostUserId },
+    });
+    if (updatedWallet) {
+      this.notificationsGateway.sendBalanceUpdate(
+        hostUserId,
+        updatedWallet.balance.toString(),
+      );
+    }
+
+    return {
+      success: true,
+      message: `Host payout of ₱${hostPayoutAmount.toFixed(2)} settled successfully.`,
+    };
   }
 }
