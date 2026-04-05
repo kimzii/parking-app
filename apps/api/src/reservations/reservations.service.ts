@@ -737,8 +737,13 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       finalAmount: toNullable(reservation.finalAmount),
       commissionRate: reservation.commissionRate,
       platformFee: toNullable(reservation.platformFee),
-      hostPayoutAmount: toNullable(reservation.hostPayoutAmount),
+      hostPayoutAmount:
+        reservation.hostPayoutAmount != null ? Number(reservation.hostPayoutAmount) : null,
       overtimeAmount: toNullable(reservation.overtimeAmount),
+      remainingDue:
+        (reservation as any).remainingDue != null
+          ? Number((reservation as any).remainingDue)
+          : null,
       createdAt: reservation.createdAt,
       parkingSpace: {
         id: space.id,
