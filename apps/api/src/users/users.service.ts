@@ -288,12 +288,17 @@ export class UsersService {
       },
     });
 
-    // Send notification when driver is verified
+    // Send notification when driver or host is verified
     if (
       userRole.role.name === 'DRIVER' &&
       updateStatusDto.status === 'VERIFIED'
     ) {
       this.notificationsService.notifyDriverVerified(userId).catch(() => {});
+    } else if (
+      userRole.role.name === 'HOST' &&
+      updateStatusDto.status === 'VERIFIED'
+    ) {
+      this.notificationsService.notifyHostVerified(userId).catch(() => {});
     }
 
     return {

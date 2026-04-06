@@ -259,6 +259,17 @@ export class NotificationsService {
     });
   }
 
+  async notifyHostVerified(hostUserId: string) {
+    await this.send({
+      userId: hostUserId,
+      title: 'Host Account Verified',
+      message:
+        'Your host account has been verified! You can now list parking spaces.',
+      type: 'HOST_VERIFIED',
+      data: { screen: 'host-home' },
+    });
+  }
+
   async notifyLocationApproved(
     hostUserId: string,
     locationTitle: string,
