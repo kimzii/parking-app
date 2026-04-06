@@ -29,11 +29,7 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION"
       ],
-      "adaptiveIcon": {
-        "backgroundColor": "#D4501E",
-        "foregroundImage": "./assets/images/android-icon-monochrome.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
+      "icon": "./assets/images/android-icon-background.png",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -59,7 +55,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/android-icon-monochrome.png",
+          "icon": "./assets/images/android-icon-foreground.png",
           "color": "#D4501E",
           "defaultChannel": "default"
         }
