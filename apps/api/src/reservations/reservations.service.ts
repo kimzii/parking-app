@@ -1509,6 +1509,13 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
+      // Free the parking space so it is available for new bookings
+      await tx.parkingSpace.update({
+        where: { id: reservation.parkingSpaceId },
+        data: { status: 'AVAILABLE' },
+      });
+      await this.syncLocationAvailableSlotsBySpaceId(tx, reservation.parkingSpaceId);
+
       // Mark reservation as COMPLETED
       await tx.reservation.update({
         where: { id: reservation.id },

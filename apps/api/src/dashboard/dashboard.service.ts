@@ -841,6 +841,8 @@ export class DashboardService {
         ? parseFloat(reservation.hostPayoutAmount.toString())
         : null,
       hostPayoutSettled: !!reservation.hostPayoutId,
+      driverRefundAmount: parseFloat(reservation.totalAmount.toString()),
+      driverRefunded: !!reservation.driverRefundId,
     };
   }
 
@@ -1111,6 +1113,109 @@ export class DashboardService {
     return {
       success: true,
       message: `Host payout of ₱${hostPayoutAmount.toFixed(2)} settled successfully.`,
+    };
+  }
+
+  /**
+   * Admin: Refund the driver's escrow/payment for an admin-cancelled reservation
+   */
+  async adminRefundDriver(reservationId: string) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        driver: {
+          include: { user: true },
+        },
+        parkingSpace: {
+          include: {
+            parkingLocation: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundException('Reservation not found');
+    }
+
+    if (reservation.status !== 'CANCELLED' || reservation.cancelledBy !== 'ADMIN') {
+      throw new BadRequestException(
+        'Can only refund drivers for admin-cancelled reservations',
+      );
+    }
+
+    if (reservation.driverRefundId) {
+      throw new BadRequestException('Driver has already been refunded');
+    }
+
+    // Refund the escrow (first hour) that was charged
+    const refundAmount = new Decimal(String(reservation.totalAmount ?? 0));
+    if (refundAmount.lte(0)) {
+      throw new BadRequestException('No amount to refund');
+    }
+
+    const driverUserId = reservation.driver.userId;
+
+    await this.prisma.$transaction(async (tx) => {
+      const driverWallet = await tx.wallet.findUnique({
+        where: { userId: driverUserId },
+      });
+
+      if (!driverWallet) {
+        throw new BadRequestException('Driver wallet not found');
+      }
+
+      const refundTx = await tx.walletTransaction.create({
+        data: {
+          walletId: driverWallet.id,
+          type: 'CREDIT',
+          source: 'REFUND',
+          amount: refundAmount,
+          referenceId: reservationId,
+          balanceBefore: driverWallet.balance,
+          balanceAfter: new Decimal(driverWallet.balance).add(refundAmount),
+        },
+      });
+
+      await tx.wallet.update({
+        where: { id: driverWallet.id },
+        data: {
+          balance: { increment: refundAmount.toNumber() },
+        },
+      });
+
+      await tx.reservation.update({
+        where: { id: reservationId },
+        data: { driverRefundId: refundTx.id },
+      });
+    });
+
+    // Notify driver of refund
+    const locationTitle = reservation.parkingSpace.parkingLocation.title;
+    this.notificationsService
+      .send({
+        userId: driverUserId,
+        title: 'Refund Issued',
+        message: `You have been refunded ₱${refundAmount.toFixed(2)} for the cancelled session at ${locationTitle}.`,
+        type: 'GENERAL',
+        data: { reservationId, screen: 'payment' },
+      })
+      .catch(() => {});
+
+    // Emit balance update
+    const updatedWallet = await this.prisma.wallet.findUnique({
+      where: { userId: driverUserId },
+    });
+    if (updatedWallet) {
+      this.notificationsGateway.sendBalanceUpdate(
+        driverUserId,
+        updatedWallet.balance.toString(),
+      );
+    }
+
+    return {
+      success: true,
+      message: `Driver refunded ₱${refundAmount.toFixed(2)} successfully.`,
     };
   }
 }

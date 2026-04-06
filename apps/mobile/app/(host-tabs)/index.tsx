@@ -612,8 +612,8 @@ export default function HostHomeScreen() {
     </View>
   );
 
-  const renderHeader = () => (
-    <>
+  const stickyFilters = (
+    <View style={styles.stickyFilterSection}>
       {/* Reservations Section Title */}
       <Text style={styles.sectionTitle}>Reservations</Text>
 
@@ -687,8 +687,7 @@ export default function HostHomeScreen() {
           </TouchableOpacity>
         </View>
       )}
-
-    </>
+    </View>
   );
 
   return (
@@ -719,6 +718,8 @@ export default function HostHomeScreen() {
         </View>
       </View>
 
+      {stickyFilters}
+
       <View style={styles.content}>
         {loading ? (
           <ActivityIndicator
@@ -731,7 +732,6 @@ export default function HostHomeScreen() {
             data={filteredReservations}
             keyExtractor={(item) => item.id}
             renderItem={renderReservationItem}
-            ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmptyState}
             contentContainerStyle={styles.listContent}
             refreshControl={
@@ -837,6 +837,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#D4501E",
+  },
+  stickyFilterSection: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0EDE8",
+    zIndex: 1,
   },
   content: {
     flex: 1,

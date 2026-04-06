@@ -18,10 +18,12 @@ import {
   XCircle,
   CheckCircle,
   UserCircle,
-  Star
+  Star,
+  Eye
 } from "lucide-react";
 import api from "../../../../src/lib/api";
 import Image from "next/image";
+import { Breadcrumb } from "../../../../src/components/ui/breadcrumb";
 
 // --- Types aligned with Prisma schema ---
 type RoleName = "DRIVER" | "HOST" | "ADMIN";
@@ -156,6 +158,7 @@ const formatBookingAmount = (amount: number) => {
 };
 
 const formatBookingStatus = (status: string) => {
+  if (status === "PENDING_PAYMENT") return "Pending Payment";
   return status.charAt(0) + status.slice(1).toLowerCase();
 };
 
@@ -188,6 +191,7 @@ export default function UserProfileView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"profile" | "vehicle" | "bookings" | "property" | "reviews">("profile");
+  const [bookingFilter, setBookingFilter] = useState<"all" | "active" | "finished">("all");
   const [actionLoading, setActionLoading] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
@@ -490,6 +494,9 @@ export default function UserProfileView() {
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
 
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "User Management", href: "/users" }, { label: `${user.firstName} ${user.lastName}` }]} />
+
       {/* Header Area */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
@@ -542,7 +549,7 @@ export default function UserProfileView() {
               }`}
             >
               <Clock size={18} />
-              Recent Bookings
+              Bookings
             </button>
           )}
           {isHost && (
@@ -930,46 +937,91 @@ export default function UserProfileView() {
           )}
 
           {activeTab === "bookings" && isDriver && (
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3">Booking ID</th>
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Host</th>
-                    <th className="px-4 py-3">Amount</th>
-                    <th className="px-4 py-3 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 text-sm">
-                  {user.driver?.reservations && user.driver.reservations.length > 0 ? (
-                    user.driver.reservations.map((booking) => (
-                      <tr key={booking.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-900">{booking.id.slice(0, 8).toUpperCase()}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatBookingDate(booking)}</td>
-                        <td className="px-4 py-3 text-gray-600">{booking.hostName || booking.propertyTitle || booking.parkingLocation?.title || "N/A"}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{formatBookingAmount(booking.totalAmount)}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            booking.status === "COMPLETED" ? "bg-green-100 text-green-700" :
-                            booking.status === "ACTIVE" || booking.status === "CONFIRMED" ? "bg-blue-100 text-blue-700" :
-                            booking.status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
-                            "bg-gray-100 text-gray-700"
-                          }`}>
-                            {formatBookingStatus(booking.status)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-gray-500">Filter:</label>
+                <select
+                  value={bookingFilter}
+                  onChange={(e) => setBookingFilter(e.target.value as "all" | "active" | "finished")}
+                  className="text-xs border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#C94B1E] focus:border-transparent"
+                >
+                  <option value="all">All</option>
+                  <option value="active">Active</option>
+                  <option value="finished">Finished</option>
+                </select>
+              </div>
+              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
-                        No recent bookings found.
-                      </td>
+                      <th className="px-4 py-3">Booking ID</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Host</th>
+                      <th className="px-4 py-3">Amount</th>
+                      <th className="px-4 py-3">Active</th>
+                      <th className="px-4 py-3 text-right">Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm">
+                    {(() => {
+                      const activeStatuses = ["ACTIVE", "CONFIRMED", "PENDING", "PENDING_PAYMENT"];
+                      const allBookings = user.driver?.reservations ?? [];
+                      const filtered = allBookings.filter((b) => {
+                        const isActive = activeStatuses.includes(b.status);
+                        if (bookingFilter === "active") return isActive;
+                        if (bookingFilter === "finished") return !isActive;
+                        return true;
+                      });
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                              No bookings found.
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return filtered.map((booking) => {
+                        const isActive = activeStatuses.includes(booking.status);
+                        return (
+                          <tr key={booking.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900">{booking.id.slice(0, 8).toUpperCase()}</td>
+                            <td className="px-4 py-3 text-gray-600">{formatBookingDate(booking)}</td>
+                            <td className="px-4 py-3 text-gray-600">{booking.hostName || booking.propertyTitle || booking.parkingLocation?.title || "N/A"}</td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{formatBookingAmount(booking.totalAmount)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                              }`}>
+                                {isActive ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  booking.status === "COMPLETED" ? "bg-green-100 text-green-700" :
+                                  booking.status === "ACTIVE" || booking.status === "CONFIRMED" ? "bg-blue-100 text-blue-700" :
+                                  booking.status === "PENDING" || booking.status === "PENDING_PAYMENT" ? "bg-yellow-100 text-yellow-700" :
+                                  "bg-gray-100 text-gray-700"
+                                }`}>
+                                  {formatBookingStatus(booking.status)}
+                                </span>
+                                <button
+                                  onClick={() => router.push(`/sessions?session=${booking.id}`)}
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#C94B1E] hover:bg-orange-50 transition-colors"
+                                  title="View session"
+                                >
+                                  <Eye size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

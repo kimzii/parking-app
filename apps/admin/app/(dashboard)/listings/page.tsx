@@ -26,6 +26,7 @@ import {
 import { GoogleMap, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import api from "../../../src/lib/api";
 import Image from "next/image";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 type TabType = "pending" | "recent" | "recentDrivers";
 
@@ -280,6 +281,8 @@ export default function PendingListings() {
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>("pending");
+  const [listingStatusFilter, setListingStatusFilter] = useState<"ALL" | "APPROVED" | "REJECTED">("ALL");
+  const [driverStatusFilter, setDriverStatusFilter] = useState<"ALL" | "APPROVED" | "REJECTED">("ALL");
   const [listings, setListings] = useState<ParkingLocation[]>([]);
   const [recentListings, setRecentListings] = useState<ParkingLocation[]>([]);
   const [recentDrivers, setRecentDrivers] = useState<Driver[]>([]);
@@ -302,7 +305,6 @@ export default function PendingListings() {
   const [driversPage, setDriversPage] = useState(1);
   const [driversTotalPages, setDriversTotalPages] = useState(1);
   const [driversTotal, setDriversTotal] = useState(0);
-  const [lastListingSyncAt, setLastListingSyncAt] = useState<Date | null>(null);
   const [listingActiveSessions, setListingActiveSessions] = useState<ListingSession[]>([]);
   const [listingConfirmedSessions, setListingConfirmedSessions] = useState<ListingSession[]>([]);
   const [listingSessionsLoading, setListingSessionsLoading] = useState(false);
@@ -368,7 +370,7 @@ export default function PendingListings() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, normalizeLocation]);
 
   // Fetch recently verified/rejected listings from API
   const fetchRecentListings = useCallback(async () => {
@@ -408,7 +410,7 @@ export default function PendingListings() {
     } finally {
       setRecentLoading(false);
     }
-  }, [recentPage]);
+  }, [recentPage, normalizeLocation]);
 
   // Fetch recently verified/rejected drivers from API
   const fetchRecentDrivers = useCallback(async () => {
@@ -469,7 +471,6 @@ export default function PendingListings() {
 
         if (matchedListing) {
           setSelectedListing(matchedListing);
-          setLastListingSyncAt(new Date());
           setActiveTab(matchedListing.status === "PENDING" ? "pending" : "recent");
         }
       } catch (err) {
@@ -503,7 +504,6 @@ export default function PendingListings() {
 
           return latestListing;
         });
-        setLastListingSyncAt(new Date());
       } catch (err) {
         if (!isCancelled) {
           console.error("Error syncing listing realtime data:", err);
@@ -726,17 +726,11 @@ export default function PendingListings() {
       : `${formatOperatingTime(selectedListing.openTime)} - ${formatOperatingTime(
           selectedListing.closeTime
         )}`;
-    const acceptedVehiclesLabel = (() => {
-      const av = selectedListing.acceptedVehicles ?? [];
-      if (av.length === 0 || (av.includes("CAR") && av.includes("MOTORCYCLE")))
-        return "Cars & Motorcycles";
-      if (av.includes("CAR")) return "Cars only";
-      if (av.includes("MOTORCYCLE")) return "Motorcycles only";
-      return av.join(", ");
-    })();
-
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals", href: "/listings" }, { label: selectedListing.title }]} />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -974,16 +968,18 @@ export default function PendingListings() {
                             </p>
                           )}
                           <div className="grid grid-cols-2 gap-2">
-                            {spaces.map((space) => (
+                            {spaces.map((space) => {
+                              const effectiveStatus = !space.isActive ? "DISABLED" : (space.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
+                              return (
                               <button
                                 key={space.id}
                                 onClick={() => setSelectedSpace(space)}
                                 className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
-                                  !space.isActive
+                                  effectiveStatus === "DISABLED"
                                     ? "bg-gray-50 border-gray-200 opacity-60"
-                                    : space.status === "AVAILABLE"
+                                    : effectiveStatus === "AVAILABLE"
                                     ? "bg-green-50 border-green-200"
-                                    : space.status === "OCCUPIED"
+                                    : effectiveStatus === "OCCUPIED"
                                     ? "bg-blue-50 border-blue-200"
                                     : "bg-gray-50 border-gray-300"
                                 }`}
@@ -993,20 +989,21 @@ export default function PendingListings() {
                                     {space.name || `Slot ${space.slotNumber}`}
                                   </span>
                                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                    !space.isActive
+                                    effectiveStatus === "DISABLED"
                                       ? "bg-gray-200 text-gray-500"
-                                      : space.status === "AVAILABLE"
+                                      : effectiveStatus === "AVAILABLE"
                                       ? "bg-green-100 text-green-700"
-                                      : space.status === "OCCUPIED"
+                                      : effectiveStatus === "OCCUPIED"
                                       ? "bg-blue-100 text-blue-700"
                                       : "bg-gray-200 text-gray-600"
                                   }`}>
-                                    {!space.isActive ? "Disabled" : space.status.charAt(0) + space.status.slice(1).toLowerCase()}
+                                    {effectiveStatus === "DISABLED" ? "Disabled" : effectiveStatus.charAt(0) + effectiveStatus.slice(1).toLowerCase()}
                                   </span>
                                 </div>
                                 <p className="text-xs text-gray-400">#{space.slotNumber}</p>
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -1439,17 +1436,22 @@ export default function PendingListings() {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Status</p>
-                  <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
-                    !selectedSpace.isActive
-                      ? "bg-gray-200 text-gray-600"
-                      : selectedSpace.status === "AVAILABLE"
-                      ? "bg-green-100 text-green-700"
-                      : selectedSpace.status === "OCCUPIED"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-gray-200 text-gray-600"
-                  }`}>
-                    {!selectedSpace.isActive ? "Disabled" : selectedSpace.status.charAt(0) + selectedSpace.status.slice(1).toLowerCase()}
-                  </span>
+                  {(() => {
+                    const eff = !selectedSpace.isActive ? "DISABLED" : (selectedSpace.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
+                    return (
+                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
+                        eff === "DISABLED"
+                          ? "bg-gray-200 text-gray-600"
+                          : eff === "AVAILABLE"
+                          ? "bg-green-100 text-green-700"
+                          : eff === "OCCUPIED"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-200 text-gray-600"
+                      }`}>
+                        {eff === "DISABLED" ? "Disabled" : eff.charAt(0) + eff.slice(1).toLowerCase()}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Active</p>
@@ -1615,6 +1617,9 @@ export default function PendingListings() {
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals", href: "/listings" }, { label: `${selectedDriver.user.firstName} ${selectedDriver.user.lastName}` }]} />
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -1807,9 +1812,11 @@ export default function PendingListings() {
   // --- 2. MAIN LIST VIEW RENDER ---
   return (
     <div className="bg-[#F8F9FA] min-h-screen p-8 font-sans">
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals" }]} />
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#1a202c]">
-          Parking Location Listings
+          Approvals
         </h1>
       </div>
 
@@ -1875,9 +1882,6 @@ export default function PendingListings() {
       {activeTab === "pending" && (
         <>
           <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-600">
-              {total} pending listing{total !== 1 ? "s" : ""}
-            </span>
             <Button
               onClick={fetchListings}
               variant="outline"
@@ -2015,10 +2019,16 @@ export default function PendingListings() {
       {/* Recent Tab Content */}
       {activeTab === "recent" && (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-600">
-              {recentTotal} recently verified/rejected listing{recentTotal !== 1 ? "s" : ""}
-            </span>
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4 mb-4">
+            <select
+              value={listingStatusFilter}
+              onChange={(e) => setListingStatusFilter(e.target.value as "ALL" | "APPROVED" | "REJECTED")}
+              className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
+            >
+              <option value="ALL">Any Status</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
             <Button
               onClick={fetchRecentListings}
               variant="outline"
@@ -2059,7 +2069,7 @@ export default function PendingListings() {
 
           {/* Recent Listing Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {recentListings.map((listing) => {
+            {recentListings.filter((l) => listingStatusFilter === "ALL" || l.status === listingStatusFilter).map((listing) => {
               const primaryImage = getPrimaryImage(listing.images);
 
               return (
@@ -2173,10 +2183,16 @@ export default function PendingListings() {
       {/* Recent Drivers Tab Content */}
       {activeTab === "recentDrivers" && (
         <>
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-600">
-              {driversTotal} recently verified/rejected driver application{driversTotal !== 1 ? "s" : ""}
-            </span>
+          <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4 mb-4">
+            <select
+              value={driverStatusFilter}
+              onChange={(e) => setDriverStatusFilter(e.target.value as "ALL" | "APPROVED" | "REJECTED")}
+              className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
+            >
+              <option value="ALL">Any Status</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
             <Button
               onClick={fetchRecentDrivers}
               variant="outline"
@@ -2217,7 +2233,11 @@ export default function PendingListings() {
 
           {/* Recent Drivers Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {recentDrivers.map((driver) => (
+            {recentDrivers.filter((d) => {
+              if (driverStatusFilter === "ALL") return true;
+              if (driverStatusFilter === "APPROVED") return d.verificationStatus === "VERIFIED";
+              return d.verificationStatus === "REJECTED";
+            }).map((driver) => (
               <div
                 key={driver.id}
                 onClick={() => setSelectedDriver(driver)}

@@ -83,6 +83,12 @@ const STATUS_CONFIG = {
     label: "Expired",
     icon: "timer-off",
   },
+  PAYMENT_PENDING: {
+    color: "#E53935",
+    bg: "#FFEBEE",
+    label: "Payment Pending",
+    icon: "warning",
+  },
 };
 
 const PAST_STATUSES = ["COMPLETED", "CANCELLED", "EXPIRED"];
@@ -353,6 +359,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0EDE8",
+    zIndex: 1,
   },
   filters: {
     flex: 1,

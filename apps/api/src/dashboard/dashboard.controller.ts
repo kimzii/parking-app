@@ -132,4 +132,10 @@ export class DashboardController {
   async settleHostPayout(@Param('id', ParseUUIDPipe) id: string) {
     return this.dashboardService.adminSettleHostPayout(id);
   }
+
+  @Post('reservations/:id/refund-driver')
+  @Roles(RoleName.ADMIN)
+  async refundDriver(@Param('id', ParseUUIDPipe) id: string) {
+    return this.dashboardService.adminRefundDriver(id);
+  }
 }

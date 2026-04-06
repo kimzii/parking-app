@@ -39,6 +39,7 @@ import {
   ChartContainer,
   type ChartConfig,
 } from "../../../src/components/ui/chart";
+import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 // --- Interfaces ---
 interface FinancialStats {
@@ -449,6 +450,9 @@ export default function FinancialReportsPage() {
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans p-8">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Financial Reports" }]} />
+
       {/* Page Header & Filters */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Financial Reports</h1>
