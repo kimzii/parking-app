@@ -85,6 +85,17 @@ export class NotificationsController {
 
     const hostUserId = reservation.parkingSpace.parkingLocation.host.userId;
     const driverUserId = reservation.driver.user.id;
+
+    // Deduplicate — only send once per reservation
+    const alreadySent = await this.prisma.notification.findFirst({
+      where: {
+        userId: hostUserId,
+        type: 'DRIVER_NEARBY',
+        data: { path: ['reservationId'], equals: body.reservationId },
+      },
+    });
+    if (alreadySent) return { success: true };
+
     const driverName =
       [reservation.driver.user.firstName, reservation.driver.user.lastName]
         .filter(Boolean)
@@ -110,7 +121,7 @@ export class NotificationsController {
       include: {
         parkingSpace: {
           include: {
-            parkingLocation: true,
+            parkingLocation: { include: { host: true } },
           },
         },
         driver: { include: { user: true } },
@@ -121,11 +132,29 @@ export class NotificationsController {
       throw new NotFoundException('Reservation not found');
     }
 
+    const hostUserId = reservation.parkingSpace.parkingLocation.host.userId;
     const driverUserId = reservation.driver.user.id;
+
+    // Deduplicate — only send once per reservation
+    const alreadySent = await this.prisma.notification.findFirst({
+      where: {
+        userId: driverUserId,
+        type: 'DRIVER_ARRIVED',
+        data: { path: ['reservationId'], equals: body.reservationId },
+      },
+    });
+    if (alreadySent) return { success: true };
+
+    const driverName =
+      [reservation.driver.user.firstName, reservation.driver.user.lastName]
+        .filter(Boolean)
+        .join(' ') || 'A driver';
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
 
     await this.notificationsService.notifyDriverArrived(
+      hostUserId,
       driverUserId,
+      driverName,
       locationTitle,
       body.reservationId,
     );

@@ -305,17 +305,28 @@ export class NotificationsService {
   }
 
   async notifyDriverArrived(
+    hostUserId: string,
     driverUserId: string,
+    driverName: string,
     locationTitle: string,
     reservationId: string,
   ) {
-    await this.send({
-      userId: driverUserId,
-      title: 'You Have Arrived!',
-      message: `You've reached ${locationTitle}. Please proceed to your parking spot.`,
-      type: 'GENERAL',
-      data: { reservationId, screen: 'reservation-qr' },
-    });
+    await Promise.all([
+      this.send({
+        userId: driverUserId,
+        title: 'You Have Arrived!',
+        message: `You've reached ${locationTitle}. Please proceed to your parking spot.`,
+        type: 'DRIVER_ARRIVED',
+        data: { reservationId, screen: 'reservation-qr' },
+      }),
+      this.send({
+        userId: hostUserId,
+        title: 'Driver Has Arrived',
+        message: `${driverName} has arrived at ${locationTitle} and is ready to park.`,
+        type: 'DRIVER_ARRIVED',
+        data: { reservationId, screen: 'host-reservation-detail' },
+      }),
+    ]);
   }
 
   async notifyDriverNearby(
