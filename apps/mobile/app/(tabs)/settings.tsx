@@ -126,7 +126,11 @@ export default function SettingsScreen() {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity style={styles.menuRow} activeOpacity={0.75}>
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => router.push("/(modals)/faqs")}
+              activeOpacity={0.75}
+            >
               <View style={styles.menuIconBg}>
                 <MaterialIcons name="help-outline" size={18} color="#A09A94" />
               </View>
