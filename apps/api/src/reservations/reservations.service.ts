@@ -121,8 +121,13 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         arrivalDeadline: { lt: now },
       },
       include: {
-        driver: {
-          select: { userId: true },
+        driver: { select: { userId: true } },
+        parkingSpace: {
+          include: {
+            parkingLocation: {
+              include: { host: true },
+            },
+          },
         },
       },
     });
@@ -214,6 +219,34 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
               escrowAmount: 0,
             },
           });
+
+          // Notify driver and host of no-show expiry (outside transaction)
+          const locationTitle = timedOut.parkingSpace.parkingLocation.title;
+          const hostUserId = timedOut.parkingSpace.parkingLocation.host.userId;
+          const driverUserId = timedOut.driver.userId;
+
+          this.notificationsService
+            .send({
+              userId: driverUserId,
+              title: 'Booking Expired — No Arrival',
+              message: `Your booking at ${locationTitle} has been cancelled because you did not arrive within the 1-hour window. Your escrow has been forfeited.`,
+              type: 'BOOKING_CANCELLED',
+              data: { reservationId: timedOut.id, screen: 'reservation-qr' },
+            })
+            .catch(() => {});
+
+          this.notificationsService
+            .send({
+              userId: hostUserId,
+              title: 'Driver Did Not Arrive',
+              message: `A driver did not arrive at ${locationTitle} within the 1-hour window. The booking has been automatically cancelled and the slot is now available.`,
+              type: 'BOOKING_CANCELLED',
+              data: {
+                reservationId: timedOut.id,
+                screen: 'host-reservation-detail',
+              },
+            })
+            .catch(() => {});
         }
       });
     }
