@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  useColorScheme,
 } from "react-native";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -19,6 +20,8 @@ import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
 
 export default function LoginScreen() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,11 +90,13 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoContainer}>
-          <Image
-            source={require("../../assets/images/icon.png")}
-            style={styles.logoImage}
-            contentFit="contain"
-          />
+          <View style={[styles.logoBackground, !isDark && styles.logoBackgroundLight]}>
+            <Image
+              source={require("../../assets/images/android-icon-foreground.png")}
+              style={styles.logoImage}
+              contentFit="contain"
+            />
+          </View>
           <Text style={styles.subtitle}>Find & Book Parking Easily</Text>
         </View>
 
@@ -185,10 +190,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 32,
   },
-  logoImage: {
-    width: 160,
-    height: 160,
+  logoBackground: {
+    borderRadius: 32,
+    padding: 16,
     marginBottom: 8,
+  },
+  logoBackgroundLight: {
+    backgroundColor: "rgba(212, 80, 30, 0.1)",
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 30,
