@@ -13,6 +13,7 @@ import {
   Settings,
   ArrowLeftRight,
   Activity,
+  AlertTriangle,
 } from "lucide-react";
 
 const navigationItems: { href: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string; badge?: string }[] = [
@@ -54,6 +55,11 @@ const navigationItems: { href: string; icon: React.ComponentType<{ size?: number
     href: "/reports",
     icon: BarChart3,
     label: "Financial Reports",
+  },
+  {
+    href: "/flagged-users",
+    icon: AlertTriangle,
+    label: "Flagged Users",
   },
   {
     href: "/settings",

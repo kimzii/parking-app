@@ -138,4 +138,42 @@ export class DashboardController {
   async refundDriver(@Param('id', ParseUUIDPipe) id: string) {
     return this.dashboardService.adminRefundDriver(id);
   }
+
+  @Get('flagged-users')
+  @Roles(RoleName.ADMIN)
+  async getFlaggedUsers() {
+    return this.dashboardService.getFlaggedUsers();
+  }
+
+  @Post('users/:userId/warn')
+  @Roles(RoleName.ADMIN)
+  async warnUser(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: { roleId: string; message?: string },
+  ) {
+    return this.dashboardService.warnUser(userId, body.roleId, body.message);
+  }
+
+  @Post('users/:userId/suspend')
+  @Roles(RoleName.ADMIN)
+  async suspendUser(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: { roleId: string; days: number; reason: string },
+  ) {
+    return this.dashboardService.suspendUser(
+      userId,
+      body.roleId,
+      body.days,
+      body.reason,
+    );
+  }
+
+  @Post('users/:userId/unsuspend')
+  @Roles(RoleName.ADMIN)
+  async unsuspendUser(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: { roleId: string },
+  ) {
+    return this.dashboardService.unsuspendUser(userId, body.roleId);
+  }
 }

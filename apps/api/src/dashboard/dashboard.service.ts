@@ -1,9 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import {
   LocationStatus,
+  NotificationType,
   ReservationStatus,
   PaymentStatus,
   Prisma,
@@ -89,14 +96,30 @@ export interface ReservationListItem {
 }
 
 @Injectable()
-export class DashboardService {
+export class DashboardService implements OnModuleInit, OnModuleDestroy {
   private readonly PLATFORM_COMMISSION_RATE = new Decimal(0.1);
+  private unsuspendInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
     private notificationsGateway: NotificationsGateway,
   ) {}
+
+  onModuleInit() {
+    this.unsuspendInterval = setInterval(() => {
+      void this.autoUnsuspendExpired().catch((error: unknown) => {
+        console.error('Failed to auto-unsuspend expired users:', error);
+      });
+    }, 60 * 60 * 1000); // every hour
+  }
+
+  onModuleDestroy() {
+    if (this.unsuspendInterval) {
+      clearInterval(this.unsuspendInterval);
+      this.unsuspendInterval = null;
+    }
+  }
 
   async getStats(): Promise<DashboardStats> {
     // Get total active listings (APPROVED status)
@@ -1217,5 +1240,308 @@ export class DashboardService {
       success: true,
       message: `Driver refunded ₱${refundAmount.toFixed(2)} successfully.`,
     };
+  }
+
+  async getFlaggedUsers() {
+    const [driverResults, hostResults] = await Promise.all([
+      // Drivers with avg HOST_TO_DRIVER rating < 2.5 and >= 10 reviews
+      this.prisma.driver.findMany({
+        where: {
+          reservations: {
+            some: {
+              reviews: { some: { reviewType: 'HOST_TO_DRIVER' } },
+            },
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              userRoles: {
+                where: { role: { name: 'DRIVER' } },
+                select: {
+                  roleId: true,
+                  status: true,
+                  suspendedAt: true,
+                  suspendUntil: true,
+                  suspensionReason: true,
+                },
+              },
+            },
+          },
+          reservations: {
+            select: {
+              reviews: {
+                where: { reviewType: 'HOST_TO_DRIVER' },
+                select: { rating: true, comment: true, createdAt: true },
+              },
+            },
+          },
+        },
+      }),
+      // Hosts with avg DRIVER_TO_LOCATION rating < 2.5 and >= 10 reviews
+      this.prisma.host.findMany({
+        where: {
+          parkingLocations: {
+            some: {
+              parkingSpaces: {
+                some: {
+                  reservations: {
+                    some: {
+                      reviews: { some: { reviewType: 'DRIVER_TO_LOCATION' } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              userRoles: {
+                where: { role: { name: 'HOST' } },
+                select: {
+                  roleId: true,
+                  status: true,
+                  suspendedAt: true,
+                  suspendUntil: true,
+                  suspensionReason: true,
+                },
+              },
+            },
+          },
+          parkingLocations: {
+            select: {
+              parkingSpaces: {
+                select: {
+                  reservations: {
+                    select: {
+                      reviews: {
+                        where: { reviewType: 'DRIVER_TO_LOCATION' },
+                        select: { rating: true, comment: true, createdAt: true, reviewer: { select: { firstName: true, lastName: true } } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const flagged: {
+      userId: string;
+      name: string;
+      email: string;
+      role: string;
+      roleId: string | null;
+      averageRating: number;
+      totalReviews: number;
+      currentStatus: string | null;
+      suspendedAt: Date | null;
+      suspendUntil: Date | null;
+      suspensionReason: string | null;
+      recentReviews: { rating: number; comment: string | null; createdAt: Date; reviewer?: { firstName: string | null; lastName: string | null } }[];
+    }[] = [];
+
+    for (const driver of driverResults) {
+      const allReviews = driver.reservations.flatMap((r) => r.reviews);
+      if (allReviews.length < 10) continue;
+      const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      if (avg >= 2.5) continue;
+
+      const roleInfo = driver.user.userRoles[0];
+      const recent = [...allReviews]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, 5);
+
+      flagged.push({
+        userId: driver.user.id,
+        name: `${driver.user.firstName ?? ''} ${driver.user.lastName ?? ''}`.trim(),
+        email: driver.user.email,
+        role: 'DRIVER',
+        roleId: roleInfo?.roleId ?? null,
+        averageRating: Math.round(avg * 10) / 10,
+        totalReviews: allReviews.length,
+        currentStatus: roleInfo?.status ?? null,
+        suspendedAt: roleInfo?.suspendedAt ?? null,
+        suspendUntil: roleInfo?.suspendUntil ?? null,
+        suspensionReason: roleInfo?.suspensionReason ?? null,
+        recentReviews: recent,
+      });
+    }
+
+    for (const host of hostResults) {
+      const allReviews = host.parkingLocations
+        .flatMap((loc) => loc.parkingSpaces)
+        .flatMap((space) => space.reservations)
+        .flatMap((res) => res.reviews);
+
+      if (allReviews.length < 10) continue;
+      const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      if (avg >= 2.5) continue;
+
+      const roleInfo = host.user.userRoles[0];
+      const recent = [...allReviews]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, 5);
+
+      flagged.push({
+        userId: host.user.id,
+        name: `${host.user.firstName ?? ''} ${host.user.lastName ?? ''}`.trim(),
+        email: host.user.email,
+        role: 'HOST',
+        roleId: roleInfo?.roleId ?? null,
+        averageRating: Math.round(avg * 10) / 10,
+        totalReviews: allReviews.length,
+        currentStatus: roleInfo?.status ?? null,
+        suspendedAt: roleInfo?.suspendedAt ?? null,
+        suspendUntil: roleInfo?.suspendUntil ?? null,
+        suspensionReason: roleInfo?.suspensionReason ?? null,
+        recentReviews: recent,
+      });
+    }
+
+    return flagged;
+  }
+
+  async warnUser(userId: string, roleId: string, message?: string) {
+    const userRole = await this.prisma.userRole.findUnique({
+      where: { userId_roleId: { userId, roleId } },
+      include: { role: { select: { name: true } } },
+    });
+    if (!userRole) {
+      throw new NotFoundException('User role not found');
+    }
+
+    const roleName = userRole.role.name.toLowerCase();
+    const body =
+      message ??
+      `Your ${roleName} account has received a warning due to low ratings. Please improve your service to avoid suspension.`;
+
+    await this.notificationsService.send({
+      userId,
+      title: 'Account Warning',
+      message: body,
+      type: NotificationType.USER_WARNING,
+      data: { roleId, role: userRole.role.name },
+    });
+
+    return { success: true, message: 'Warning sent.' };
+  }
+
+  async suspendUser(
+    userId: string,
+    roleId: string,
+    days: number,
+    reason: string,
+  ) {
+    const userRole = await this.prisma.userRole.findUnique({
+      where: { userId_roleId: { userId, roleId } },
+      include: { role: { select: { name: true } } },
+    });
+    if (!userRole) {
+      throw new NotFoundException('User role not found');
+    }
+
+    const now = new Date();
+    const suspendUntil = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+    await this.prisma.userRole.update({
+      where: { userId_roleId: { userId, roleId } },
+      data: {
+        status: 'SUSPENDED',
+        suspendedAt: now,
+        suspendUntil,
+        suspensionReason: reason,
+      },
+    });
+
+    const roleName = userRole.role.name.toLowerCase();
+    await this.notificationsService.send({
+      userId,
+      title: 'Account Suspended',
+      message: `Your ${roleName} account has been suspended for ${days} day${days === 1 ? '' : 's'}. Reason: ${reason}`,
+      type: NotificationType.USER_SUSPENDED,
+      data: { roleId, role: userRole.role.name, days, reason, suspendUntil },
+    });
+
+    return { success: true, message: `User suspended until ${suspendUntil.toISOString()}.` };
+  }
+
+  async unsuspendUser(userId: string, roleId: string) {
+    const userRole = await this.prisma.userRole.findUnique({
+      where: { userId_roleId: { userId, roleId } },
+      include: { role: { select: { name: true } } },
+    });
+    if (!userRole) {
+      throw new NotFoundException('User role not found');
+    }
+
+    await this.prisma.userRole.update({
+      where: { userId_roleId: { userId, roleId } },
+      data: {
+        status: 'VERIFIED',
+        suspendedAt: null,
+        suspendUntil: null,
+        suspensionReason: null,
+      },
+    });
+
+    const roleName = userRole.role.name.toLowerCase();
+    await this.notificationsService.send({
+      userId,
+      title: 'Account Reactivated',
+      message: `Your ${roleName} account has been reactivated.`,
+      type: NotificationType.USER_UNSUSPENDED,
+      data: { roleId, role: userRole.role.name },
+    });
+
+    return { success: true, message: 'User unsuspended successfully.' };
+  }
+
+  async autoUnsuspendExpired() {
+    const now = new Date();
+    const expired = await this.prisma.userRole.findMany({
+      where: {
+        status: 'SUSPENDED',
+        suspendUntil: { lte: now },
+      },
+      include: { role: { select: { name: true } } },
+    });
+
+    if (expired.length === 0) return;
+
+    await Promise.all(
+      expired.map(async (ur) => {
+        await this.prisma.userRole.update({
+          where: { userId_roleId: { userId: ur.userId, roleId: ur.roleId } },
+          data: {
+            status: 'VERIFIED',
+            suspendedAt: null,
+            suspendUntil: null,
+            suspensionReason: null,
+          },
+        });
+
+        const roleName = ur.role.name.toLowerCase();
+        await this.notificationsService.send({
+          userId: ur.userId,
+          title: 'Account Reactivated',
+          message: `Your ${roleName} account suspension has expired and your account has been reactivated.`,
+          type: NotificationType.USER_UNSUSPENDED,
+          data: { role: ur.role.name },
+        });
+      }),
+    );
   }
 }

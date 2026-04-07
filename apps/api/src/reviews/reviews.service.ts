@@ -6,11 +6,15 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
-import { ReviewType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType, ReviewType, RoleName } from '@prisma/client';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async createDriverReview(userId: string, dto: CreateReviewDto) {
     const driver = await this.prisma.driver.findUnique({
@@ -23,7 +27,11 @@ export class ReviewsService {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: dto.reservationId },
       include: {
-        parkingSpace: { include: { parkingLocation: true } },
+        parkingSpace: {
+          include: {
+            parkingLocation: { include: { host: { select: { userId: true } } } },
+          },
+        },
       },
     });
     if (!reservation) {
@@ -52,7 +60,7 @@ export class ReviewsService {
       );
     }
 
-    return this.prisma.review.create({
+    const review = await this.prisma.review.create({
       data: {
         reservationId: dto.reservationId,
         reviewerId: userId,
@@ -66,6 +74,13 @@ export class ReviewsService {
         },
       },
     });
+
+    await this.checkAndFlagLowRating(
+      reservation.parkingSpace.parkingLocation.host.userId,
+      RoleName.HOST,
+    );
+
+    return review;
   }
 
   async createHostReview(userId: string, dto: CreateReviewDto) {
@@ -110,7 +125,7 @@ export class ReviewsService {
       );
     }
 
-    return this.prisma.review.create({
+    const review = await this.prisma.review.create({
       data: {
         reservationId: dto.reservationId,
         reviewerId: userId,
@@ -124,6 +139,120 @@ export class ReviewsService {
         },
       },
     });
+
+    // Get the driver's userId from the reservation and check for low rating flag
+    const driverRecord = await this.prisma.driver.findUnique({
+      where: { id: reservation.driverId },
+      select: { userId: true },
+    });
+    if (driverRecord) {
+      await this.checkAndFlagLowRating(driverRecord.userId, RoleName.DRIVER);
+    }
+
+    return review;
+  }
+
+  private async checkAndFlagLowRating(userId: string, role: RoleName) {
+    const MIN_REVIEWS = 10;
+    const RATING_THRESHOLD = 2.5;
+    const FLAG_COOLDOWN_DAYS = 7;
+
+    let totalReviews: number;
+    let avgRating: number;
+
+    if (role === RoleName.DRIVER) {
+      const driver = await this.prisma.driver.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!driver) return;
+
+      const result = await this.prisma.review.aggregate({
+        where: {
+          reviewType: ReviewType.HOST_TO_DRIVER,
+          reservation: { driverId: driver.id },
+        },
+        _avg: { rating: true },
+        _count: true,
+      });
+      totalReviews = result._count;
+      avgRating = Number(result._avg.rating ?? 0);
+    } else {
+      const host = await this.prisma.host.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+      if (!host) return;
+
+      const result = await this.prisma.review.aggregate({
+        where: {
+          reviewType: ReviewType.DRIVER_TO_LOCATION,
+          reservation: {
+            parkingSpace: {
+              parkingLocation: { hostId: host.id },
+            },
+          },
+        },
+        _avg: { rating: true },
+        _count: true,
+      });
+      totalReviews = result._count;
+      avgRating = Number(result._avg.rating ?? 0);
+    }
+
+    if (totalReviews < MIN_REVIEWS) return;
+    if (avgRating >= RATING_THRESHOLD) return;
+
+    // Debounce: skip if already flagged within last 7 days
+    // LOW_RATING_FLAGGED notifications are sent to admins, so we query by data.flaggedUserId
+    const cooldownDate = new Date();
+    cooldownDate.setDate(cooldownDate.getDate() - FLAG_COOLDOWN_DAYS);
+    const recentFlag = await this.prisma.notification.findFirst({
+      where: {
+        type: NotificationType.LOW_RATING_FLAGGED,
+        createdAt: { gte: cooldownDate },
+        data: { path: ['flaggedUserId'], equals: userId },
+      },
+    });
+    if (recentFlag) return;
+
+    // Fetch user name for the notification message
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const userName = user
+      ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim()
+      : 'Unknown User';
+
+    // Notify all admins
+    const adminRole = await this.prisma.role.findUnique({
+      where: { name: RoleName.ADMIN },
+    });
+    if (!adminRole) return;
+
+    const admins = await this.prisma.userRole.findMany({
+      where: { roleId: adminRole.id, status: 'VERIFIED' },
+      select: { userId: true },
+    });
+
+    await Promise.all(
+      admins.map((admin) =>
+        this.notificationsService.send({
+          userId: admin.userId,
+          title: 'Low Rating Flagged',
+          message: `${userName} (${role}) has an average rating of ${avgRating.toFixed(1)} across ${totalReviews} reviews.`,
+          type: NotificationType.LOW_RATING_FLAGGED,
+          data: {
+            flaggedUserId: userId,
+            role,
+            averageRating: avgRating,
+            totalReviews,
+            userName,
+          },
+        }),
+      ),
+    );
   }
 
   async getReviewsForLocation(locationId: string) {

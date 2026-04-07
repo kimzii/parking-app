@@ -55,12 +55,15 @@ model Role {
 }
 
 model UserRole {
-  userId     String             @map("user_id") @db.Uuid
-  roleId     String             @map("role_id") @db.Uuid
-  status     VerificationStatus @default(PENDING)
-  assignedAt DateTime           @default(now()) @map("assigned_at")
-  role       Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String             @map("user_id") @db.Uuid
+  roleId           String             @map("role_id") @db.Uuid
+  status           VerificationStatus @default(PENDING)
+  assignedAt       DateTime           @default(now()) @map("assigned_at")
+  suspendedAt      DateTime?          @map("suspended_at")
+  suspendUntil     DateTime?          @map("suspend_until")
+  suspensionReason String?            @map("suspension_reason")
+  role             Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@map("user_roles")
@@ -288,6 +291,10 @@ enum NotificationType {
   TOPUP_REJECTED
   WITHDRAW_APPROVED
   WITHDRAW_REJECTED
+  LOW_RATING_FLAGGED
+  USER_WARNING
+  USER_SUSPENDED
+  USER_UNSUSPENDED
 }
 
 model AdminLog {
