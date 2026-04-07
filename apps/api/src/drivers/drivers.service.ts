@@ -503,8 +503,10 @@ export class DriversService {
       throw new NotFoundException('Driver role not found for user');
     }
 
-    // Log admin action if needed
-    // TODO: Add admin logging
+    // Send notification when driver is verified
+    if (updateStatusDto.status === 'VERIFIED') {
+      this.notificationsService.notifyDriverVerified(driver.userId).catch(() => {});
+    }
 
     return {
       message: 'Driver status updated successfully',
