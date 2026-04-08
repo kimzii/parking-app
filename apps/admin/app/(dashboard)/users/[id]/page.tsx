@@ -291,29 +291,6 @@ export default function UserProfileView() {
     }
   };
 
-  // Update host verification status
-  const handleHostVerification = async (status: "VERIFIED" | "REJECTED") => {
-    if (!user) return;
-
-    const hostRole = user.roleStatuses.find((rs) => rs.role === "HOST");
-
-    if (!hostRole?.roleId) {
-      alert("Host role ID is missing. Please refresh and try again.");
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-      await api.put(`/users/${user.id}/roles/${hostRole.roleId}/status`, { status });
-      await fetchUserProfile();
-    } catch (err) {
-      console.error("Error updating host status:", err);
-      alert(`Failed to ${status.toLowerCase()} host. Please try again.`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   // Get driver role status
   const getDriverStatus = (): VerificationStatus | null => {
     if (!user) return null;
@@ -753,71 +730,23 @@ export default function UserProfileView() {
 
                       {isHost && (
                         <div>
-                          {hostStatus === "VERIFIED" ? (
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                              <div className="flex items-start gap-2">
-                                <CheckCircle size={16} className="text-green-600 shrink-0 mt-0.5" />
-                                <div>
-                                  <p className="font-semibold text-green-800 text-sm">Verified Host</p>
-                                  <p className="text-xs text-green-700 mt-0.5">Host can publish approved listings.</p>
-                                </div>
-                              </div>
-                            </div>
-                          ) : hostStatus === "PENDING" ? (
-                            <div className="space-y-3">
-                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                                <div className="flex items-start gap-2">
-                                  <Clock size={16} className="text-yellow-600 shrink-0 mt-0.5" />
-                                  <div>
-                                    <p className="font-semibold text-yellow-800 text-sm">Pending Host Verification</p>
-                                    <p className="text-xs text-yellow-700 mt-0.5">This host role is pending verification.</p>
-                                  </div>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => handleHostVerification("VERIFIED")}
-                                disabled={actionLoading}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-semibold rounded-lg transition-colors"
-                              >
-                                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                                Approve Host
-                              </button>
-                              <button
-                                onClick={() => handleHostVerification("REJECTED")}
-                                disabled={actionLoading}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm font-semibold rounded-lg transition-colors"
-                              >
-                                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
-                                Reject Host
-                              </button>
-                            </div>
-                          ) : hostStatus === "REJECTED" ? (
-                            <div className="space-y-3">
-                              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                <div className="flex items-start gap-2">
-                                  <XCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
-                                  <div>
-                                    <p className="font-semibold text-red-800 text-sm">Host Verification Rejected</p>
-                                    <p className="text-xs text-red-700 mt-0.5">Host cannot create active listings.</p>
-                                  </div>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => handleHostVerification("VERIFIED")}
-                                disabled={actionLoading}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-semibold rounded-lg transition-colors"
-                              >
-                                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                                Re-approve Host
-                              </button>
-                            </div>
-                          ) : (
+                          {hostStatus === "SUSPENDED" ? (
                             <div className="bg-gray-100 border border-gray-200 rounded-lg p-3">
                               <div className="flex items-start gap-2">
                                 <AlertCircle size={16} className="text-gray-500 shrink-0 mt-0.5" />
                                 <div>
                                   <p className="font-semibold text-gray-700 text-sm">Host Account Suspended</p>
                                   <p className="text-xs text-gray-600 mt-0.5">This host role is currently suspended.</p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <div className="flex items-start gap-2">
+                                <CheckCircle size={16} className="text-green-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="font-semibold text-green-800 text-sm">Verified Host</p>
+                                  <p className="text-xs text-green-700 mt-0.5">Host can publish approved listings. Individual listings require admin approval.</p>
                                 </div>
                               </div>
                             </div>

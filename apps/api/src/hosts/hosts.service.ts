@@ -95,7 +95,7 @@ export class HostsService {
         data: {
           userId,
           roleId: hostRole.id,
-          status: 'PENDING',
+          status: 'VERIFIED',
         },
       });
 
