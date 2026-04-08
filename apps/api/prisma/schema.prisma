@@ -16,7 +16,7 @@ model User {
   // Profile fields
   firstName      String?
   lastName       String?
-  phoneNumber    String?
+  phoneNumber    String?  @unique
   profilePicture String?
 
   emailVerified       Boolean   @default(false)
