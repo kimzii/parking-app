@@ -978,6 +978,16 @@ export class HostsService {
 
     const where: Prisma.ParkingLocationWhereInput = {
       status: 'APPROVED',
+      host: {
+        user: {
+          userRoles: {
+            none: {
+              role: { name: 'HOST' },
+              status: 'SUSPENDED',
+            },
+          },
+        },
+      },
     };
 
     if (search) {
@@ -1056,6 +1066,16 @@ export class HostsService {
       where: {
         id: locationId,
         status: 'APPROVED',
+        host: {
+          user: {
+            userRoles: {
+              none: {
+                role: { name: 'HOST' },
+                status: 'SUSPENDED',
+              },
+            },
+          },
+        },
       },
       include: {
         images: {

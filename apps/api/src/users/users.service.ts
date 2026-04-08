@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  BadRequestException,
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
@@ -763,6 +764,8 @@ export class UsersService {
             role: true,
           },
         },
+        driver: { select: { id: true } },
+        host: { select: { id: true } },
       },
     });
 
@@ -770,7 +773,47 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Delete the user and all related data (cascading deletes handled by Prisma)
+    // Check if user has any reservations as a driver
+    if (user.driver) {
+      const driverReservations = await this.prisma.reservation.count({
+        where: { driverId: user.driver.id },
+      });
+      if (driverReservations > 0) {
+        throw new BadRequestException(
+          `Cannot delete this user. They have ${driverReservations} reservation(s) as a driver. Suspend the account instead.`,
+        );
+      }
+    }
+
+    // Check if user has any reservations as a host (through their parking locations)
+    if (user.host) {
+      const hostReservations = await this.prisma.reservation.count({
+        where: {
+          parkingSpace: {
+            parkingLocation: {
+              hostId: user.host.id,
+            },
+          },
+        },
+      });
+      if (hostReservations > 0) {
+        throw new BadRequestException(
+          `Cannot delete this user. They have ${hostReservations} reservation(s) on their parking spaces. Suspend the account instead.`,
+        );
+      }
+    }
+
+    // Check if user has any wallet transactions
+    const walletTransactions = await this.prisma.walletTransaction.count({
+      where: { wallet: { userId } },
+    });
+    if (walletTransactions > 0) {
+      throw new BadRequestException(
+        `Cannot delete this user. They have ${walletTransactions} wallet transaction(s). Suspend the account instead.`,
+      );
+    }
+
+    // Safe to delete — user has no booking or transaction history
     await this.prisma.user.delete({
       where: { id: userId },
     });
