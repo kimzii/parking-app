@@ -259,6 +259,18 @@ export class NotificationsService {
     });
   }
 
+  async notifyDriverRejected(driverUserId: string, reason?: string) {
+    await this.send({
+      userId: driverUserId,
+      title: 'Driver Verification Rejected',
+      message: reason
+        ? `Your driver account verification was rejected. Reason: ${reason}`
+        : 'Your driver account verification was rejected. Please review your submitted documents and try again.',
+      type: 'DRIVER_REJECTED',
+      data: { screen: 'profile' },
+    });
+  }
+
   async notifyHostVerified(hostUserId: string) {
     await this.send({
       userId: hostUserId,
