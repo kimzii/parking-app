@@ -16,12 +16,17 @@ import { hostService, HostProfile } from "../../src/services/hosts";
 import { userService } from "../../src/services/user";
 import { EWallet } from "../../src/components/EWallet";
 import MenuItem from "../../src/components/MenuItem";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 export default function HostProfileScreen() {
   const [profile, setProfile] = useState<HostProfile | null>(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [infoHeight, setInfoHeight] = useState(0);
+
+  useSocketEvent("balance-update", (data: { balance: string }) => {
+    setWalletBalance(parseFloat(data.balance));
+  });
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);

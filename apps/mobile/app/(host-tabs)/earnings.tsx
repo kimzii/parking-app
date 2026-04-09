@@ -72,6 +72,10 @@ export default function EarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  useSocketEvent("balance-update", (data: { balance: string }) => {
+    setBalance(parseFloat(data.balance));
+  });
+
   useSocketEvent("notification", () => {
     setUnreadCount((prev) => prev + 1);
   });

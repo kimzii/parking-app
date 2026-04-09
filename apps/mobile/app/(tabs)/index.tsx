@@ -48,6 +48,15 @@ export default function HomeScreen() {
     setUnreadCount((prev) => prev + 1);
   });
 
+  // Real-time: update available slot count for any visible spot
+  useSocketEvent("slot-update", (data: { locationId: string; availableSlots: number }) => {
+    setSpots((prev) =>
+      prev.map((s) =>
+        s.id === data.locationId ? { ...s, availableSlots: data.availableSlots } : s
+      )
+    );
+  });
+
   const getUserLocation = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();

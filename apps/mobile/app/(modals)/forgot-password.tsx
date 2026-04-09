@@ -29,7 +29,7 @@ export default function ForgotPasswordScreen() {
       await authService.forgotPassword(email);
       Alert.alert(
         "Success",
-        "If your email is registered, you will receive a password reset link.",
+        "If your email is registered, you will receive a 6-digit reset code.",
         [
           {
             text: "OK",
@@ -100,7 +100,7 @@ export default function ForgotPasswordScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Send Reset Link</Text>
+              <Text style={styles.buttonText}>Send Reset Code</Text>
             )}
           </TouchableOpacity>
         </View>

@@ -3,6 +3,9 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
@@ -61,6 +64,30 @@ export class NotificationsGateway
    */
   sendBalanceUpdate(userId: string, balance: string) {
     this.server.to(userId).emit('balance-update', { balance });
+  }
+
+  /**
+   * Emit an available slot count update to all clients viewing a specific location
+   */
+  sendSlotUpdate(locationId: string, availableSlots: number, spaceId?: string, spaceStatus?: string) {
+    // Broadcast globally so both the home screen (spots list) and
+    // the booking screen (space grid) receive the update.
+    this.server.emit('slot-update', {
+      locationId,
+      availableSlots,
+      ...(spaceId && { spaceId, spaceStatus }),
+    });
+  }
+
+  /**
+   * Allow clients to join a location-specific room to receive slot updates
+   */
+  @SubscribeMessage('join-location')
+  handleJoinLocation(
+    @MessageBody() locationId: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.join(`location:${locationId}`);
   }
 
   /**

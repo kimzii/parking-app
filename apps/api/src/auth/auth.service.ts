@@ -412,7 +412,7 @@ export class AuthService {
     // Generate reset code
     const verificationCode = this.generateVerificationCode();
     const verificationExpiry = new Date();
-    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 1);
+    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 5);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -493,7 +493,7 @@ export class AuthService {
     // Generate new code
     const verificationCode = this.generateVerificationCode();
     const verificationExpiry = new Date();
-    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 1);
+    verificationExpiry.setMinutes(verificationExpiry.getMinutes() + 5);
 
     await this.prisma.user.update({
       where: { id: user.id },

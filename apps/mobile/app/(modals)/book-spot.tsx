@@ -16,6 +16,8 @@ import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
 import { walletService } from "../../src/services/wallet";
 import { driversService } from "../../src/services/drivers";
+import { useSocketEvent } from "../../src/hooks/useSocket";
+import { getSocket } from "../../src/services/socket";
 
 const VEHICLE_IMAGES: Record<string, any> = {
   CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
@@ -105,6 +107,45 @@ export default function BookSpotScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Join the location-specific socket room for real-time slot updates
+  useEffect(() => {
+    if (!locationId) return;
+    const join = () => {
+      const s = getSocket();
+      if (s) { s.emit("join-location", locationId); return true; }
+      return false;
+    };
+    if (!join()) {
+      const interval = setInterval(() => { if (join()) clearInterval(interval); }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [locationId]);
+
+  // Update wallet balance in real-time (e.g. after a top-up is approved)
+  useSocketEvent("balance-update", (data: { balance: string }) => {
+    setWalletBalance(parseFloat(data.balance));
+  });
+
+  // Update space statuses in real-time when another driver books or cancels
+  useSocketEvent("slot-update", (data: { locationId: string; availableSlots: number; spaceId?: string; spaceStatus?: string }) => {
+    if (data.locationId !== locationId) return;
+    setSpot((prev) => {
+      if (!prev) return prev;
+      const spaces = data.spaceId
+        ? prev.parkingSpaces.map((s) =>
+            s.id === data.spaceId
+              ? { ...s, status: data.spaceStatus as ParkingSpace["status"] }
+              : s
+          )
+        : prev.parkingSpaces;
+      return { ...prev, parkingSpaces: spaces };
+    });
+    // Deselect the chosen space if it just became unavailable
+    if (data.spaceId && data.spaceStatus !== "AVAILABLE") {
+      setSelectedSpace((prev) => (prev?.id === data.spaceId ? null : prev));
+    }
+  });
 
   const firstHourFee = spot ? Number(spot.basePricePerHour) : 0;
   const hasInsufficientBalance =
