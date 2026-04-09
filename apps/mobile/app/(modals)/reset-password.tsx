@@ -34,6 +34,19 @@ export default function ResetPasswordScreen() {
       Alert.alert("Error", "Passwords do not match.");
       return;
     }
+    if (
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password) ||
+      password.length < 8
+    ) {
+      Alert.alert(
+        "Error",
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+      );
+      return;
+    }
     setLoading(true);
     try {
       await authService.resetPassword(email, code, password);
@@ -115,6 +128,26 @@ export default function ResetPasswordScreen() {
             </TouchableOpacity>
           </View>
 
+          {password.length > 0 && (
+            <View style={styles.requirements}>
+              <Text style={[styles.reqText, /[A-Z]/.test(password) && styles.reqMet]}>
+                {/[A-Z]/.test(password) ? "\u2713" : "\u2022"} Uppercase letter
+              </Text>
+              <Text style={[styles.reqText, /[a-z]/.test(password) && styles.reqMet]}>
+                {/[a-z]/.test(password) ? "\u2713" : "\u2022"} Lowercase letter
+              </Text>
+              <Text style={[styles.reqText, /[0-9]/.test(password) && styles.reqMet]}>
+                {/[0-9]/.test(password) ? "\u2713" : "\u2022"} Number
+              </Text>
+              <Text style={[styles.reqText, /[^A-Za-z0-9]/.test(password) && styles.reqMet]}>
+                {/[^A-Za-z0-9]/.test(password) ? "\u2713" : "\u2022"} Special character
+              </Text>
+              <Text style={[styles.reqText, password.length >= 8 && styles.reqMet]}>
+                {password.length >= 8 ? "\u2713" : "\u2022"} At least 8 characters
+              </Text>
+            </View>
+          )}
+
           <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.inputContainer}>
             <Feather name="lock" size={18} color="#A09A94" style={styles.inputIcon} />
@@ -173,6 +206,17 @@ const styles = StyleSheet.create({
   inputIcon: { marginLeft: 14 },
   input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#232230" },
   eyeButton: { padding: 14 },
+  requirements: {
+    marginTop: 8,
+    gap: 2,
+  },
+  reqText: {
+    fontSize: 12,
+    color: "#E53935",
+  },
+  reqMet: {
+    color: "#4CAF50",
+  },
   button: {
     backgroundColor: "#D4501E", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 24,
     shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
