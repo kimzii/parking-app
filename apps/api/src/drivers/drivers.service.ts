@@ -503,9 +503,11 @@ export class DriversService {
       throw new NotFoundException('Driver role not found for user');
     }
 
-    // Send notification when driver is verified
+    // Send notification when driver is verified or rejected
     if (updateStatusDto.status === 'VERIFIED') {
       this.notificationsService.notifyDriverVerified(driver.userId).catch(() => {});
+    } else if (updateStatusDto.status === 'REJECTED') {
+      this.notificationsService.notifyDriverRejected(driver.userId, updateStatusDto.adminNotes).catch(() => {});
     }
 
     return {
