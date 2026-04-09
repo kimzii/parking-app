@@ -18,6 +18,7 @@ import { User } from "../../src/types/user";
 import { EWallet } from "../../src/components/EWallet";
 import MenuItem from "../../src/components/MenuItem";
 import { getMyReservations, settleRemainingDue, Reservation } from "../../src/services/reservations";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
@@ -25,6 +26,10 @@ export default function ProfileScreen() {
   const [infoHeight, setInfoHeight] = useState(0);
   const [pendingPayment, setPendingPayment] = useState<Reservation | null>(null);
   const [settling, setSettling] = useState(false);
+
+  useSocketEvent("balance-update", (data: { balance: string }) => {
+    setUser((prev) => prev ? { ...prev, walletBalance: parseFloat(data.balance) } : prev);
+  });
 
   const fetchUserIfToken = useCallback(async () => {
     setLoading(true);

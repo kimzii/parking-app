@@ -20,6 +20,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { hostService } from "../../src/services/hosts";
 import { driversService } from "../../src/services/drivers";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 import {
   getLocationReviews,
   getLocationRating,
@@ -95,6 +96,12 @@ export default function SpotDetailScreen() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [showReviews, setShowReviews] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
+
+  // Update available slot count in real-time
+  useSocketEvent("slot-update", (data: { locationId: string; availableSlots: number }) => {
+    if (data.locationId !== id) return;
+    setSpot((prev) => prev ? { ...prev, availableSlots: data.availableSlots } : prev);
+  });
 
   const fetchSpot = useCallback(async () => {
     if (!id) return;

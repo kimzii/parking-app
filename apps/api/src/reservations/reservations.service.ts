@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -56,6 +57,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     private prisma: PrismaService,
     private walletService: WalletService,
     private notificationsService: NotificationsService,
+    private notificationsGateway: NotificationsGateway,
   ) {}
 
   private readonly HOST_APPROVAL_WINDOW_MS = 5 * 60 * 1000;
@@ -90,6 +92,48 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       where: { id: space.parkingLocationId },
       data: { availableSlots: availableCount },
     });
+  }
+
+  /** Emit real-time slot count to all clients viewing this location (called after transaction commits) */
+  private async emitSlotUpdate(parkingSpaceId: string): Promise<void> {
+    try {
+      const space = await this.prisma.parkingSpace.findUnique({
+        where: { id: parkingSpaceId },
+        select: {
+          status: true,
+          parkingLocationId: true,
+          parkingLocation: { select: { availableSlots: true } },
+        },
+      });
+      if (space) {
+        this.notificationsGateway.sendSlotUpdate(
+          space.parkingLocationId,
+          space.parkingLocation.availableSlots ?? 0,
+          parkingSpaceId,
+          space.status,
+        );
+      }
+    } catch {
+      // Non-critical — never block main flow
+    }
+  }
+
+  /** Emit real-time wallet balance to a user (called after transaction commits) */
+  private async emitBalanceUpdate(userId: string): Promise<void> {
+    try {
+      const wallet = await this.prisma.wallet.findUnique({
+        where: { userId },
+        select: { balance: true },
+      });
+      if (wallet) {
+        this.notificationsGateway.sendBalanceUpdate(
+          userId,
+          wallet.balance.toFixed(2),
+        );
+      }
+    } catch {
+      // Non-critical — never block main flow
+    }
   }
 
   onModuleInit() {
@@ -249,6 +293,12 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
             .catch(() => {});
         }
       });
+
+      // Push real-time updates after transaction commits
+      void this.emitSlotUpdate(timedOut.parkingSpaceId);
+      if (timedOut.status === 'PENDING') {
+        void this.emitBalanceUpdate(timedOut.driver.userId);
+      }
     }
   }
 
@@ -560,6 +610,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
 
       return reservation;
     })) as CreatedReservation;
+
+    // Push real-time updates after transaction commits
+    void this.emitSlotUpdate(dto.parkingSpaceId);
+    void this.emitBalanceUpdate(userId);
 
     const space = result.parkingSpace;
     const location = space.parkingLocation;
@@ -1083,6 +1137,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       });
     });
 
+    // Push real-time updates after transaction commits
+    void this.emitSlotUpdate(reservation.parkingSpaceId);
+    void this.emitBalanceUpdate(reservation.driver.userId);
+
     // Notify driver that host rejected/cancelled their booking
     this.notificationsService
       .notifyBookingCancelled(
@@ -1401,6 +1459,11 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       },
     );
 
+    // Push real-time updates after transaction commits
+    void this.emitSlotUpdate(reservation.parkingSpaceId);
+    void this.emitBalanceUpdate(reservation.driver.userId);
+    void this.emitBalanceUpdate(hostUserId);
+
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
     const isPaymentPending = result.status === 'PAYMENT_PENDING';
     const remainingDueValue = (result as any).remainingDue;
@@ -1560,6 +1623,12 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       });
     });
 
+    // Push real-time wallet updates after transaction commits
+    void this.emitBalanceUpdate(userId);
+    void this.emitBalanceUpdate(
+      reservation.parkingSpace.parkingLocation.host.userId,
+    );
+
     // Notify driver and host
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
     this.notificationsService
@@ -1669,6 +1738,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         },
       });
     });
+
+    // Push real-time updates after transaction commits
+    void this.emitSlotUpdate(reservation.parkingSpaceId);
+    void this.emitBalanceUpdate(userId);
 
     // Notify host that driver cancelled
     const cancelledRes = await this.prisma.reservation.findUnique({
