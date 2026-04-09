@@ -8,7 +8,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { APP_GUARD } from '@nestjs/core';
-import { EmailService } from 'src/common/email.service';
+import { EmailService } from '../common/email.service';
 
 @Module({
   imports: [
