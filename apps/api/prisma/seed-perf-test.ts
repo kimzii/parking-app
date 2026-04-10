@@ -6,11 +6,13 @@
  * All seeded locations have title starting with "[PERF-TEST]" so they are easy to identify.
  */
 
+/* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable no-process-exit */
+
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Metro Manila area — spread across a ~20km radius so they appear on the map
 const BASE_LAT = 14.5995;
 const BASE_LNG = 120.9842;
 
@@ -22,7 +24,7 @@ async function seed(hostUserId: string) {
   const host = await prisma.host.findUnique({ where: { userId: hostUserId } });
   if (!host) {
     console.error(`No Host record found for userId: ${hostUserId}`);
-    process.exit(1);
+    return;
   }
 
   console.log(`Seeding 55 locations for host ${host.id}...`);
@@ -48,7 +50,6 @@ async function seed(hostUserId: string) {
       },
     });
 
-    // Add 2 parking spaces per location
     await prisma.parkingSpace.createMany({
       data: [
         { parkingLocationId: location.id, slotNumber: 1, name: 'Slot A', status: 'AVAILABLE', isActive: true },
@@ -56,17 +57,17 @@ async function seed(hostUserId: string) {
       ],
     });
 
-    process.stdout.write(`\r  Created ${i}/55`);
+    console.log(`  Created ${i}/55`);
   }
 
-  console.log('\nDone! 55 [PERF-TEST] locations created.');
+  console.log('Done! 55 [PERF-TEST] locations created.');
 }
 
 async function deletePerfTestLocations(hostUserId: string) {
   const host = await prisma.host.findUnique({ where: { userId: hostUserId } });
   if (!host) {
     console.error(`No Host record found for userId: ${hostUserId}`);
-    process.exit(1);
+    return;
   }
 
   const { count } = await prisma.parkingLocation.deleteMany({
@@ -80,12 +81,12 @@ async function deletePerfTestLocations(hostUserId: string) {
 }
 
 async function main() {
-  const hostUserId = process.argv[2];
-  const shouldDelete = process.argv[3] === '--delete';
+  const hostUserId = (global as any).process.argv[2] as string | undefined;
+  const shouldDelete = (global as any).process.argv[3] === '--delete';
 
   if (!hostUserId) {
     console.error('Usage: npx ts-node prisma/seed-perf-test.ts <hostUserId> [--delete]');
-    process.exit(1);
+    return;
   }
 
   if (shouldDelete) {
@@ -96,5 +97,5 @@ async function main() {
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
+  .catch((e) => { console.error(e); })
   .finally(() => prisma.$disconnect());
