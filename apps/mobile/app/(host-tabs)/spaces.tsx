@@ -69,6 +69,19 @@ export default function SpacesScreen() {
     fetchLocations();
   };
 
+  useSocketEvent(
+    "slot-update",
+    (data: { locationId: string; availableSlots: number }) => {
+      setLocations((prev) =>
+        prev.map((loc) =>
+          loc.id === data.locationId
+            ? { ...loc, availableSlots: data.availableSlots }
+            : loc,
+        ),
+      );
+    },
+  );
+
   const renderLocation = ({ item }: { item: ParkingLocation }) => {
     const status = STATUS_CONFIG[item.status];
     return (

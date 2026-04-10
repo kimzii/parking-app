@@ -1,4 +1,5 @@
 ﻿import React, { useState, useCallback } from "react";
+import { useSocketEvent } from "../../src/hooks/useSocket";
 import {
   View,
   Text,
@@ -152,6 +153,24 @@ export default function LocationDetailScreen() {
     useCallback(() => {
       fetchLocation();
     }, [fetchLocation]),
+  );
+
+  useSocketEvent(
+    "slot-update",
+    (data: { locationId: string; availableSlots: number; spaceId?: string; spaceStatus?: string }) => {
+      if (data.locationId !== id) return;
+      setLocation((prev) => {
+        if (!prev) return prev;
+        const spaces = data.spaceId
+          ? prev.parkingSpaces.map((s) =>
+              s.id === data.spaceId
+                ? { ...s, status: data.spaceStatus as ParkingSpace["status"] }
+                : s,
+            )
+          : prev.parkingSpaces;
+        return { ...prev, availableSlots: data.availableSlots, parkingSpaces: spaces };
+      });
+    },
   );
 
   const onRefresh = () => {
