@@ -4,6 +4,7 @@
  * To delete: node prisma/seed-perf-test.js <hostUserId> --delete
  */
 
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
