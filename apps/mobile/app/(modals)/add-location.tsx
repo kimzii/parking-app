@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Switch,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -32,6 +33,7 @@ const DEFAULT_REGION: Region = {
 
 export default function AddLocationScreen() {
   const mapRef = useRef<MapView>(null);
+  const expandedMapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>(DEFAULT_REGION);
   const [marker, setMarker] = useState<{
     latitude: number;
@@ -60,6 +62,7 @@ export default function AddLocationScreen() {
   const [closeMinute, setCloseMinute] = useState("00");
   const [closePeriod, setClosePeriod] = useState<"AM" | "PM">("PM");
   const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>(["CAR", "MOTORCYCLE"]);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   const toggleVehicleType = (type: string) => {
     setAcceptedVehicles((prev) => {
@@ -210,6 +213,7 @@ export default function AddLocationScreen() {
         setMarker({ latitude: lat, longitude: lng });
         setAddress(data.results[0].formatted_address);
         mapRef.current?.animateToRegion(newRegion, 500);
+        expandedMapRef.current?.animateToRegion(newRegion, 500);
       } else {
         Alert.alert("Not Found", "Could not find that location.");
       }
@@ -465,6 +469,13 @@ export default function AddLocationScreen() {
                 <MaterialIcons name="my-location" size={22} color="#D4501E" />
               )}
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => setMapExpanded(true)}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="fullscreen" size={22} color="#D4501E" />
+            </TouchableOpacity>
             {!marker && (
               <View style={styles.mapHint}>
                 <Text style={styles.mapHintText}>
@@ -473,6 +484,58 @@ export default function AddLocationScreen() {
               </View>
             )}
           </View>
+
+          {/* Full-screen map modal */}
+          <Modal visible={mapExpanded} animationType="slide">
+            <SafeAreaView style={{ flex: 1 }}>
+              <View style={styles.expandedSearchBar}>
+                <MaterialIcons name="search" size={20} color="#A09A94" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search for an address..."
+                  placeholderTextColor="#C7C7CC"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  onSubmitEditing={handleSearch}
+                  returnKeyType="search"
+                />
+                {searchQuery ? (
+                  <TouchableOpacity onPress={handleSearch}>
+                    <MaterialIcons name="arrow-forward" size={20} color="#D4501E" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              <MapView
+                ref={expandedMapRef}
+                style={{ flex: 1 }}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={region}
+                onPress={handleMapPress}
+                showsUserLocation
+                showsMyLocationButton={false}
+              >
+                {marker && (
+                  <Marker
+                    coordinate={marker}
+                    draggable
+                    onDragEnd={(e) => {
+                      const { latitude, longitude } = e.nativeEvent.coordinate;
+                      setMarker({ latitude, longitude });
+                      reverseGeocode(latitude, longitude);
+                    }}
+                  />
+                )}
+              </MapView>
+              <TouchableOpacity
+                style={styles.collapseBtn}
+                onPress={() => setMapExpanded(false)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="fullscreen-exit" size={22} color="#D4501E" />
+                <Text style={styles.collapseBtnText}>Done</Text>
+              </TouchableOpacity>
+            </SafeAreaView>
+          </Modal>
 
           {/* Selected Address */}
           {address ? (
@@ -1112,6 +1175,53 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  expandedSearchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderRadius: 14,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  expandBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  collapseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#F0EDE8",
+  },
+  collapseBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#D4501E",
   },
   mapHint: {
     position: "absolute",
