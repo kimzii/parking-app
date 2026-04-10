@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useRef, useEffect } from "react";
+﻿import React, { useState, useCallback, useRef, useEffect, memo } from "react";
 import {
   View,
   Text,
@@ -27,6 +27,55 @@ interface ParkingSpot {
   acceptedVehicles?: string[];
   images: { imageUrl: string }[];
 }
+
+const ParkingMarker = memo(function ParkingMarker({
+  spot,
+  isSelected,
+  onPress,
+}: {
+  spot: ParkingSpot;
+  isSelected: boolean;
+  onPress: () => void;
+}) {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setTracksViewChanges(false), 500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const av = spot.acceptedVehicles ?? ["CAR", "MOTORCYCLE"];
+  const carOnly = av.length === 1 && av.includes("CAR");
+  const motoOnly = av.length === 1 && av.includes("MOTORCYCLE");
+  const markerColor = motoOnly ? "#FF9800" : carOnly ? "#1976D2" : "#D4501E";
+
+  return (
+    <Marker
+      coordinate={{
+        latitude: Number(spot.latitude),
+        longitude: Number(spot.longitude),
+      }}
+      title={spot.title}
+      description={`₱${Number(spot.basePricePerHour).toFixed(2)}/hr`}
+      onPress={onPress}
+      tracksViewChanges={tracksViewChanges || isSelected}
+    >
+      <View style={styles.markerContainer}>
+        <View style={[styles.markerBubble, { backgroundColor: markerColor }]}>
+          <MaterialIcons
+            name={motoOnly ? "two-wheeler" : carOnly ? "directions-car" : "local-parking"}
+            size={10}
+            color="#fff"
+          />
+          <Text style={styles.markerPrice}>
+            ₱{Number(spot.basePricePerHour).toFixed(0)}
+          </Text>
+        </View>
+        <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
+      </View>
+    </Marker>
+  );
+});
 
 const DEFAULT_REGION: Region = {
   latitude: 14.5995,
@@ -305,40 +354,14 @@ export default function MapScreen() {
                 }, MAP_MOVE_DEBOUNCE_MS);
               }}
             >
-              {spots.map((spot) => {
-                const av = spot.acceptedVehicles ?? ["CAR", "MOTORCYCLE"];
-                const carOnly = av.length === 1 && av.includes("CAR");
-                const motoOnly = av.length === 1 && av.includes("MOTORCYCLE");
-                const markerColor = motoOnly ? "#FF9800" : carOnly ? "#1976D2" : "#D4501E";
-                const isSelected = selectedSpot?.id === spot.id;
-                return (
-                  <Marker
-                    key={spot.id}
-                    coordinate={{
-                      latitude: Number(spot.latitude),
-                      longitude: Number(spot.longitude),
-                    }}
-                    title={spot.title}
-                    description={`₱${Number(spot.basePricePerHour).toFixed(2)}/hr`}
-                    onPress={() => setSelectedSpot(spot)}
-                    tracksViewChanges={isSelected}
-                  >
-                    <View style={styles.markerContainer}>
-                      <View style={[styles.markerBubble, { backgroundColor: markerColor }]}>
-                        <MaterialIcons
-                          name={motoOnly ? "two-wheeler" : carOnly ? "directions-car" : "local-parking"}
-                          size={10}
-                          color="#fff"
-                        />
-                        <Text style={styles.markerPrice}>
-                          ₱{Number(spot.basePricePerHour).toFixed(0)}
-                        </Text>
-                      </View>
-                      <View style={[styles.markerArrow, { borderTopColor: markerColor }]} />
-                    </View>
-                  </Marker>
-                );
-              })}
+              {spots.map((spot) => (
+                <ParkingMarker
+                  key={spot.id}
+                  spot={spot}
+                  isSelected={selectedSpot?.id === spot.id}
+                  onPress={() => setSelectedSpot(spot)}
+                />
+              ))}
             </MapView>
           )}
 
