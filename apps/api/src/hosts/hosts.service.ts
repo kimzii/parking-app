@@ -593,17 +593,10 @@ export class HostsService {
       );
     }
 
-    // Delete images from S3
-    const imageUrls = location.images.map((img) => img.imageUrl);
-    if (location.proofOfResidenceUrl) {
-      imageUrls.push(location.proofOfResidenceUrl);
-    }
-    await this.s3
-      .deleteByUrls(imageUrls)
-      .catch((err) => console.warn('Failed to delete S3 images:', err));
-
-    await this.prisma.parkingLocation.delete({
+    // Soft delete — mark as deleted, keep in DB
+    await this.prisma.parkingLocation.update({
       where: { id: locationId },
+      data: { deletedAt: new Date() },
     });
 
     return { message: 'Parking location deleted successfully' };

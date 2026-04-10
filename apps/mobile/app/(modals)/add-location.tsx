@@ -391,7 +391,6 @@ export default function AddLocationScreen() {
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      console.log("[ADD-LOCATION] error:", JSON.stringify(err?.response?.data ?? err?.message ?? err));
       const rawMsg = err?.response?.data?.message;
       const msg = Array.isArray(rawMsg)
         ? rawMsg.join(", ")
