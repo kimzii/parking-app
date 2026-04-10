@@ -8,6 +8,20 @@ export class PrismaService
 {
   async onModuleInit() {
     await this.$connect();
+
+    // Soft-delete filter: automatically exclude deleted parking locations
+    this.$use(async (params, next) => {
+      if (params.model === 'ParkingLocation') {
+        if (['findMany', 'findFirst', 'findUnique', 'count'].includes(params.action)) {
+          params.args = params.args ?? {};
+          params.args.where = {
+            ...params.args.where,
+            deletedAt: null,
+          };
+        }
+      }
+      return next(params);
+    });
   }
 
   async onModuleDestroy() {

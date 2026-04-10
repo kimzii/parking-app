@@ -156,6 +156,7 @@ model ParkingLocation {
   is24Hours           Boolean                @default(false) @map("is_24_hours")
   acceptedVehicles    VehicleType[]          @default([CAR, MOTORCYCLE]) @map("accepted_vehicles")
   createdAt           DateTime               @default(now()) @map("created_at")
+  deletedAt           DateTime?              @map("deleted_at")
   images              ParkingLocationImage[]
   host                Host                   @relation(fields: [hostId], references: [id], onDelete: Cascade)
   parkingSpaces       ParkingSpace[]
