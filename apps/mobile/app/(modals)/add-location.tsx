@@ -19,7 +19,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
 
@@ -223,15 +222,6 @@ export default function AddLocationScreen() {
     }
   };
 
-  const compressImage = async (uri: string): Promise<string> => {
-    const result = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1280 } }],
-      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG },
-    );
-    return result.uri;
-  };
-
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -250,8 +240,7 @@ export default function AddLocationScreen() {
     });
 
     if (!result.canceled && result.assets) {
-      const compressed = await Promise.all(result.assets.map((a) => compressImage(a.uri)));
-      setImages((prev) => [...prev, ...compressed].slice(0, 5));
+      setImages((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 5));
     }
   };
 
@@ -265,8 +254,7 @@ export default function AddLocationScreen() {
     const result = await ImagePicker.launchCameraAsync({ quality: 1 });
 
     if (!result.canceled && result.assets) {
-      const compressed = await compressImage(result.assets[0].uri);
-      setImages((prev) => [...prev, compressed].slice(0, 5));
+      setImages((prev) => [...prev, result.assets[0].uri].slice(0, 5));
     }
   };
 
@@ -291,8 +279,7 @@ export default function AddLocationScreen() {
     });
 
     if (!result.canceled && result.assets?.[0]) {
-      const compressed = await compressImage(result.assets[0].uri);
-      setProofOfResidence(compressed);
+      setProofOfResidence(result.assets[0].uri);
     }
   };
 
@@ -306,8 +293,7 @@ export default function AddLocationScreen() {
     const result = await ImagePicker.launchCameraAsync({ quality: 1 });
 
     if (!result.canceled && result.assets?.[0]) {
-      const compressed = await compressImage(result.assets[0].uri);
-      setProofOfResidence(compressed);
+      setProofOfResidence(result.assets[0].uri);
     }
   };
 

@@ -30,8 +30,8 @@ export const hostService = {
     for (let i = 0; i < imageUris.length; i++) {
       const compressed = await ImageManipulator.manipulateAsync(
         imageUris[i],
-        [{ resize: { width: 1920 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        [{ resize: { width: 1024 } }],
+        { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG },
       );
       formData.append("files", {
         uri: compressed.uri,
@@ -58,8 +58,8 @@ export const hostService = {
     const formData = new FormData();
     const compressed = await ImageManipulator.manipulateAsync(
       imageUri,
-      [{ resize: { width: 1920 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      [{ resize: { width: 1024 } }],
+      { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG },
     );
     formData.append("files", {
       uri: compressed.uri,
