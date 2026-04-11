@@ -1,5 +1,6 @@
 import api from "./api";
 import * as SecureStore from "expo-secure-store";
+import * as ImageManipulator from "expo-image-manipulator";
 
 export interface HostProfile {
   id: string;
@@ -26,14 +27,16 @@ export const hostService = {
     locationName?: string,
   ): Promise<string[]> => {
     const formData = new FormData();
-    for (const uri of imageUris) {
-      const filename = uri.split("/").pop() || "photo.jpg";
-      const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-      const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+    for (let i = 0; i < imageUris.length; i++) {
+      const compressed = await ImageManipulator.manipulateAsync(
+        imageUris[i],
+        [{ resize: { width: 1920 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      );
       formData.append("files", {
-        uri,
-        name: filename,
-        type: mimeType,
+        uri: compressed.uri,
+        name: `photo_${i}.jpg`,
+        type: "image/jpeg",
       } as any);
     }
     if (locationName) {
@@ -53,13 +56,15 @@ export const hostService = {
     locationName?: string,
   ): Promise<string> => {
     const formData = new FormData();
-    const filename = imageUri.split("/").pop() || "proof.jpg";
-    const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-    const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+    const compressed = await ImageManipulator.manipulateAsync(
+      imageUri,
+      [{ resize: { width: 1920 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+    );
     formData.append("files", {
-      uri: imageUri,
-      name: filename,
-      type: mimeType,
+      uri: compressed.uri,
+      name: "proof.jpg",
+      type: "image/jpeg",
     } as any);
     if (locationName) {
       formData.append("locationName", locationName);
