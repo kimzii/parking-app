@@ -390,6 +390,11 @@ export default function AddLocationScreen() {
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
+      console.log("CREATE LOCATION ERROR:", JSON.stringify({
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      }, null, 2));
       const rawMsg = err?.response?.data?.message;
       const msg = Array.isArray(rawMsg)
         ? rawMsg.join(", ")

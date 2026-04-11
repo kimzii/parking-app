@@ -26,6 +26,7 @@ export const hostService = {
     imageUris: string[],
     locationName?: string,
   ): Promise<string[]> => {
+    console.log("[uploadImages] start, count:", imageUris.length);
     const formData = new FormData();
     for (let i = 0; i < imageUris.length; i++) {
       const compressed = await ImageManipulator.manipulateAsync(
@@ -33,6 +34,7 @@ export const hostService = {
         [{ resize: { width: 1024 } }],
         { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG },
       );
+      console.log(`[uploadImages] image ${i} compressed uri:`, compressed.uri);
       formData.append("files", {
         uri: compressed.uri,
         name: `photo_${i}.jpg`,
@@ -43,24 +45,33 @@ export const hostService = {
       formData.append("locationName", locationName);
     }
     const token = await SecureStore.getItemAsync("accessToken");
-    const res = await api.post("/hosts/upload-images", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return res.data.urls;
+    console.log("[uploadImages] token present:", !!token);
+    try {
+      const res = await api.post("/hosts/upload-images", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("[uploadImages] success, urls:", res.data.urls);
+      return res.data.urls;
+    } catch (e: any) {
+      console.log("[uploadImages] FAILED:", e?.response?.status, JSON.stringify(e?.response?.data));
+      throw e;
+    }
   },
   uploadProofOfResidence: async (
     imageUri: string,
     locationName?: string,
   ): Promise<string> => {
+    console.log("[uploadProofOfResidence] start");
     const formData = new FormData();
     const compressed = await ImageManipulator.manipulateAsync(
       imageUri,
       [{ resize: { width: 1024 } }],
       { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG },
     );
+    console.log("[uploadProofOfResidence] compressed uri:", compressed.uri);
     formData.append("files", {
       uri: compressed.uri,
       name: "proof.jpg",
@@ -70,13 +81,20 @@ export const hostService = {
       formData.append("locationName", locationName);
     }
     const token = await SecureStore.getItemAsync("accessToken");
-    const res = await api.post("/hosts/upload-proof-of-residence", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return res.data.url;
+    console.log("[uploadProofOfResidence] token present:", !!token);
+    try {
+      const res = await api.post("/hosts/upload-proof-of-residence", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("[uploadProofOfResidence] success, url:", res.data.url);
+      return res.data.url;
+    } catch (e: any) {
+      console.log("[uploadProofOfResidence] FAILED:", e?.response?.status, JSON.stringify(e?.response?.data));
+      throw e;
+    }
   },
   becomeHost: async () => {
     const res = await api.post("/hosts/become");
