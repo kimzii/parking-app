@@ -62,11 +62,12 @@ export class HostsController {
     }
 
     const name = locationName || 'location';
+    const batchId = crypto.randomUUID().split('-')[0];
     const urls: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
-      const key = this.s3.parkingImageKey(name, i, fileExt);
+      const key = this.s3.parkingImageKey(`${name}-${batchId}`, i, fileExt);
       const url = await this.s3.upload(key, file.buffer, file.mimetype);
       urls.push(url);
     }
@@ -92,8 +93,9 @@ export class HostsController {
 
     const file = files[0];
     const name = locationName || 'location';
+    const uniqueId = crypto.randomUUID().split('-')[0];
     const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
-    const key = this.s3.proofOfResidenceKey(name, fileExt);
+    const key = this.s3.proofOfResidenceKey(`${name}-${uniqueId}`, fileExt);
     const url = await this.s3.upload(key, file.buffer, file.mimetype);
 
     return { url };
