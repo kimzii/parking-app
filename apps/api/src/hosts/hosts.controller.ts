@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   Controller,
   Get,
@@ -62,7 +63,7 @@ export class HostsController {
     }
 
     const name = locationName || 'location';
-    const batchId = crypto.randomUUID().split('-')[0];
+    const batchId = randomUUID().split('-')[0];
     const urls: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -93,7 +94,7 @@ export class HostsController {
 
     const file = files[0];
     const name = locationName || 'location';
-    const uniqueId = crypto.randomUUID().split('-')[0];
+    const uniqueId = randomUUID().split('-')[0];
     const fileExt: string = file.originalname.split('.').pop() ?? 'jpg';
     const key = this.s3.proofOfResidenceKey(`${name}-${uniqueId}`, fileExt);
     const url = await this.s3.upload(key, file.buffer, file.mimetype);
