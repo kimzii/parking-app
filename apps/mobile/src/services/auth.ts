@@ -19,6 +19,7 @@ export const authService = {
     firstName: string;
     lastName: string;
     phoneNumber: string;
+    sex: string;
     termsAccepted: boolean;
     privacyAccepted: boolean;
   }) {

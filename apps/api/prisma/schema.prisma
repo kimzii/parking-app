@@ -18,6 +18,7 @@ model User {
   lastName       String?
   phoneNumber    String?  @unique
   profilePicture String?
+  sex            String?
 
   emailVerified       Boolean   @default(false)
   verificationCode    String?

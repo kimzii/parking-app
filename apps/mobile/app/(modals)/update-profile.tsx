@@ -23,6 +23,7 @@ export default function UpdateProfileScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [sex, setSex] = useState("");
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,7 @@ export default function UpdateProfileScreen() {
           setFirstName(data.firstName || "");
           setLastName(data.lastName || "");
           setPhoneNumber(data.phoneNumber || "");
+          setSex(data.sex || "");
           setProfilePicture(data.profilePicture || null);
         } catch {
           Alert.alert("Error", "Failed to load profile.");
@@ -75,6 +77,7 @@ export default function UpdateProfileScreen() {
         firstName,
         lastName,
         phoneNumber,
+        sex,
         ...(uploadedUrl && { profilePicture: uploadedUrl }),
       };
       await userService.updateProfile(profileData);
@@ -156,6 +159,23 @@ export default function UpdateProfileScreen() {
             />
           </View>
 
+          <Text style={styles.label}>Sex</Text>
+          <View style={styles.sexRow}>
+            {["MALE", "FEMALE"].map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={[styles.sexButton, sex === option && styles.sexButtonSelected]}
+                onPress={() => setSex(option)}
+                disabled={saving}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.sexButtonText, sex === option && styles.sexButtonTextSelected]}>
+                  {option.charAt(0) + option.slice(1).toLowerCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <Text style={styles.label}>Mobile / GCash Number</Text>
           <View style={styles.inputContainer}>
             <Feather name="phone" size={18} color="#A09A94" style={styles.inputIcon} />
@@ -233,4 +253,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14, borderRadius: 14, alignItems: "center", marginTop: 10, backgroundColor: "#F2F2F7",
   },
   cancelText: { color: "#A09A94", fontSize: 15, fontWeight: "600" },
+  sexRow: { flexDirection: "row", gap: 10 },
+  sexButton: {
+    flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center",
+    borderWidth: 1.5, borderColor: "#E8ECF0", backgroundColor: "#FFFFFF",
+  },
+  sexButtonSelected: { backgroundColor: "#FFF0EC", borderColor: "#D4501E" },
+  sexButtonText: { fontSize: 14, fontWeight: "600", color: "#232230" },
+  sexButtonTextSelected: { color: "#D4501E" },
 });
