@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -40,13 +40,21 @@ const TYPE_IMAGES: Record<string, any> = {
   MOTORCYCLE: require("../../assets/images/ParkUp UI/scooter_16804043.png"),
 };
 
+const STATUS_CONFIG = {
+  APPROVED: { label: "Verified", bg: "#E8F5E9", border: "#A5D6A7", text: "#2E7D32", icon: "verified" as const },
+  PENDING:  { label: "Pending Verification", bg: "#FFF8E1", border: "#FFE0B2", text: "#F57C00", icon: "schedule" as const },
+  REJECTED: { label: "Rejected", bg: "#FFEBEE", border: "#EF9A9A", text: "#C62828", icon: "cancel" as const },
+};
+
 export default function MyVehiclesScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  // "list" | "add-details" | "add-registration" | "edit"
+  const [view, setView] = useState<"list" | "add-details" | "add-registration" | "edit">("list");
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [newlyAddedVehicle, setNewlyAddedVehicle] = useState<Vehicle | null>(null);
   const [isDriverVerified, setIsDriverVerified] = useState(true);
 
   // Form state
@@ -90,26 +98,12 @@ export default function MyVehiclesScreen() {
     setModel("");
     setColor("");
     setEditingVehicle(null);
+    setNewlyAddedVehicle(null);
   };
 
-  const openAddForm = () => {
+  const handleBack = () => {
     resetForm();
-    setShowForm(true);
-  };
-
-  const openEditForm = (vehicle: Vehicle) => {
-    setPlateNumber(vehicle.plateNumber || "");
-    setVehicleType(vehicle.vehicleType || "CAR");
-    setBrand(vehicle.brand || "");
-    setModel(vehicle.model || "");
-    setColor(vehicle.color || "");
-    setEditingVehicle(vehicle);
-    setShowForm(true);
-  };
-
-  const handleCloseForm = () => {
-    setShowForm(false);
-    resetForm();
+    setView("list");
   };
 
   const handleAdd = async () => {
@@ -119,22 +113,19 @@ export default function MyVehiclesScreen() {
     }
     setSaving(true);
     try {
-      await driversService.addVehicle({
+      const created = await driversService.addVehicle({
         plateNumber: plateNumber.trim(),
         vehicleType,
         brand: brand.trim() || undefined,
         model: model.trim() || undefined,
         color: color.trim() || undefined,
       });
-      Alert.alert("Success", "Vehicle added!");
-      resetForm();
-      setShowForm(false);
-      fetchVehicles();
+      await fetchVehicles();
+      // Move to registration upload step
+      setNewlyAddedVehicle(created);
+      setView("add-registration");
     } catch (err: any) {
-      Alert.alert(
-        "Error",
-        err?.response?.data?.message || "Failed to add vehicle.",
-      );
+      Alert.alert("Error", err?.response?.data?.message || "Failed to add vehicle.");
     } finally {
       setSaving(false);
     }
@@ -159,13 +150,10 @@ export default function MyVehiclesScreen() {
         });
         Alert.alert("Success", "Vehicle updated!");
         resetForm();
-        setShowForm(false);
+        setView("list");
         fetchVehicles();
       } catch (err: any) {
-        Alert.alert(
-          "Error",
-          err?.response?.data?.message || "Failed to update vehicle.",
-        );
+        Alert.alert("Error", err?.response?.data?.message || "Failed to update vehicle.");
       } finally {
         setSaving(false);
       }
@@ -224,8 +212,10 @@ export default function MyVehiclesScreen() {
       const formData = new FormData();
       formData.append("file", { uri, name: filename, type: `image/${ext}` } as any);
       await driversService.uploadVehicleRegistration(vehicle.id, formData);
-      Alert.alert("Uploaded", "Registration image submitted. Waiting for admin approval.");
-      fetchVehicles();
+      Alert.alert("Submitted", "Certificate of Registration submitted for review.");
+      await fetchVehicles();
+      // If we're in the guided registration step, go back to list
+      if (view === "add-registration") setView("list");
     } catch {
       Alert.alert("Error", "Failed to upload registration image.");
     } finally {
@@ -233,103 +223,124 @@ export default function MyVehiclesScreen() {
     }
   };
 
+  const openEditForm = (vehicle: Vehicle) => {
+    setPlateNumber(vehicle.plateNumber || "");
+    setVehicleType(vehicle.vehicleType || "CAR");
+    setBrand(vehicle.brand || "");
+    setModel(vehicle.model || "");
+    setColor(vehicle.color || "");
+    setEditingVehicle(vehicle);
+    setView("edit");
+  };
+
+  // ─── Vehicle Card ─────────────────────────────────────────────
   const renderVehicleCard = ({ item }: { item: Vehicle }) => {
     const details = [item.brand, item.model].filter(Boolean).join(" ");
+    const statusCfg = STATUS_CONFIG[item.verificationStatus] ?? STATUS_CONFIG.PENDING;
+    const isUploading = uploadingId === item.id;
+
     return (
       <View style={styles.card}>
-        <View style={styles.cardSvgContainer}>
-          <Image
-            source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
-            style={styles.vehicleImage}
-            resizeMode="contain"
-          />
-        </View>
-        <View style={styles.cardBody}>
-          <View style={styles.cardTopRow}>
-            <View style={{ flex: 1 }}>
-              {details ? (
-                <Text style={styles.cardDetails}>{details}</Text>
-              ) : (
-                <Text style={styles.cardDetails}>Vehicle</Text>
-              )}
-              <View style={styles.cardBottomRow}>
-                {item.color ? (
-                  <View style={styles.colorTag}>
-                    <View
-                      style={[styles.colorDot, { backgroundColor: item.color }]}
-                    />
-                    <Text style={styles.colorText}>{item.color}</Text>
-                  </View>
-                ) : null}
-                <View style={styles.typeTag}>
-                  <Image
-                    source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
-                    style={{ width: 14, height: 14, tintColor: "#D4501E" }}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.typeTagText}>
-                    {item.vehicleType || "N/A"}
-                  </Text>
+        {/* Top section */}
+        <View style={styles.cardTop}>
+          <View style={styles.cardImageBg}>
+            <Image
+              source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
+              style={styles.vehicleImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardName} numberOfLines={1}>
+              {details || "Vehicle"}
+            </Text>
+
+            <View style={styles.tagRow}>
+              {item.color ? (
+                <View style={styles.colorTag}>
+                  <View style={[styles.colorDot, { backgroundColor: item.color }]} />
+                  <Text style={styles.tagText}>{item.color}</Text>
                 </View>
+              ) : null}
+              <View style={styles.typeTag}>
+                <Image
+                  source={TYPE_IMAGES[item.vehicleType] || TYPE_IMAGES.CAR}
+                  style={{ width: 12, height: 12, tintColor: "#D4501E" }}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.tagText, { color: "#D4501E" }]}>{item.vehicleType}</Text>
               </View>
+            </View>
+
+            <View style={styles.plateBadge}>
+              <MaterialIcons name="confirmation-number" size={13} color="#D4501E" />
+              <Text style={styles.plateText}>{item.plateNumber}</Text>
             </View>
           </View>
 
-          {/* Plate + actions row */}
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 6, justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <View style={styles.plateBadge}>
-                <Text style={styles.plateText}>{item.plateNumber}</Text>
-              </View>
-              <View style={[
-                styles.statusBadge,
-                item.verificationStatus === "APPROVED" && styles.statusApproved,
-                item.verificationStatus === "REJECTED" && styles.statusRejected,
-              ]}>
-                <Text style={[
-                  styles.statusText,
-                  item.verificationStatus === "APPROVED" && styles.statusTextApproved,
-                  item.verificationStatus === "REJECTED" && styles.statusTextRejected,
-                ]}>
-                  {item.verificationStatus === "APPROVED" ? "Verified" : item.verificationStatus === "REJECTED" ? "Rejected" : "Pending"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.editBtn} onPress={() => openEditForm(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <MaterialIcons name="edit" size={18} color="#D4501E" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id, item.plateNumber)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <MaterialIcons name="delete-outline" size={18} color="#6C6C70" />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.cardActions}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => openEditForm(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="edit" size={17} color="#D4501E" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnGray]} onPress={() => handleDelete(item.id, item.plateNumber)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="delete-outline" size={17} color="#6C6C70" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Registration section */}
+        <View style={[styles.regSection, { borderTopColor: statusCfg.border }]}>
+          {/* Status pill */}
+          <View style={[styles.statusPill, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
+            <MaterialIcons name={statusCfg.icon} size={13} color={statusCfg.text} />
+            <Text style={[styles.statusPillText, { color: statusCfg.text }]}>{statusCfg.label}</Text>
           </View>
 
           {/* Rejection reason */}
           {item.verificationStatus === "REJECTED" && item.rejectionReason ? (
-            <View style={styles.rejectionBanner}>
-              <MaterialIcons name="error-outline" size={14} color="#C62828" />
-              <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+            <View style={styles.rejectionNote}>
+              <MaterialIcons name="error-outline" size={13} color="#C62828" />
+              <Text style={styles.rejectionNoteText}>{item.rejectionReason}</Text>
             </View>
           ) : null}
 
-          {/* Upload / re-upload registration */}
-          {item.verificationStatus !== "APPROVED" && (
+          {/* Registration image or upload prompt */}
+          {item.verificationStatus === "APPROVED" ? (
+            item.registrationImageUrl ? (
+              <Image
+                source={{ uri: item.registrationImageUrl }}
+                style={styles.regImage}
+                resizeMode="cover"
+              />
+            ) : null
+          ) : (
             <TouchableOpacity
-              style={styles.uploadRegBtn}
+              style={[styles.uploadBlock, isUploading && styles.uploadBlockDisabled]}
               onPress={() => handleUploadRegistration(item)}
-              disabled={uploadingId === item.id}
-              activeOpacity={0.8}
+              disabled={isUploading}
+              activeOpacity={0.75}
             >
-              {uploadingId === item.id ? (
+              {isUploading ? (
                 <ActivityIndicator size="small" color="#D4501E" />
-              ) : (
+              ) : item.registrationImageUrl ? (
                 <>
-                  <MaterialIcons name="upload-file" size={16} color="#D4501E" />
-                  <Text style={styles.uploadRegText}>
-                    {item.registrationImageUrl ? "Re-upload Registration" : "Upload Certificate of Registration"}
-                  </Text>
+                  <Image
+                    source={{ uri: item.registrationImageUrl }}
+                    style={styles.regThumb}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.uploadBlockOverlay}>
+                    <MaterialIcons name="upload" size={20} color="#fff" />
+                    <Text style={styles.uploadBlockOverlayText}>Re-upload</Text>
+                  </View>
                 </>
+              ) : (
+                <View style={styles.uploadPlaceholder}>
+                  <MaterialIcons name="upload-file" size={28} color="#D4501E" />
+                  <Text style={styles.uploadPlaceholderTitle}>Upload Certificate of Registration</Text>
+                  <Text style={styles.uploadPlaceholderSub}>Required for verification · Tap to select image</Text>
+                </View>
               )}
             </TouchableOpacity>
           )}
@@ -338,225 +349,279 @@ export default function MyVehiclesScreen() {
     );
   };
 
-  const isEditing = !!editingVehicle;
+  // ─── Add Details Form ─────────────────────────────────────────
+  const renderAddForm = () => (
+    <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <View style={styles.stepHeader}>
+        <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>Step 1 of 2</Text></View>
+        <Text style={styles.formTitle}>Vehicle Details</Text>
+        <Text style={styles.formSubtitle}>Enter your vehicle information</Text>
+      </View>
+
+      <Text style={styles.fieldLabel}>Vehicle Type</Text>
+      <View style={styles.typeRow}>
+        {VEHICLE_TYPES.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.typeChip, vehicleType === t && styles.typeChipActive]}
+            onPress={() => setVehicleType(t)}
+            disabled={saving}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={TYPE_IMAGES[t]}
+              style={{ width: 28, height: 28, tintColor: vehicleType === t ? "#fff" : "#A09A94", marginBottom: 4 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.typeChipText, vehicleType === t && styles.typeChipTextActive]}>
+              {t.charAt(0) + t.slice(1).toLowerCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.fieldLabel}>Plate Number <Text style={{ color: "#D4501E" }}>*</Text></Text>
+      <TextInput style={styles.input} placeholder="e.g. ABC 1234" placeholderTextColor="#aaa" value={plateNumber} onChangeText={setPlateNumber} autoCapitalize="characters" editable={!saving} />
+
+      <View style={styles.inputRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.fieldLabel}>Brand</Text>
+          <TextInput style={styles.input} placeholder="e.g. Honda" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} editable={!saving} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.fieldLabel}>Model</Text>
+          <TextInput style={styles.input} placeholder="e.g. Civic" placeholderTextColor="#aaa" value={model} onChangeText={setModel} editable={!saving} />
+        </View>
+      </View>
+
+      <Text style={styles.fieldLabel}>Color</Text>
+      <TextInput style={styles.input} placeholder="e.g. White, Black" placeholderTextColor="#aaa" value={color} onChangeText={setColor} editable={!saving} />
+
+      <TouchableOpacity
+        style={[styles.submitBtn, saving && styles.submitBtnDisabled]}
+        onPress={handleAdd}
+        disabled={saving}
+        activeOpacity={0.8}
+      >
+        {saving ? <ActivityIndicator color="#fff" /> : (
+          <View style={styles.submitInner}>
+            <Text style={styles.submitBtnText}>Next: Upload Registration</Text>
+            <MaterialIcons name="arrow-forward" size={18} color="#fff" />
+          </View>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+
+  // ─── Add Registration Step ────────────────────────────────────
+  const renderAddRegistration = () => {
+    const target = newlyAddedVehicle ?? vehicles.find((v) => v.id === newlyAddedVehicle?.id) ?? vehicles[vehicles.length - 1];
+    if (!target) return null;
+    const isUploading = uploadingId === target.id;
+
+    return (
+      <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={styles.stepHeader}>
+          <View style={[styles.stepBadge, { backgroundColor: "#E8F5E9", borderColor: "#A5D6A7" }]}>
+            <Text style={[styles.stepBadgeText, { color: "#2E7D32" }]}>Step 2 of 2</Text>
+          </View>
+          <Text style={styles.formTitle}>Certificate of Registration</Text>
+          <Text style={styles.formSubtitle}>Upload a clear photo of your vehicle's CR for admin verification</Text>
+        </View>
+
+        {/* Vehicle summary chip */}
+        <View style={styles.vehicleSummaryChip}>
+          <Image source={TYPE_IMAGES[target.vehicleType] || TYPE_IMAGES.CAR} style={{ width: 32, height: 32, tintColor: "#D4501E" }} resizeMode="contain" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.vehicleSummaryName}>{[target.brand, target.model].filter(Boolean).join(" ") || "Vehicle"}</Text>
+            <Text style={styles.vehicleSummaryPlate}>{target.plateNumber}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.uploadBlockLarge, isUploading && styles.uploadBlockDisabled]}
+          onPress={() => handleUploadRegistration(target)}
+          disabled={isUploading}
+          activeOpacity={0.8}
+        >
+          {isUploading ? (
+            <View style={styles.uploadingState}>
+              <ActivityIndicator size="large" color="#D4501E" />
+              <Text style={styles.uploadingText}>Uploading...</Text>
+            </View>
+          ) : (
+            <View style={styles.uploadPlaceholderLarge}>
+              <View style={styles.uploadIconCircle}>
+                <MaterialIcons name="upload-file" size={36} color="#D4501E" />
+              </View>
+              <Text style={styles.uploadLargeTitle}>Tap to Select Image</Text>
+              <Text style={styles.uploadLargeSub}>Accepted: JPEG, PNG, WebP · Max 10MB</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.uploadTips}>
+          <Text style={styles.uploadTipsTitle}>Tips for a clear photo:</Text>
+          {["Lay the document flat on a surface", "Ensure all text is readable", "Avoid glare and shadows", "All four corners should be visible"].map((tip) => (
+            <View key={tip} style={styles.tipRow}>
+              <MaterialIcons name="check-circle-outline" size={14} color="#2E7D32" />
+              <Text style={styles.tipText}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.skipBtn} onPress={() => { setView("list"); resetForm(); }}>
+          <Text style={styles.skipBtnText}>Skip for now — upload later from My Vehicles</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
+
+  // ─── Edit Form ────────────────────────────────────────────────
+  const renderEditForm = () => (
+    <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {editingVehicle && renderVehicleCard({ item: editingVehicle })}
+
+      <View style={[styles.stepHeader, { marginTop: 16 }]}>
+        <Text style={styles.formTitle}>Edit Vehicle</Text>
+      </View>
+
+      <Text style={styles.fieldLabel}>Vehicle Type</Text>
+      <View style={styles.typeRow}>
+        {VEHICLE_TYPES.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.typeChip, vehicleType === t && styles.typeChipActive]}
+            onPress={() => setVehicleType(t)}
+            disabled={saving}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={TYPE_IMAGES[t]}
+              style={{ width: 28, height: 28, tintColor: vehicleType === t ? "#fff" : "#A09A94", marginBottom: 4 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.typeChipText, vehicleType === t && styles.typeChipTextActive]}>
+              {t.charAt(0) + t.slice(1).toLowerCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.fieldLabel}>Plate Number <Text style={{ color: "#D4501E" }}>*</Text></Text>
+      <TextInput style={styles.input} placeholder="e.g. ABC 1234" placeholderTextColor="#aaa" value={plateNumber} onChangeText={setPlateNumber} autoCapitalize="characters" editable={!saving} />
+
+      <View style={styles.inputRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.fieldLabel}>Brand</Text>
+          <TextInput style={styles.input} placeholder="e.g. Honda" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} editable={!saving} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.fieldLabel}>Model</Text>
+          <TextInput style={styles.input} placeholder="e.g. Civic" placeholderTextColor="#aaa" value={model} onChangeText={setModel} editable={!saving} />
+        </View>
+      </View>
+
+      <Text style={styles.fieldLabel}>Color</Text>
+      <TextInput style={styles.input} placeholder="e.g. White, Black" placeholderTextColor="#aaa" value={color} onChangeText={setColor} editable={!saving} />
+
+      <TouchableOpacity
+        style={[styles.submitBtn, saving && styles.submitBtnDisabled]}
+        onPress={handleUpdate}
+        disabled={saving}
+        activeOpacity={0.8}
+      >
+        {saving ? <ActivityIndicator color="#fff" /> : (
+          <View style={styles.submitInner}>
+            <MaterialIcons name="check-circle-outline" size={18} color="#fff" />
+            <Text style={styles.submitBtnText}>Save Changes</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.skipBtn} onPress={handleBack}>
+        <Text style={styles.skipBtnText}>Cancel</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+
+  const isInSubView = view !== "list";
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
       <Stack.Screen
         options={{
           headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => {
-                if (isEditing) {
-                  handleCloseForm();
-                } else {
-                  router.back();
-                }
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
+            <TouchableOpacity onPress={isInSubView ? handleBack : () => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <MaterialIcons name="chevron-left" size={28} color="#D4501E" />
             </TouchableOpacity>
           ),
+          title: view === "add-details" ? "Add Vehicle" : view === "add-registration" ? "Upload Registration" : view === "edit" ? "Edit Vehicle" : "My Vehicles",
         }}
       />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        {!isEditing && (
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>My Vehicles</Text>
-              <Text style={styles.subtitle}>
-                {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""}{" "}
-                registered
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.addToggle,
-                showForm && styles.addToggleActive,
-                !isDriverVerified && styles.addToggleDisabled,
-              ]}
-              onPress={() =>
-                !isDriverVerified
-                  ? router.push("/(modals)/driver-verification")
-                  : showForm
-                    ? handleCloseForm()
-                    : openAddForm()
-              }
-              activeOpacity={0.8}
-            >
-              <MaterialIcons
-                name={!isDriverVerified ? "lock" : showForm ? "close" : "add"}
-                size={22}
-                color={!isDriverVerified ? "#fff" : showForm ? "#D4501E" : "#fff"}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
 
-        {!isDriverVerified && !isEditing && (
-          <TouchableOpacity
-            style={styles.verifyBanner}
-            onPress={() => router.push("/(modals)/driver-verification")}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="verified-user" size={20} color="#D4501E" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.verifyBannerTitle}>
-                Verification required
-              </Text>
-              <Text style={styles.verifyBannerText}>
-                Verify your driver account to add and manage vehicles.
-              </Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
-          </TouchableOpacity>
-        )}
-
-        {isEditing && editingVehicle ? (
-          <ScrollView
-            contentContainerStyle={styles.editScrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {renderVehicleCard({ item: editingVehicle })}
-            {showForm && (
-              <View style={[styles.form, { marginHorizontal: 0 }]}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                  <Text style={styles.formTitle}>Edit Vehicle</Text>
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Plate Number *"
-                  placeholderTextColor="#aaa"
-                  value={plateNumber}
-                  onChangeText={setPlateNumber}
-                  autoCapitalize="characters"
-                  editable={!saving}
-                />
-                <Text style={styles.fieldLabel}>Vehicle Type</Text>
-                <View style={styles.typeRow}>
-                  {VEHICLE_TYPES.map((t) => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[styles.typeChip, vehicleType === t && styles.typeChipActive]}
-                      onPress={() => setVehicleType(t)}
-                      disabled={saving}
-                      activeOpacity={0.7}
-                    >
-                      <Image
-                        source={TYPE_IMAGES[t] || TYPE_IMAGES.CAR}
-                        style={{ width: 24, height: 24, tintColor: vehicleType === t ? "#fff" : "#888", marginBottom: 2 }}
-                        resizeMode="contain"
-                      />
-                      <Text style={[styles.typeChipText, vehicleType === t && styles.typeChipTextActive]}>{t}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={styles.inputRow}>
-                  <TextInput style={[styles.input, styles.inputHalf]} placeholder="Brand" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} editable={!saving} />
-                  <TextInput style={[styles.input, styles.inputHalf]} placeholder="Model" placeholderTextColor="#aaa" value={model} onChangeText={setModel} editable={!saving} />
-                </View>
-                <TextInput style={styles.input} placeholder="Color (e.g. Red, Blue)" placeholderTextColor="#aaa" value={color} onChangeText={setColor} editable={!saving} />
-                <TouchableOpacity
-                  style={[styles.submitButton, saving && styles.submitButtonDisabled]}
-                  onPress={handleUpdate}
-                  disabled={saving}
-                  activeOpacity={0.8}
-                >
-                  {saving ? <ActivityIndicator color="#fff" /> : (
-                    <View style={styles.submitInner}>
-                      <MaterialIcons name="check-circle-outline" size={20} color="#fff" />
-                      <Text style={styles.submitButtonText}>Update Vehicle</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cancelFormButton} onPress={handleCloseForm} activeOpacity={0.8}>
-                  <Text style={styles.cancelFormText}>Cancel</Text>
-                </TouchableOpacity>
+        {/* ── List view ── */}
+        {view === "list" && (
+          <>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.title}>My Vehicles</Text>
+                <Text style={styles.subtitle}>{vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""} registered</Text>
               </View>
-            )}
-          </ScrollView>
-        ) : loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#D4501E" />
-          </View>
-        ) : vehicles.length === 0 ? (
-          <View style={styles.centered}>
-            <View style={styles.emptyIcon}>
-              <MaterialIcons name="directions-car" size={48} color="#D4501E" />
+              <TouchableOpacity
+                style={[styles.addBtn, !isDriverVerified && styles.addBtnDisabled]}
+                onPress={() => !isDriverVerified ? router.push("/(modals)/driver-verification") : setView("add-details")}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name={!isDriverVerified ? "lock" : "add"} size={22} color="#fff" />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.emptyTitle}>No vehicles yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Tap the + button to add your first vehicle
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={vehicles}
-            keyExtractor={(item) => item.id}
-            renderItem={renderVehicleCard}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-          />
+
+            {!isDriverVerified && (
+              <TouchableOpacity style={styles.verifyBanner} onPress={() => router.push("/(modals)/driver-verification")} activeOpacity={0.8}>
+                <MaterialIcons name="verified-user" size={20} color="#D4501E" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.verifyBannerTitle}>Verification required</Text>
+                  <Text style={styles.verifyBannerText}>Verify your driver account to add and manage vehicles.</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color="#D4501E" />
+              </TouchableOpacity>
+            )}
+
+            {loading ? (
+              <View style={styles.centered}>
+                <ActivityIndicator size="large" color="#D4501E" />
+              </View>
+            ) : vehicles.length === 0 ? (
+              <View style={styles.centered}>
+                <View style={styles.emptyIcon}>
+                  <MaterialIcons name="directions-car" size={48} color="#D4501E" />
+                </View>
+                <Text style={styles.emptyTitle}>No vehicles yet</Text>
+                <Text style={styles.emptySubtitle}>Tap + to add your first vehicle</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={vehicles}
+                keyExtractor={(item) => item.id}
+                renderItem={renderVehicleCard}
+                contentContainerStyle={styles.list}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </>
         )}
 
-        {!isEditing && showForm && (
-          <View style={styles.form}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={styles.formTitle}>Add New Vehicle</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Plate Number *"
-              placeholderTextColor="#aaa"
-              value={plateNumber}
-              onChangeText={setPlateNumber}
-              autoCapitalize="characters"
-              editable={!saving}
-            />
-            <Text style={styles.fieldLabel}>Vehicle Type</Text>
-            <View style={styles.typeRow}>
-              {VEHICLE_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.typeChip, vehicleType === t && styles.typeChipActive]}
-                  onPress={() => setVehicleType(t)}
-                  disabled={saving}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={TYPE_IMAGES[t] || TYPE_IMAGES.CAR}
-                    style={{ width: 24, height: 24, tintColor: vehicleType === t ? "#fff" : "#888", marginBottom: 2 }}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.typeChipText, vehicleType === t && styles.typeChipTextActive]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.inputRow}>
-              <TextInput style={[styles.input, styles.inputHalf]} placeholder="Brand" placeholderTextColor="#aaa" value={brand} onChangeText={setBrand} editable={!saving} />
-              <TextInput style={[styles.input, styles.inputHalf]} placeholder="Model" placeholderTextColor="#aaa" value={model} onChangeText={setModel} editable={!saving} />
-            </View>
-            <TextInput style={styles.input} placeholder="Color (e.g. Red, Blue)" placeholderTextColor="#aaa" value={color} onChangeText={setColor} editable={!saving} />
-            <TouchableOpacity
-              style={[styles.submitButton, saving && styles.submitButtonDisabled]}
-              onPress={handleAdd}
-              disabled={saving}
-              activeOpacity={0.8}
-            >
-              {saving ? <ActivityIndicator color="#fff" /> : (
-                <View style={styles.submitInner}>
-                  <MaterialIcons name="add-circle-outline" size={20} color="#fff" />
-                  <Text style={styles.submitButtonText}>Add Vehicle</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* ── Add details ── */}
+        {view === "add-details" && renderAddForm()}
+
+        {/* ── Add registration ── */}
+        {view === "add-registration" && renderAddRegistration()}
+
+        {/* ── Edit ── */}
+        {view === "edit" && renderEditForm()}
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -565,336 +630,110 @@ export default function MyVehiclesScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   container: { flex: 1, backgroundColor: "#FFFFFF" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#232230",
-    letterSpacing: -0.5,
-  },
+
+  // Header
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12 },
+  title: { fontSize: 26, fontWeight: "800", color: "#232230", letterSpacing: -0.5 },
   subtitle: { fontSize: 13, color: "#A09A94", marginTop: 2 },
-  addToggle: {
-    backgroundColor: "#D4501E",
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#D4501E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  addToggleActive: {
-    backgroundColor: "#FFF0EC",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  addToggleDisabled: {
-    backgroundColor: "#B0BEC5",
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  form: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  formTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#232230",
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#A09A94",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: "#E8ECF0",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 15,
-    backgroundColor: "#FFFFFF",
-    color: "#232230",
-    marginBottom: 12,
-  },
-  inputRow: { flexDirection: "row", gap: 10 },
-  inputHalf: { flex: 1 },
-  typeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  typeChip: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#E8ECF0",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  typeChipActive: { backgroundColor: "#D4501E", borderColor: "#D4501E" },
-  typeChipText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#A09A94",
-    letterSpacing: 0.3,
-  },
-  typeChipTextActive: { color: "#fff" },
-  submitButton: {
-    backgroundColor: "#D4501E",
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 4,
-    shadowColor: "#D4501E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  submitButtonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
-  submitInner: { flexDirection: "row", alignItems: "center", gap: 8 },
-  submitButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  cancelFormButton: {
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 8,
-    backgroundColor: "#F2F2F7",
-  },
-  cancelFormText: { color: "#A09A94", fontSize: 15, fontWeight: "600" },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    paddingBottom: 60,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: "#FFF0EC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
+  addBtn: { backgroundColor: "#D4501E", width: 44, height: 44, borderRadius: 14, justifyContent: "center", alignItems: "center", shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  addBtnDisabled: { backgroundColor: "#B0BEC5", shadowOpacity: 0, elevation: 0 },
+
+  // Verify banner
+  verifyBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFF8E1", borderRadius: 16, padding: 16, marginHorizontal: 20, marginBottom: 12, borderWidth: 1.5, borderColor: "#D4501E" },
+  verifyBannerTitle: { fontSize: 14, fontWeight: "700", color: "#D4501E" },
+  verifyBannerText: { fontSize: 12, color: "#A09A94", marginTop: 2 },
+
+  // Empty
+  centered: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8, paddingBottom: 60 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 24, backgroundColor: "#FFF0EC", justifyContent: "center", alignItems: "center", marginBottom: 8 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#232230" },
   emptySubtitle: { fontSize: 14, color: "#A09A94" },
-  list: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 },
-  editScrollContent: { padding: 20, paddingBottom: 40, gap: 12 },
-  card: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    marginBottom: 8,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardSvgContainer: {
-    width: 88,
-    justifyContent: "center",
-    alignItems: "center",
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-    backgroundColor: "#FFF0EC",
-  },
-  vehicleImage: {
-    width: 52,
-    height: 52,
-  },
-  cardBody: { flex: 1, paddingVertical: 14, paddingHorizontal: 14 },
-  cardTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  plateBadge: {
-    backgroundColor: "transparent", // unfilled
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: "#D4501E", // orange border
-  },
-  plateText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#D4501E", // orange text to match border
-    letterSpacing: 1,
-  },
-  plateLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#6C6C70",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  cardActions: { flexDirection: "row", gap: 6 },
-  editBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#FFF0EC",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#E5E5EA", // lighter gray
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardDetails: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#232230",
-    marginTop: 6,
-  },
-  cardBottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-  },
-  colorTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F2F2F7",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  colorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
-  },
-  colorText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#555",
-    textTransform: "capitalize",
-  },
-  typeTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#FFF0EC",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  typeTagText: { fontSize: 12, fontWeight: "600", color: "#D4501E" },
-  verifyBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FFF8E1",
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: "#D4501E",
-  },
-  verifyBannerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#D4501E",
-  },
-  verifyBannerText: {
-    fontSize: 12,
-    color: "#A09A94",
-    marginTop: 2,
-  },
-  statusBadge: {
-    backgroundColor: "#FFF8E1",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#FFE0B2",
-  },
-  statusApproved: {
-    backgroundColor: "#E8F5E9",
-    borderColor: "#A5D6A7",
-  },
-  statusRejected: {
-    backgroundColor: "#FFEBEE",
-    borderColor: "#EF9A9A",
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#F57C00",
-  },
-  statusTextApproved: {
-    color: "#2E7D32",
-  },
-  statusTextRejected: {
-    color: "#C62828",
-  },
-  rejectionBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFEBEE",
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 6,
-  },
-  rejectionText: {
-    flex: 1,
-    fontSize: 12,
-    color: "#C62828",
-  },
-  uploadRegBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 10,
-    backgroundColor: "#FFF0EC",
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#D4501E",
-  },
-  uploadRegText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#D4501E",
-    flex: 1,
-  },
+  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16, gap: 12 },
+
+  // ── Vehicle Card ──────────────────────────────────────────────
+  card: { backgroundColor: "#fff", borderRadius: 20, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 },
+
+  cardTop: { flexDirection: "row", alignItems: "flex-start", padding: 14, gap: 12 },
+  cardImageBg: { width: 72, height: 72, borderRadius: 16, backgroundColor: "#FFF0EC", justifyContent: "center", alignItems: "center" },
+  vehicleImage: { width: 48, height: 48 },
+
+  cardInfo: { flex: 1, gap: 6 },
+  cardName: { fontSize: 16, fontWeight: "700", color: "#232230" },
+
+  tagRow: { flexDirection: "row", gap: 6 },
+  colorTag: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F2F2F7", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  typeTag: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FFF0EC", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  colorDot: { width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: "rgba(0,0,0,0.1)" },
+  tagText: { fontSize: 11, fontWeight: "600", color: "#555", textTransform: "capitalize" },
+
+  plateBadge: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", borderWidth: 1.5, borderColor: "#D4501E", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  plateText: { fontSize: 13, fontWeight: "800", color: "#D4501E", letterSpacing: 1 },
+
+  cardActions: { flexDirection: "column", gap: 6 },
+  actionBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: "#FFF0EC", justifyContent: "center", alignItems: "center" },
+  actionBtnGray: { backgroundColor: "#F2F2F7" },
+
+  // Registration section
+  regSection: { borderTopWidth: 1, borderTopColor: "#F0F0F0", padding: 14, gap: 10 },
+
+  statusPill: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  statusPillText: { fontSize: 12, fontWeight: "700" },
+
+  rejectionNote: { flexDirection: "row", alignItems: "flex-start", gap: 6, backgroundColor: "#FFEBEE", borderRadius: 8, padding: 8 },
+  rejectionNoteText: { flex: 1, fontSize: 12, color: "#C62828", lineHeight: 17 },
+
+  uploadBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1.5, borderColor: "#D4501E", borderStyle: "dashed", minHeight: 90 },
+  uploadBlockDisabled: { opacity: 0.6 },
+  uploadPlaceholder: { padding: 20, alignItems: "center", gap: 6 },
+  uploadPlaceholderTitle: { fontSize: 13, fontWeight: "700", color: "#D4501E", textAlign: "center" },
+  uploadPlaceholderSub: { fontSize: 11, color: "#A09A94", textAlign: "center" },
+
+  regThumb: { width: "100%", height: 120 },
+  regImage: { width: "100%", height: 160, borderRadius: 10 },
+  uploadBlockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", gap: 4 },
+  uploadBlockOverlayText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+
+  // ── Forms ─────────────────────────────────────────────────────
+  formScroll: { padding: 20, paddingBottom: 40 },
+
+  stepHeader: { marginBottom: 24 },
+  stepBadge: { alignSelf: "flex-start", backgroundColor: "#FFF0EC", borderWidth: 1, borderColor: "#D4501E", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
+  stepBadgeText: { fontSize: 11, fontWeight: "700", color: "#D4501E" },
+  formTitle: { fontSize: 22, fontWeight: "800", color: "#232230", letterSpacing: -0.4 },
+  formSubtitle: { fontSize: 13, color: "#A09A94", marginTop: 4 },
+
+  fieldLabel: { fontSize: 12, fontWeight: "700", color: "#A09A94", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8, marginTop: 4 },
+  input: { borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, backgroundColor: "#FFFFFF", color: "#232230", marginBottom: 4 },
+  inputRow: { flexDirection: "row", gap: 10 },
+
+  typeRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
+  typeChip: { flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 1.5, borderColor: "#E8ECF0", alignItems: "center", backgroundColor: "#FFFFFF" },
+  typeChipActive: { backgroundColor: "#D4501E", borderColor: "#D4501E" },
+  typeChipText: { fontSize: 12, fontWeight: "700", color: "#A09A94" },
+  typeChipTextActive: { color: "#fff" },
+
+  submitBtn: { backgroundColor: "#D4501E", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 16, shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  submitBtnDisabled: { backgroundColor: "#ccc", shadowOpacity: 0 },
+  submitInner: { flexDirection: "row", alignItems: "center", gap: 8 },
+  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  skipBtn: { paddingVertical: 14, alignItems: "center", marginTop: 8 },
+  skipBtnText: { color: "#A09A94", fontSize: 13, fontWeight: "600" },
+
+  // Registration upload step
+  vehicleSummaryChip: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFF0EC", borderRadius: 14, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: "#FFD5C2" },
+  vehicleSummaryName: { fontSize: 14, fontWeight: "700", color: "#232230" },
+  vehicleSummaryPlate: { fontSize: 12, color: "#D4501E", fontWeight: "600", marginTop: 2 },
+
+  uploadBlockLarge: { borderWidth: 2, borderColor: "#D4501E", borderStyle: "dashed", borderRadius: 16, minHeight: 180, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFAF9", marginBottom: 20 },
+  uploadPlaceholderLarge: { alignItems: "center", gap: 10, padding: 24 },
+  uploadIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#FFF0EC", justifyContent: "center", alignItems: "center" },
+  uploadLargeTitle: { fontSize: 16, fontWeight: "700", color: "#D4501E" },
+  uploadLargeSub: { fontSize: 12, color: "#A09A94" },
+  uploadingState: { alignItems: "center", gap: 10 },
+  uploadingText: { fontSize: 14, color: "#D4501E", fontWeight: "600" },
+
+  uploadTips: { backgroundColor: "#F8FFF8", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#C8E6C9", gap: 8, marginBottom: 8 },
+  uploadTipsTitle: { fontSize: 12, fontWeight: "700", color: "#2E7D32", marginBottom: 2 },
+  tipRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tipText: { fontSize: 12, color: "#4CAF50" },
 });
