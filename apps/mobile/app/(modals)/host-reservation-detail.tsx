@@ -278,9 +278,27 @@ export default function HostReservationDetailScreen() {
               </View>
             )}
             <View style={styles.driverInfoColumn}>
-              <Text style={styles.driverDisplayName}>
-                {reservation.driver?.name || "Driver"}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.driverDisplayName}>
+                  {reservation.driver?.name || "Driver"}
+                </Text>
+                {reservation.driver?.sex ? (
+                  <View style={{
+                    backgroundColor: reservation.driver.sex === "Male" ? "#EBF5FF" : "#FFF0F6",
+                    borderRadius: 6,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                  }}>
+                    <Text style={{
+                      fontSize: 11,
+                      fontWeight: "600",
+                      color: reservation.driver.sex === "Male" ? "#1D6FA4" : "#C2185B",
+                    }}>
+                      {reservation.driver.sex}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={styles.driverPhone} numberOfLines={1}>
                 {reservation.driver?.phone || "No phone provided"}
               </Text>

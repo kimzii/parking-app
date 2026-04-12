@@ -785,6 +785,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
                         firstName: true,
                         lastName: true,
                         phoneNumber: true,
+                        sex: true,
                       },
                     },
                   },
@@ -856,6 +857,11 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         images: location.images,
         basePricePerHour: location.basePricePerHour,
       },
+      host: location.host ? {
+        name: `${location.host.user.firstName || ''} ${location.host.user.lastName || ''}`.trim(),
+        phone: location.host.user.phoneNumber,
+        sex: (location.host.user as any).sex ?? null,
+      } : null,
     };
   }
 
@@ -1847,6 +1853,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
                 lastName: true,
                 phoneNumber: true,
                 profilePicture: true,
+                sex: true,
               },
             },
             vehicles: {
@@ -1894,6 +1901,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
                 lastName: true,
                 phoneNumber: true,
                 profilePicture: true,
+                sex: true,
               },
             },
             vehicles: {
@@ -1946,6 +1954,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         name: `${r.driver.user.firstName || ''} ${r.driver.user.lastName || ''}`.trim(),
         phone: r.driver.user.phoneNumber,
         image: toNullable<string>(r.driver.user.profilePicture),
+        sex: (r.driver.user as any).sex ?? null,
         licenseNumber: toNullable<string>(r.driver.licenseNumber),
         licenseImageUrl: toNullable<string>(r.driver.licenseImageUrl),
         vehicle: r.driver.vehicles[0] || null,

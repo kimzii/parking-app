@@ -460,6 +460,39 @@ export default function ReservationQRScreen() {
           </View>
         </View>
 
+        {/* Host Info */}
+        {reservation.host && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Host</Text>
+            <View style={styles.locationCard}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={styles.locationTitle}>{reservation.host.name || "Host"}</Text>
+                  {reservation.host.sex ? (
+                    <View style={{
+                      backgroundColor: reservation.host.sex === "Male" ? "#EBF5FF" : "#FFF0F6",
+                      borderRadius: 6,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                    }}>
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: "600",
+                        color: reservation.host.sex === "Male" ? "#1D6FA4" : "#C2185B",
+                      }}>
+                        {reservation.host.sex}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                {reservation.host.phone && (
+                  <Text style={styles.locationAddress}>{reservation.host.phone}</Text>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Session Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Session Details</Text>
