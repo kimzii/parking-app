@@ -406,6 +406,7 @@ export class UsersService {
             licenseNumber: true,
             licenseImageUrl: true,
             vehicles: {
+              where: { deletedAt: null },
               select: {
                 id: true,
                 plateNumber: true,
@@ -419,7 +420,7 @@ export class UsersService {
                 rejectionReason: true,
                 createdAt: true,
               },
-            },
+            } as any,
           },
         },
         host: {
