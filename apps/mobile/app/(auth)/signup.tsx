@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
 import LegalModal, { LegalTab } from "../../src/components/LegalModal";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignupScreen() {
   const [firstName, setFirstName] = useState("");
@@ -120,8 +121,9 @@ export default function SignupScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.container}>
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -345,6 +347,7 @@ export default function SignupScreen() {
         }}
       />
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
