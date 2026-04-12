@@ -241,28 +241,25 @@ export class DriversService {
       );
     }
 
-    // Check if plate number already exists
+    // Check if plate number already exists (excluding soft-deleted)
     const existingVehicle = await this.prisma.driverVehicle.findFirst({
-      where: {
-        plateNumber: createVehicleDto.plateNumber,
-      },
+      where: { plateNumber: createVehicleDto.plateNumber, deletedAt: null },
     });
 
     if (existingVehicle) {
-      throw new ConflictException(
-        'Vehicle with this plate number already exists',
-      );
+      throw new ConflictException('Vehicle with this plate number already exists');
     }
 
     return this.prisma.driverVehicle.create({
       data: {
         driverId: driver.id,
         ...createVehicleDto,
+        verificationStatus: 'PENDING',
       },
     });
   }
 
-  // Get driver vehicles
+  // Get driver vehicles (exclude soft-deleted)
   async getDriverVehicles(userId: string, queryDto: QueryDriverVehiclesDto) {
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
@@ -277,6 +274,7 @@ export class DriversService {
 
     const where: Prisma.DriverVehicleWhereInput = {
       driverId: driver.id,
+      deletedAt: null,
       ...(vehicleType && { vehicleType }),
       ...(isActive !== undefined && { isActive }),
       ...(search && {
@@ -288,15 +286,13 @@ export class DriversService {
       }),
     };
 
-    const vehicles = await this.prisma.driverVehicle.findMany({
+    return this.prisma.driverVehicle.findMany({
       where,
       orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
     });
-
-    return vehicles;
   }
 
-  // Update vehicle
+  // Update vehicle — resets verification to PENDING
   async updateVehicle(
     userId: string,
     vehicleId: string,
@@ -312,39 +308,38 @@ export class DriversService {
     }
 
     const vehicle = await this.prisma.driverVehicle.findFirst({
-      where: {
-        id: vehicleId,
-        driverId: driver.id,
-      },
+      where: { id: vehicleId, driverId: driver.id, deletedAt: null },
     });
 
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
     }
 
-    // Check plate number conflict if updating
     if (updateVehicleDto.plateNumber) {
       const existingVehicle = await this.prisma.driverVehicle.findFirst({
         where: {
           plateNumber: updateVehicleDto.plateNumber,
           id: { not: vehicleId },
+          deletedAt: null,
         },
       });
 
       if (existingVehicle) {
-        throw new ConflictException(
-          'Vehicle with this plate number already exists',
-        );
+        throw new ConflictException('Vehicle with this plate number already exists');
       }
     }
 
     return this.prisma.driverVehicle.update({
       where: { id: vehicleId },
-      data: updateVehicleDto,
+      data: {
+        ...updateVehicleDto,
+        verificationStatus: 'PENDING',
+        rejectionReason: null,
+      },
     });
   }
 
-  // Delete vehicle (soft delete by setting isActive to false)
+  // Soft delete vehicle
   async deleteVehicle(userId: string, vehicleId: string) {
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
@@ -356,10 +351,7 @@ export class DriversService {
     }
 
     const vehicle = await this.prisma.driverVehicle.findFirst({
-      where: {
-        id: vehicleId,
-        driverId: driver.id,
-      },
+      where: { id: vehicleId, driverId: driver.id, deletedAt: null },
     });
 
     if (!vehicle) {
@@ -368,8 +360,69 @@ export class DriversService {
 
     return this.prisma.driverVehicle.update({
       where: { id: vehicleId },
-      data: { isActive: false },
+      data: { deletedAt: new Date() },
     });
+  }
+
+  // Get single vehicle by ID (used by controller for S3 key naming)
+  async getVehicleById(vehicleId: string) {
+    return this.prisma.driverVehicle.findUnique({ where: { id: vehicleId } });
+  }
+
+  // Set registration image URL after upload
+  async setVehicleRegistration(userId: string, vehicleId: string, registrationImageUrl: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!driver) throw new NotFoundException('Driver profile not found');
+
+    const vehicle = await this.prisma.driverVehicle.findFirst({
+      where: { id: vehicleId, driverId: driver.id, deletedAt: null },
+    });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    return this.prisma.driverVehicle.update({
+      where: { id: vehicleId },
+      data: { registrationImageUrl, verificationStatus: 'PENDING' },
+    });
+  }
+
+  // Admin: approve or reject a vehicle registration
+  async adminVerifyVehicle(
+    vehicleId: string,
+    action: 'APPROVED' | 'REJECTED',
+    rejectionReason?: string,
+  ) {
+    const vehicle = await this.prisma.driverVehicle.findFirst({
+      where: { id: vehicleId, deletedAt: null },
+      include: {
+        driver: {
+          include: { user: { select: { id: true } } },
+        },
+      },
+    });
+
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    const updated = await this.prisma.driverVehicle.update({
+      where: { id: vehicleId },
+      data: {
+        verificationStatus: action,
+        rejectionReason: action === 'REJECTED' ? (rejectionReason ?? null) : null,
+      },
+    });
+
+    const driverUserId = vehicle.driver.user.id;
+    const plate = vehicle.plateNumber ?? 'Unknown';
+
+    if (action === 'APPROVED') {
+      await this.notificationsService.notifyVehicleApproved(driverUserId, plate);
+    } else {
+      await this.notificationsService.notifyVehicleRejected(driverUserId, plate, rejectionReason);
+    }
+
+    return updated;
   }
 
   // ========== ADMIN FUNCTIONS ==========

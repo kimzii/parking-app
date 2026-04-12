@@ -113,16 +113,20 @@ model Driver {
 }
 
 model DriverVehicle {
-  id          String       @id @default(uuid()) @db.Uuid
-  driverId    String       @map("driver_id") @db.Uuid
-  plateNumber String?      @map("plate_number")
-  vehicleType VehicleType? @map("vehicle_type")
-  brand       String?
-  model       String?
-  color       String?
-  isActive    Boolean      @default(true) @map("is_active")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  driver      Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  id                   String                    @id @default(uuid()) @db.Uuid
+  driverId             String                    @map("driver_id") @db.Uuid
+  plateNumber          String?                   @map("plate_number")
+  vehicleType          VehicleType?              @map("vehicle_type")
+  brand                String?
+  model                String?
+  color                String?
+  isActive             Boolean                   @default(true) @map("is_active")
+  registrationImageUrl String?                   @map("registration_image_url")
+  verificationStatus   VehicleVerificationStatus @default(PENDING) @map("verification_status")
+  rejectionReason      String?                   @map("rejection_reason")
+  deletedAt            DateTime?                 @map("deleted_at")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  driver               Driver                    @relation(fields: [driverId], references: [id], onDelete: Cascade)
 
   @@map("driver_vehicles")
 }
@@ -298,6 +302,14 @@ enum NotificationType {
   USER_WARNING
   USER_SUSPENDED
   USER_UNSUSPENDED
+  VEHICLE_APPROVED
+  VEHICLE_REJECTED
+}
+
+enum VehicleVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model AdminLog {

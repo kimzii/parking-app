@@ -415,6 +415,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           id: dto.vehicleId,
           driverId: driver.id,
           isActive: true,
+          deletedAt: null,
         },
       });
       if (!selectedVehicle) {
@@ -422,12 +423,19 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           'Selected vehicle not found or is not active.',
         );
       }
+      if ((selectedVehicle as any).verificationStatus !== 'APPROVED') {
+        throw new BadRequestException(
+          'Your vehicle is pending verification. Please wait for admin approval before booking.',
+        );
+      }
     } else {
-      // Fall back to most recent active vehicle
+      // Fall back to most recent approved active vehicle
       selectedVehicle = await this.prisma.driverVehicle.findFirst({
         where: {
           driverId: driver.id,
           isActive: true,
+          deletedAt: null,
+          verificationStatus: 'APPROVED',
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -435,7 +443,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
 
     if (!selectedVehicle) {
       throw new BadRequestException(
-        'Please add at least one active vehicle before booking.',
+        'Please add at least one approved vehicle before booking.',
       );
     }
 

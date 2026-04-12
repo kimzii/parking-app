@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { driversService } from "../../src/services/drivers";
 import { userService } from "../../src/services/user";
 
@@ -27,6 +28,9 @@ type Vehicle = {
   model: string;
   color: string;
   isActive: boolean;
+  registrationImageUrl: string | null;
+  verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
+  rejectionReason: string | null;
 };
 
 const VEHICLE_TYPES = ["CAR", "MOTORCYCLE"] as const;
@@ -40,6 +44,7 @@ export default function MyVehiclesScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [isDriverVerified, setIsDriverVerified] = useState(true);
@@ -141,26 +146,42 @@ export default function MyVehiclesScreen() {
       Alert.alert("Error", "Plate number is required.");
       return;
     }
-    setSaving(true);
-    try {
-      await driversService.updateVehicle(editingVehicle.id, {
-        plateNumber: plateNumber.trim(),
-        vehicleType,
-        brand: brand.trim() || undefined,
-        model: model.trim() || undefined,
-        color: color.trim() || undefined,
-      });
-      Alert.alert("Success", "Vehicle updated!");
-      resetForm();
-      setShowForm(false);
-      fetchVehicles();
-    } catch (err: any) {
+
+    const doUpdate = async () => {
+      setSaving(true);
+      try {
+        await driversService.updateVehicle(editingVehicle.id, {
+          plateNumber: plateNumber.trim(),
+          vehicleType,
+          brand: brand.trim() || undefined,
+          model: model.trim() || undefined,
+          color: color.trim() || undefined,
+        });
+        Alert.alert("Success", "Vehicle updated!");
+        resetForm();
+        setShowForm(false);
+        fetchVehicles();
+      } catch (err: any) {
+        Alert.alert(
+          "Error",
+          err?.response?.data?.message || "Failed to update vehicle.",
+        );
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    if (editingVehicle.verificationStatus === "APPROVED") {
       Alert.alert(
-        "Error",
-        err?.response?.data?.message || "Failed to update vehicle.",
+        "Re-approval Required",
+        "Editing this vehicle will reset its verification status. It won't be usable for booking until an admin re-approves it. Continue?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Continue", style: "destructive", onPress: doUpdate },
+        ],
       );
-    } finally {
-      setSaving(false);
+    } else {
+      doUpdate();
     }
   };
 
@@ -180,6 +201,36 @@ export default function MyVehiclesScreen() {
         },
       },
     ]);
+  };
+
+  const handleUploadRegistration = async (vehicle: Vehicle) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Please allow access to your photo library.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.3,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const uri = result.assets[0].uri;
+    const filename = uri.split("/").pop() || "registration.jpg";
+    const ext = filename.split(".").pop() || "jpg";
+
+    setUploadingId(vehicle.id);
+    try {
+      const formData = new FormData();
+      formData.append("file", { uri, name: filename, type: `image/${ext}` } as any);
+      await driversService.uploadVehicleRegistration(vehicle.id, formData);
+      Alert.alert("Uploaded", "Registration image submitted. Waiting for admin approval.");
+      fetchVehicles();
+    } catch {
+      Alert.alert("Error", "Failed to upload registration image.");
+    } finally {
+      setUploadingId(null);
+    }
   };
 
   const renderVehicleCard = ({ item }: { item: Vehicle }) => {
@@ -224,42 +275,64 @@ export default function MyVehiclesScreen() {
             </View>
           </View>
 
-          {/* Plate row under details/color/type */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginTop: 8,
-              gap: 6,
-              justifyContent: "space-between",
-            }}
-          >
+          {/* Plate + actions row */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 6, justifyContent: "space-between" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={styles.plateBadge}>
                 <Text style={styles.plateText}>{item.plateNumber}</Text>
               </View>
+              <View style={[
+                styles.statusBadge,
+                item.verificationStatus === "APPROVED" && styles.statusApproved,
+                item.verificationStatus === "REJECTED" && styles.statusRejected,
+              ]}>
+                <Text style={[
+                  styles.statusText,
+                  item.verificationStatus === "APPROVED" && styles.statusTextApproved,
+                  item.verificationStatus === "REJECTED" && styles.statusTextRejected,
+                ]}>
+                  {item.verificationStatus === "APPROVED" ? "Verified" : item.verificationStatus === "REJECTED" ? "Rejected" : "Pending"}
+                </Text>
+              </View>
             </View>
             <View style={styles.cardActions}>
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => openEditForm(item)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
+              <TouchableOpacity style={styles.editBtn} onPress={() => openEditForm(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <MaterialIcons name="edit" size={18} color="#D4501E" />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(item.id, item.plateNumber)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <MaterialIcons
-                  name="delete-outline"
-                  size={18}
-                  color="#6C6C70" // neutral gray
-                />
+              <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id, item.plateNumber)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <MaterialIcons name="delete-outline" size={18} color="#6C6C70" />
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Rejection reason */}
+          {item.verificationStatus === "REJECTED" && item.rejectionReason ? (
+            <View style={styles.rejectionBanner}>
+              <MaterialIcons name="error-outline" size={14} color="#C62828" />
+              <Text style={styles.rejectionText}>{item.rejectionReason}</Text>
+            </View>
+          ) : null}
+
+          {/* Upload / re-upload registration */}
+          {item.verificationStatus !== "APPROVED" && (
+            <TouchableOpacity
+              style={styles.uploadRegBtn}
+              onPress={() => handleUploadRegistration(item)}
+              disabled={uploadingId === item.id}
+              activeOpacity={0.8}
+            >
+              {uploadingId === item.id ? (
+                <ActivityIndicator size="small" color="#D4501E" />
+              ) : (
+                <>
+                  <MaterialIcons name="upload-file" size={16} color="#D4501E" />
+                  <Text style={styles.uploadRegText}>
+                    {item.registrationImageUrl ? "Re-upload Registration" : "Upload Certificate of Registration"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -765,5 +838,63 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#A09A94",
     marginTop: 2,
+  },
+  statusBadge: {
+    backgroundColor: "#FFF8E1",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+  },
+  statusApproved: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#A5D6A7",
+  },
+  statusRejected: {
+    backgroundColor: "#FFEBEE",
+    borderColor: "#EF9A9A",
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#F57C00",
+  },
+  statusTextApproved: {
+    color: "#2E7D32",
+  },
+  statusTextRejected: {
+    color: "#C62828",
+  },
+  rejectionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFEBEE",
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 6,
+  },
+  rejectionText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#C62828",
+  },
+  uploadRegBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: "#FFF0EC",
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#D4501E",
+  },
+  uploadRegText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#D4501E",
+    flex: 1,
   },
 });

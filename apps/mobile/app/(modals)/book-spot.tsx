@@ -31,6 +31,7 @@ interface Vehicle {
   brand?: string;
   model?: string;
   color?: string;
+  verificationStatus?: "PENDING" | "APPROVED" | "REJECTED";
 }
 
 interface ParkingSpace {
@@ -87,12 +88,13 @@ export default function BookSpotScreen() {
       setWalletBalance(Number(balanceData.balance));
       setHasOutstandingBalance(pendingReservations.length > 0);
 
-      // Fetch vehicles (silently — if it fails, we handle at booking time)
+      // Fetch vehicles — only APPROVED ones are usable for booking
       try {
         const vehicleData = await driversService.getVehicles();
-        const list = Array.isArray(vehicleData) ? vehicleData : [];
-        setVehicles(list);
-        if (list.length === 1) setSelectedVehicle(list[0]);
+        const all = Array.isArray(vehicleData) ? vehicleData : [];
+        const approved = all.filter((v: Vehicle) => v.verificationStatus === "APPROVED");
+        setVehicles(approved);
+        if (approved.length === 1) setSelectedVehicle(approved[0]);
       } catch {
         // Driver may not exist yet — handled during booking
       }
@@ -165,23 +167,41 @@ export default function BookSpotScreen() {
       return true;
     }
 
-    // Try fetching fresh in case vehicles were added after initial load
+    // Try fetching fresh in case vehicles were added/approved after initial load
     try {
       const vehicleData = await driversService.getVehicles();
-      const list = Array.isArray(vehicleData) ? vehicleData : [];
-      setVehicles(list);
-      if (list.length === 1) {
-        setSelectedVehicle(list[0]);
+      const all = Array.isArray(vehicleData) ? vehicleData : [];
+      const approved = all.filter((v: Vehicle) => v.verificationStatus === "APPROVED");
+      setVehicles(approved);
+
+      if (approved.length === 1) {
+        setSelectedVehicle(approved[0]);
         return true;
       }
-      if (list.length > 1 && !selectedVehicle) {
+      if (approved.length > 1 && !selectedVehicle) {
         Alert.alert(
           "Select a Vehicle",
           "Please select which vehicle you'll be using for this booking.",
         );
         return false;
       }
-      if (list.length > 0) return true;
+      if (approved.length > 0) return true;
+
+      // Has vehicles but none approved
+      if (all.length > 0) {
+        Alert.alert(
+          "No Approved Vehicle",
+          "Your vehicle(s) are still pending verification. Please wait for admin approval before booking.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "View Vehicles",
+              onPress: () => router.push("/(modals)/my-vehicles"),
+            },
+          ],
+        );
+        return false;
+      }
     } catch (err: any) {
       const message = err?.response?.data?.message;
       if (

@@ -61,6 +61,9 @@ interface UserProfile {
       model: string | null;
       color: string | null;
       isActive: boolean;
+      registrationImageUrl: string | null;
+      verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
+      rejectionReason: string | null;
       createdAt: string;
     }[];
     reservations: {
@@ -965,6 +968,7 @@ export default function UserProfileView() {
                     <div className="space-y-3">
                       {user.driver.vehicles.map((vehicle) => (
                         <div key={vehicle.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                          {/* Header row */}
                           <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -974,20 +978,26 @@ export default function UserProfileView() {
                                 <p className="font-semibold text-gray-900">
                                   {vehicle.brand || "Unknown Brand"} {vehicle.model || "Unknown Model"}
                                 </p>
-                                <p className="text-sm text-gray-500">ID: {vehicle.id.slice(0, 8)}...</p>
+                                <p className="text-sm text-gray-500">{vehicle.plateNumber || "No plate"}</p>
                               </div>
                             </div>
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                vehicle.isActive
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
-                            >
-                              {vehicle.isActive ? "Active" : "Inactive"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                vehicle.verificationStatus === "APPROVED" ? "bg-green-100 text-green-700"
+                                : vehicle.verificationStatus === "REJECTED" ? "bg-red-100 text-red-700"
+                                : "bg-yellow-100 text-yellow-700"
+                              }`}>
+                                {vehicle.verificationStatus}
+                              </span>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                vehicle.isActive ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+                              }`}>
+                                {vehicle.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </div>
                           </div>
 
+                          {/* Vehicle details */}
                           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
                             <div>
                               <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Brand</p>
@@ -1010,22 +1020,95 @@ export default function UserProfileView() {
                               <p className="text-gray-800 font-medium">{vehicle.color || "Not specified"}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Vehicle Status</p>
-                              <p className="text-gray-800 font-medium">{vehicle.isActive ? "Active" : "Inactive"}</p>
-                            </div>
-                            <div>
                               <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Date Added</p>
                               <p className="text-gray-800 font-medium">
-                                {vehicle.createdAt
-                                  ? new Date(vehicle.createdAt).toLocaleDateString()
-                                  : "Unknown"}
+                                {vehicle.createdAt ? new Date(vehicle.createdAt).toLocaleDateString() : "Unknown"}
                               </p>
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Vehicle ID</p>
-                              <p className="text-gray-800 font-medium break-all">{vehicle.id}</p>
-                            </div>
                           </div>
+
+                          {/* Registration image */}
+                          {vehicle.registrationImageUrl ? (
+                            <div className="mt-4">
+                              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">Certificate of Registration</p>
+                              <a href={vehicle.registrationImageUrl} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={vehicle.registrationImageUrl}
+                                  alt="Vehicle Registration"
+                                  className="w-full max-w-sm rounded-lg border border-gray-200 object-contain cursor-pointer hover:opacity-90 transition"
+                                  style={{ maxHeight: 220 }}
+                                />
+                              </a>
+                            </div>
+                          ) : (
+                            <div className="mt-4 rounded-lg border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400">
+                              No registration image uploaded yet
+                            </div>
+                          )}
+
+                          {/* Rejection reason */}
+                          {vehicle.verificationStatus === "REJECTED" && vehicle.rejectionReason && (
+                            <div className="mt-3 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                              <span className="font-semibold">Rejection reason: </span>{vehicle.rejectionReason}
+                            </div>
+                          )}
+
+                          {/* Approve / Reject buttons */}
+                          {vehicle.registrationImageUrl && vehicle.verificationStatus !== "APPROVED" && (
+                            <div className="mt-4 flex gap-3">
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Approve registration for ${vehicle.plateNumber}?`)) return;
+                                  setActionLoading(true);
+                                  try {
+                                    await api.put(`/drivers/admin/vehicles/${vehicle.id}/verify`, { action: "APPROVED" });
+                                    await fetchUser();
+                                  } catch { alert("Failed to approve vehicle."); }
+                                  finally { setActionLoading(false); }
+                                }}
+                                disabled={actionLoading}
+                                className="flex-1 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const reason = prompt("Rejection reason (optional):");
+                                  if (reason === null) return;
+                                  setActionLoading(true);
+                                  try {
+                                    await api.put(`/drivers/admin/vehicles/${vehicle.id}/verify`, { action: "REJECTED", rejectionReason: reason || undefined });
+                                    await fetchUser();
+                                  } catch { alert("Failed to reject vehicle."); }
+                                  finally { setActionLoading(false); }
+                                }}
+                                disabled={actionLoading}
+                                className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                          {vehicle.verificationStatus === "APPROVED" && (
+                            <div className="mt-4 flex gap-3">
+                              <button
+                                onClick={async () => {
+                                  const reason = prompt("Rejection reason (optional):");
+                                  if (reason === null) return;
+                                  setActionLoading(true);
+                                  try {
+                                    await api.put(`/drivers/admin/vehicles/${vehicle.id}/verify`, { action: "REJECTED", rejectionReason: reason || undefined });
+                                    await fetchUser();
+                                  } catch { alert("Failed to reject vehicle."); }
+                                  finally { setActionLoading(false); }
+                                }}
+                                disabled={actionLoading}
+                                className="px-4 py-2 rounded-lg bg-red-100 text-red-700 text-sm font-semibold hover:bg-red-200 disabled:opacity-50 transition"
+                              >
+                                Revoke Approval
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
