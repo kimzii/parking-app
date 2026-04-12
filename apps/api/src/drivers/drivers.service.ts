@@ -340,7 +340,7 @@ export class DriversService {
 
     const plate = updated.plateNumber ?? vehicleId;
     this.notificationsService
-      .notifyAdminsPendingVehicle(vehicleId, plate)
+      .notifyAdminsPendingVehicle(vehicleId, plate, userId)
       .catch(() => {});
 
     return updated;
@@ -395,7 +395,7 @@ export class DriversService {
     });
 
     this.notificationsService
-      .notifyAdminsPendingVehicle(vehicleId, vehicle.plateNumber ?? vehicleId)
+      .notifyAdminsPendingVehicle(vehicleId, vehicle.plateNumber ?? vehicleId, userId)
       .catch(() => {});
 
     return updated;

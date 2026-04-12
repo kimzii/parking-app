@@ -416,7 +416,7 @@ export class NotificationsService {
     );
   }
 
-  async notifyAdminsPendingVehicle(vehicleId: string, plateNumber: string): Promise<void> {
+  async notifyAdminsPendingVehicle(vehicleId: string, plateNumber: string, driverUserId?: string): Promise<void> {
     const adminIds = await this.getAdminUserIds();
     if (adminIds.length === 0) return;
 
@@ -427,7 +427,7 @@ export class NotificationsService {
           title: 'Vehicle Verification Required',
           message: `A driver submitted a Certificate of Registration for vehicle ${plateNumber}. Please review and verify.`,
           type: 'GENERAL',
-          data: { kind: 'PENDING_VEHICLE', vehicleId },
+          data: { kind: 'PENDING_VEHICLE', vehicleId, driverUserId },
         }),
       ),
     );

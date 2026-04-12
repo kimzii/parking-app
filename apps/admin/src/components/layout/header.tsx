@@ -63,7 +63,7 @@ interface ApiNotification {
 
 interface UiNotification {
   id: string;
-  type: NotificationType | "PENDING_LISTING" | "PENDING_DRIVER" | "TOPUP_REQUEST" | "WITHDRAW_REQUEST";
+  type: NotificationType | "PENDING_LISTING" | "PENDING_DRIVER" | "PENDING_VEHICLE" | "TOPUP_REQUEST" | "WITHDRAW_REQUEST";
   title: string;
   message: string;
   time: string;
@@ -140,6 +140,10 @@ const mapNotificationLink = (notification: ApiNotification): string => {
       }
       if (kind === "PENDING_DRIVER") {
         return driverId ? `/users?driverId=${driverId}` : "/users";
+      }
+      if (kind === "PENDING_VEHICLE") {
+        const driverUserId = getString("driverUserId");
+        return driverUserId ? `/users/${driverUserId}?tab=vehicle` : "/users";
       }
       if (kind === "TOPUP_REQUEST") {
         return topUpRequestId
