@@ -989,11 +989,6 @@ export default function UserProfileView() {
                               }`}>
                                 {vehicle.verificationStatus}
                               </span>
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                vehicle.isActive ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
-                              }`}>
-                                {vehicle.isActive ? "Active" : "Inactive"}
-                              </span>
                             </div>
                           </div>
 
