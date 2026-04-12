@@ -382,10 +382,16 @@ export class DriversService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
-    return this.prisma.driverVehicle.update({
+    const updated = await this.prisma.driverVehicle.update({
       where: { id: vehicleId },
       data: { registrationImageUrl, verificationStatus: 'PENDING' },
     });
+
+    this.notificationsService
+      .notifyAdminsPendingVehicle(vehicleId, vehicle.plateNumber ?? vehicleId)
+      .catch(() => {});
+
+    return updated;
   }
 
   // Admin: approve or reject a vehicle registration

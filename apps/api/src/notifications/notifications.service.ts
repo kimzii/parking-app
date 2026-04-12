@@ -416,6 +416,23 @@ export class NotificationsService {
     );
   }
 
+  async notifyAdminsPendingVehicle(vehicleId: string, plateNumber: string): Promise<void> {
+    const adminIds = await this.getAdminUserIds();
+    if (adminIds.length === 0) return;
+
+    await Promise.all(
+      adminIds.map((adminId) =>
+        this.send({
+          userId: adminId,
+          title: 'Vehicle Verification Required',
+          message: `A driver submitted a Certificate of Registration for vehicle ${plateNumber}. Please review and verify.`,
+          type: 'GENERAL',
+          data: { kind: 'PENDING_VEHICLE', vehicleId },
+        }),
+      ),
+    );
+  }
+
   async notifyAdminsPendingDriver(driverId: string): Promise<void> {
     const adminIds = await this.getAdminUserIds();
 
