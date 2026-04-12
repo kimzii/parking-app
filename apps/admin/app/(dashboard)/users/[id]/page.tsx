@@ -1062,7 +1062,7 @@ export default function UserProfileView() {
                                   setActionLoading(true);
                                   try {
                                     await api.put(`/drivers/admin/vehicles/${vehicle.id}/verify`, { action: "APPROVED" });
-                                    await fetchUser();
+                                    await fetchUserProfile();
                                   } catch { alert("Failed to approve vehicle."); }
                                   finally { setActionLoading(false); }
                                 }}
@@ -1078,7 +1078,7 @@ export default function UserProfileView() {
                                   setActionLoading(true);
                                   try {
                                     await api.put(`/drivers/admin/vehicles/${vehicle.id}/verify`, { action: "REJECTED", rejectionReason: reason || undefined });
-                                    await fetchUser();
+                                    await fetchUserProfile();
                                   } catch { alert("Failed to reject vehicle."); }
                                   finally { setActionLoading(false); }
                                 }}
@@ -1098,7 +1098,7 @@ export default function UserProfileView() {
                                   setActionLoading(true);
                                   try {
                                     await api.put(`/drivers/admin/vehicles/${vehicle.id}/verify`, { action: "REJECTED", rejectionReason: reason || undefined });
-                                    await fetchUser();
+                                    await fetchUserProfile();
                                   } catch { alert("Failed to reject vehicle."); }
                                   finally { setActionLoading(false); }
                                 }}
