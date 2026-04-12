@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, router } from "expo-router";
@@ -51,6 +53,7 @@ export default function MyVehiclesScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   // "list" | "add-details" | "add-registration" | "edit"
   const [view, setView] = useState<"list" | "add-details" | "add-registration" | "edit">("list");
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -305,45 +308,39 @@ export default function MyVehiclesScreen() {
             </View>
           ) : null}
 
-          {/* Registration image or upload prompt */}
-          {item.verificationStatus === "APPROVED" ? (
-            item.registrationImageUrl ? (
-              <Image
-                source={{ uri: item.registrationImageUrl }}
-                style={styles.regImage}
-                resizeMode="cover"
-              />
-            ) : null
-          ) : (
-            <TouchableOpacity
-              style={[styles.uploadBlock, isUploading && styles.uploadBlockDisabled]}
-              onPress={() => handleUploadRegistration(item)}
-              disabled={isUploading}
-              activeOpacity={0.75}
-            >
-              {isUploading ? (
-                <ActivityIndicator size="small" color="#D4501E" />
-              ) : item.registrationImageUrl ? (
-                <>
-                  <Image
-                    source={{ uri: item.registrationImageUrl }}
-                    style={styles.regThumb}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.uploadBlockOverlay}>
-                    <MaterialIcons name="upload" size={20} color="#fff" />
-                    <Text style={styles.uploadBlockOverlayText}>Re-upload</Text>
-                  </View>
-                </>
-              ) : (
-                <View style={styles.uploadPlaceholder}>
-                  <MaterialIcons name="upload-file" size={28} color="#D4501E" />
-                  <Text style={styles.uploadPlaceholderTitle}>Upload Certificate of Registration</Text>
-                  <Text style={styles.uploadPlaceholderSub}>Required for verification · Tap to select image</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
+          {/* Registration actions row */}
+          <View style={styles.regActionsRow}>
+            {item.registrationImageUrl && (
+              <TouchableOpacity
+                style={styles.viewProofBtn}
+                onPress={() => setProofImageUrl(item.registrationImageUrl)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="image-search" size={15} color="#1976D2" />
+                <Text style={styles.viewProofText}>View Proof</Text>
+              </TouchableOpacity>
+            )}
+
+            {item.verificationStatus !== "APPROVED" && (
+              <TouchableOpacity
+                style={[styles.uploadRowBtn, isUploading && styles.uploadBlockDisabled]}
+                onPress={() => handleUploadRegistration(item)}
+                disabled={isUploading}
+                activeOpacity={0.8}
+              >
+                {isUploading ? (
+                  <ActivityIndicator size="small" color="#D4501E" />
+                ) : (
+                  <>
+                    <MaterialIcons name="upload-file" size={15} color="#D4501E" />
+                    <Text style={styles.uploadRowBtnText}>
+                      {item.registrationImageUrl ? "Re-upload CR" : "Upload CR"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -548,7 +545,7 @@ export default function MyVehiclesScreen() {
   const isInSubView = view !== "list";
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
       <Stack.Screen
         options={{
           headerLeft: () => (
@@ -623,6 +620,24 @@ export default function MyVehiclesScreen() {
         {view === "edit" && renderEditForm()}
 
       </KeyboardAvoidingView>
+
+      {/* Full-screen image viewer */}
+      <Modal visible={!!proofImageUrl} transparent animationType="fade" onRequestClose={() => setProofImageUrl(null)}>
+        <StatusBar backgroundColor="#000" barStyle="light-content" />
+        <View style={styles.imageModal}>
+          <TouchableOpacity style={styles.imageModalClose} onPress={() => setProofImageUrl(null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <MaterialIcons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.imageModalTitle}>Certificate of Registration</Text>
+          {proofImageUrl && (
+            <Image
+              source={{ uri: proofImageUrl }}
+              style={styles.imageModalImg}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -682,16 +697,21 @@ const styles = StyleSheet.create({
   rejectionNote: { flexDirection: "row", alignItems: "flex-start", gap: 6, backgroundColor: "#FFEBEE", borderRadius: 8, padding: 8 },
   rejectionNoteText: { flex: 1, fontSize: 12, color: "#C62828", lineHeight: 17 },
 
-  uploadBlock: { borderRadius: 12, overflow: "hidden", borderWidth: 1.5, borderColor: "#D4501E", borderStyle: "dashed", minHeight: 90 },
   uploadBlockDisabled: { opacity: 0.6 },
   uploadPlaceholder: { padding: 20, alignItems: "center", gap: 6 },
   uploadPlaceholderTitle: { fontSize: 13, fontWeight: "700", color: "#D4501E", textAlign: "center" },
   uploadPlaceholderSub: { fontSize: 11, color: "#A09A94", textAlign: "center" },
 
-  regThumb: { width: "100%", height: 120 },
-  regImage: { width: "100%", height: 160, borderRadius: 10 },
-  uploadBlockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", gap: 4 },
-  uploadBlockOverlayText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+  imageModal: { flex: 1, backgroundColor: "#000", justifyContent: "center", alignItems: "center" },
+  imageModalClose: { position: "absolute", top: 52, right: 20, zIndex: 10, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, padding: 8 },
+  imageModalTitle: { position: "absolute", top: 56, left: 20, right: 60, color: "#fff", fontSize: 15, fontWeight: "700" },
+  imageModalImg: { width: "100%", height: "80%" },
+
+  regActionsRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  viewProofBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  viewProofText: { fontSize: 12, fontWeight: "700", color: "#1976D2" },
+  uploadRowBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: "#FFF0EC", borderWidth: 1, borderColor: "#D4501E" },
+  uploadRowBtnText: { fontSize: 12, fontWeight: "700", color: "#D4501E" },
 
   // ── Forms ─────────────────────────────────────────────────────
   formScroll: { padding: 20, paddingBottom: 40 },
