@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   actionBtnGray: { backgroundColor: "#F2F2F7" },
 
   // Registration section
-  regSection: { borderTopWidth: 1, borderTopColor: "#F0F0F0", padding: 14, gap: 10 },
+  regSection: { borderTopWidth: 1, borderTopColor: "#F0F0F0", padding: 14, gap: 10, paddingBottom: 5 },
 
   regTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" },
 
