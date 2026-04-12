@@ -329,7 +329,7 @@ export class DriversService {
       }
     }
 
-    return this.prisma.driverVehicle.update({
+    const updated = await this.prisma.driverVehicle.update({
       where: { id: vehicleId },
       data: {
         ...updateVehicleDto,
@@ -337,6 +337,13 @@ export class DriversService {
         rejectionReason: null,
       },
     });
+
+    const plate = updated.plateNumber ?? vehicleId;
+    this.notificationsService
+      .notifyAdminsPendingVehicle(vehicleId, plate)
+      .catch(() => {});
+
+    return updated;
   }
 
   // Soft delete vehicle
