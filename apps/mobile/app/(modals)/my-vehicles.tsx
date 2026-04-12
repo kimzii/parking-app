@@ -294,10 +294,24 @@ export default function MyVehiclesScreen() {
 
         {/* Registration section */}
         <View style={[styles.regSection, { borderTopColor: statusCfg.border }]}>
-          {/* Status pill */}
-          <View style={[styles.statusPill, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
-            <MaterialIcons name={statusCfg.icon} size={13} color={statusCfg.text} />
-            <Text style={[styles.statusPillText, { color: statusCfg.text }]}>{statusCfg.label}</Text>
+          {/* Top row: Status + View Proof */}
+          <View style={styles.regTopRow}
+          >
+            <View style={[styles.statusPill, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
+              <MaterialIcons name={statusCfg.icon} size={13} color={statusCfg.text} />
+              <Text style={[styles.statusPillText, { color: statusCfg.text }]}>{statusCfg.label}</Text>
+            </View>
+
+            {item.registrationImageUrl && (
+              <TouchableOpacity
+                style={styles.viewProofBtn}
+                onPress={() => setProofImageUrl(item.registrationImageUrl)}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="image-search" size={15} color="#1976D2" />
+                <Text style={styles.viewProofText}>View Proof</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Rejection reason */}
@@ -310,17 +324,6 @@ export default function MyVehiclesScreen() {
 
           {/* Registration actions row */}
           <View style={styles.regActionsRow}>
-            {item.registrationImageUrl && (
-              <TouchableOpacity
-                style={styles.viewProofBtn}
-                onPress={() => setProofImageUrl(item.registrationImageUrl)}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="image-search" size={15} color="#1976D2" />
-                <Text style={styles.viewProofText}>View Proof</Text>
-              </TouchableOpacity>
-            )}
-
             {item.verificationStatus !== "APPROVED" && (
               <TouchableOpacity
                 style={[styles.uploadRowBtn, isUploading && styles.uploadBlockDisabled]}
@@ -412,7 +415,7 @@ export default function MyVehiclesScreen() {
 
   // ─── Add Registration Step ────────────────────────────────────
   const renderAddRegistration = () => {
-    const target = newlyAddedVehicle ?? vehicles.find((v) => v.id === newlyAddedVehicle?.id) ?? vehicles[vehicles.length - 1];
+  const target = newlyAddedVehicle ?? vehicles[vehicles.length - 1];
     if (!target) return null;
     const isUploading = uploadingId === target.id;
 
@@ -423,7 +426,7 @@ export default function MyVehiclesScreen() {
             <Text style={[styles.stepBadgeText, { color: "#2E7D32" }]}>Step 2 of 2</Text>
           </View>
           <Text style={styles.formTitle}>Certificate of Registration</Text>
-          <Text style={styles.formSubtitle}>Upload a clear photo of your vehicle's CR for admin verification</Text>
+          <Text style={styles.formSubtitle}>Upload a clear photo of your vehicle&apos;s CR for admin verification</Text>
         </View>
 
         {/* Vehicle summary chip */}
@@ -690,6 +693,8 @@ const styles = StyleSheet.create({
 
   // Registration section
   regSection: { borderTopWidth: 1, borderTopColor: "#F0F0F0", padding: 14, gap: 10 },
+
+  regTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" },
 
   statusPill: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   statusPillText: { fontSize: 12, fontWeight: "700" },
