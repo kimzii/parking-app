@@ -42,6 +42,7 @@ interface UserProfile {
   lastName: string | null;
   phoneNumber: string | null;
   profilePicture: string | null;
+  sex: string | null;
   emailVerified: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -615,6 +616,20 @@ export default function UserProfileView() {
                       <p className="font-medium text-gray-900">{user.phoneNumber || "Not provided"}</p>
                     </div>
                   </div>
+
+                  {user.sex && (
+                    <div className="flex items-center gap-3 text-gray-600">
+                      <User size={18} className="text-gray-400 shrink-0" />
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Sex</p>
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          user.sex === "Male" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
+                        }`}>
+                          {user.sex}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-3 text-gray-600">
                     {getVerificationIcon(profileStatus)}

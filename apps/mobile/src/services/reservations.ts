@@ -66,6 +66,11 @@ export interface Reservation {
     color?: string;
     vehicleType?: string;
   } | null;
+  host?: {
+    name: string;
+    phone?: string | null;
+    sex?: string | null;
+  } | null;
 }
 
 export interface CreateReservationResponse extends Reservation {
@@ -108,6 +113,7 @@ export interface HostReservation extends Reservation {
     name: string;
     phone?: string | null;
     image?: string | null;
+    sex?: string | null;
     licenseNumber?: string | null;
     licenseImageUrl?: string | null;
     vehicle?: {
