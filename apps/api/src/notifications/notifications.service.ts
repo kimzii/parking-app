@@ -435,4 +435,26 @@ export class NotificationsService {
       ),
     );
   }
+
+  async notifyVehicleApproved(driverUserId: string, plateNumber: string) {
+    await this.send({
+      userId: driverUserId,
+      title: 'Vehicle Approved',
+      message: `Your vehicle (${plateNumber}) has been verified and is now ready for booking.`,
+      type: 'VEHICLE_APPROVED',
+      data: { screen: 'my-vehicles' },
+    });
+  }
+
+  async notifyVehicleRejected(driverUserId: string, plateNumber: string, reason?: string) {
+    await this.send({
+      userId: driverUserId,
+      title: 'Vehicle Registration Rejected',
+      message: reason
+        ? `Your vehicle (${plateNumber}) registration was rejected. Reason: ${reason}`
+        : `Your vehicle (${plateNumber}) registration was rejected. Please re-upload a valid Certificate of Registration.`,
+      type: 'VEHICLE_REJECTED',
+      data: { screen: 'my-vehicles' },
+    });
+  }
 }

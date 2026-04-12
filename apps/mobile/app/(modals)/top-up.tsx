@@ -26,6 +26,7 @@ type Step = "amount" | "waiting" | "qr" | "proof" | "done";
 
 export default function TopUpScreen() {
   const [step, setStep] = useState<Step>("amount");
+  const setStepSynced = (s: Step) => { stepRef.current = s; setStep(s); };
   const [amount, setAmount] = useState("");
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ export default function TopUpScreen() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stepRef = useRef<Step>("amount");
 
   useEffect(() => {
     fetchBalance();
@@ -66,16 +68,16 @@ export default function TopUpScreen() {
         setCurrentRequest(active);
         setAmount(parseFloat(active.amount).toString());
         if (active.status === "PENDING") {
-          setStep("waiting");
+          setStepSynced("waiting");
           startPolling(active.id);
           startCountdown(active.expiresAt);
         } else if (active.status === "ACCEPTED") {
           if (active.proofImageUrl) {
             // Proof already submitted — waiting for admin to release/reject
-            setStep("done");
+            setStepSynced("done");
             startPolling(active.id); // keep polling so we detect approve/reject
           } else {
-            setStep("qr");
+            setStepSynced("qr");
             startPolling(active.id); // poll in case admin rejects while on QR page
           }
         }
@@ -100,7 +102,7 @@ export default function TopUpScreen() {
     try {
       const request = await walletService.createTopUp(numAmount);
       setCurrentRequest(request);
-      setStep("waiting");
+      setStepSynced("waiting");
       startPolling(request.id);
       startCountdown(request.expiresAt);
     } catch {
@@ -120,7 +122,7 @@ export default function TopUpScreen() {
       if (remaining <= 0) {
         if (timerRef.current) clearInterval(timerRef.current);
         if (pollRef.current) clearInterval(pollRef.current);
-        setStep("amount");
+        setStepSynced("amount");
         Alert.alert("Request Expired", "Your top-up request has expired. Please try again.");
       }
     };
@@ -136,25 +138,25 @@ export default function TopUpScreen() {
         const updated = await walletService.getTopUpStatus(requestId);
         setCurrentRequest(updated);
 
-        if (updated.status === "ACCEPTED" && !updated.proofImageUrl) {
+        if (updated.status === "ACCEPTED" && !updated.proofImageUrl && stepRef.current === "waiting") {
           if (timerRef.current) clearInterval(timerRef.current);
-          setStep("qr");
+          setStepSynced("qr");
         } else if (updated.status === "APPROVED") {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timerRef.current) clearInterval(timerRef.current);
-          setStep("amount");
+          setStepSynced("amount");
           setCurrentRequest(null);
           Alert.alert("Credits Released!", `₱${parseFloat(updated.amount).toFixed(2)} has been added to your wallet.`);
         } else if (updated.status === "REJECTED") {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timerRef.current) clearInterval(timerRef.current);
-          setStep("amount");
+          setStepSynced("amount");
           setCurrentRequest(null);
           Alert.alert("Request Rejected", "Your top-up request was rejected by the admin.");
         } else if (updated.status === "EXPIRED") {
           if (pollRef.current) clearInterval(pollRef.current);
           if (timerRef.current) clearInterval(timerRef.current);
-          setStep("amount");
+          setStepSynced("amount");
           setCurrentRequest(null);
           Alert.alert("Request Expired", "Your top-up request has expired. Please try again.");
         }
@@ -181,7 +183,7 @@ export default function TopUpScreen() {
     setLoading(true);
     try {
       await walletService.uploadTopUpProof(currentRequest.id, proofUri);
-      setStep("done");
+      setStepSynced("done");
     } catch {
       Alert.alert("Upload Failed", "Could not upload proof. Please try again.");
     } finally {

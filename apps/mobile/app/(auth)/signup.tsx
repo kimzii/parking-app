@@ -15,10 +15,12 @@ import { router } from "expo-router";
 import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
 import LegalModal, { LegalTab } from "../../src/components/LegalModal";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignupScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [sex, setSex] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
@@ -45,6 +47,10 @@ export default function SignupScreen() {
     }
     if (!lastName.trim()) {
       Alert.alert("Error", "Please enter your last name");
+      return;
+    }
+    if (!sex) {
+      Alert.alert("Error", "Please select your sex");
       return;
     }
     if (!email.trim()) {
@@ -89,6 +95,7 @@ export default function SignupScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
+        sex,
         termsAccepted,
         privacyAccepted,
       });
@@ -114,8 +121,9 @@ export default function SignupScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.container}>
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -164,6 +172,22 @@ export default function SignupScreen() {
                 />
               </View>
             </View>
+          </View>
+
+          <Text style={styles.label}>Sex</Text>
+          <View style={styles.sexRow}>
+            {["MALE", "FEMALE"].map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={[styles.sexButton, sex === option && styles.sexButtonSelected]}
+                onPress={() => setSex(option)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.sexButtonText, sex === option && styles.sexButtonTextSelected]}>
+                  {option.charAt(0) + option.slice(1).toLowerCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <Text style={styles.label}>Email</Text>
@@ -323,6 +347,7 @@ export default function SignupScreen() {
         }}
       />
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -379,6 +404,31 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  sexRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  sexButton: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    backgroundColor: "#FFFFFF",
+  },
+  sexButtonSelected: {
+    backgroundColor: "#FFF0EC",
+    borderColor: "#D4501E",
+  },
+  sexButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#232230",
+  },
+  sexButtonTextSelected: {
+    color: "#D4501E",
   },
   label: {
     fontSize: 13,

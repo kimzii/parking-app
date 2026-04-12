@@ -131,4 +131,9 @@ export class S3Service {
   driverLicenseKey(userName: string, ext: string): string {
     return `driver-licenses/${this.slugify(userName)}.${ext}`;
   }
+
+  /** vehicle-registrations/{plate-number}.jpg */
+  vehicleRegistrationKey(plateNumber: string, ext: string): string {
+    return `vehicle-registrations/${this.slugify(plateNumber)}.${ext}`;
+  }
 }

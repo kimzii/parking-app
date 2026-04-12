@@ -18,6 +18,7 @@ import { authService } from "../../src/services/auth";
 import { userService } from "../../src/services/user";
 import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
   const colorScheme = useColorScheme();
@@ -80,8 +81,9 @@ export default function LoginScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.container}>
     <KeyboardAvoidingView
-      style={styles.container}
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -172,6 +174,7 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

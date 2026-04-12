@@ -201,10 +201,45 @@ export class DriversController {
     );
   }
 
+  @Post('vehicles/:vehicleId/upload-registration')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('DRIVER')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Upload vehicle Certificate of Registration image' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @ApiResponse({ status: 201, description: 'Registration image uploaded' })
+  async uploadVehicleRegistration(
+    @Request() req: { user: { id: string } },
+    @Param('vehicleId') vehicleId: string,
+    @UploadedFile() file: { originalname: string; mimetype: string; size: number; buffer: Buffer },
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Only JPEG, PNG, and WebP images are allowed');
+    }
+
+    const vehicle = await this.driversService.getVehicleById(vehicleId);
+    const plate = vehicle?.plateNumber ?? vehicleId;
+    const ext = file.originalname.split('.').pop() ?? 'jpg';
+    const key = this.s3.vehicleRegistrationKey(plate, ext);
+
+    if (vehicle?.registrationImageUrl) {
+      await this.s3.deleteByUrl(vehicle.registrationImageUrl).catch(() => {});
+    }
+
+    await this.s3.upload(key, file.buffer, file.mimetype);
+    const url = this.s3.buildUrl(key, true);
+
+    await this.driversService.setVehicleRegistration(req.user.id, vehicleId, url);
+    return { url };
+  }
+
   @Delete('vehicles/:vehicleId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('DRIVER')
-  @ApiOperation({ summary: 'Delete/deactivate vehicle' })
+  @ApiOperation({ summary: 'Soft-delete vehicle' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
   @ApiResponse({ status: 200, description: 'Vehicle deleted successfully' })
   @ApiResponse({ status: 404, description: 'Vehicle not found' })
@@ -225,6 +260,19 @@ export class DriversController {
   @ApiResponse({ status: 403, description: 'Admin access required' })
   async getAllDrivers(@Query() queryDto: QueryDriversDto) {
     return this.driversService.getAllDrivers(queryDto);
+  }
+
+  @Put('admin/vehicles/:vehicleId/verify')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Approve or reject a vehicle registration (Admin only)' })
+  @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
+  @ApiResponse({ status: 200, description: 'Vehicle verification updated' })
+  async adminVerifyVehicle(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: { action: 'APPROVED' | 'REJECTED'; rejectionReason?: string },
+  ) {
+    return this.driversService.adminVerifyVehicle(vehicleId, body.action, body.rejectionReason);
   }
 
   @Put('admin/:driverId/status')

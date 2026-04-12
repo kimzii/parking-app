@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsNotEmpty,
   IsString,
+  IsIn,
   Equals,
   Matches,
   MinLength,
@@ -56,6 +57,16 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Phone number is required' })
   @IsString()
   phoneNumber: string;
+
+  @ApiProperty({
+    example: 'MALE',
+    description: 'User sex (MALE, FEMALE, or OTHER)',
+    enum: ['MALE', 'FEMALE'],
+  })
+  @IsNotEmpty({ message: 'Sex is required' })
+  @IsString()
+  @IsIn(['MALE', 'FEMALE'], { message: 'Sex must be MALE or FEMALE' })
+  sex: string;
 
   @ApiProperty({
     example: true,

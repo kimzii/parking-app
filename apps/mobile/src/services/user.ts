@@ -10,6 +10,7 @@ export const userService = {
     lastName?: string;
     phoneNumber?: string;
     profilePicture?: string;
+    sex?: string;
   }) {
     const response = await api.put("/users/profile", data);
     return response.data;
