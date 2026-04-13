@@ -37,6 +37,7 @@ export class UsersService {
         lastName: true,
         phoneNumber: true,
         profilePicture: true,
+        sex: true,
         emailVerified: true,
         lastLoginAt: true,
         createdAt: true,
