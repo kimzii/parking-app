@@ -23,8 +23,14 @@ export default function CompleteProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
 
-  const openCamera = async () => {
+  const closeSourcePickerBeforeNativeUi = async () => {
     setShowSourcePicker(false);
+    // Give the modal close animation a moment before opening native UI.
+    await new Promise((resolve) => setTimeout(resolve, 180));
+  };
+
+  const openCamera = async () => {
+    await closeSourcePickerBeforeNativeUi();
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permission needed", "Please allow camera access.");
@@ -41,10 +47,13 @@ export default function CompleteProfileScreen() {
   };
 
   const openGallery = async () => {
-    setShowSourcePicker(false);
+    await closeSourcePickerBeforeNativeUi();
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow access to your photo library.");
+      Alert.alert(
+        "Permission needed",
+        "Please allow access to your photo library.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -52,6 +61,8 @@ export default function CompleteProfileScreen() {
       quality: 0.8,
       allowsEditing: true,
       aspect: [1, 1],
+      // Android legacy picker has more reliable crop toolbar contrast on some devices.
+      legacy: Platform.OS === "android",
     });
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
@@ -101,7 +112,11 @@ export default function CompleteProfileScreen() {
           activeOpacity={0.8}
         >
           {selectedImage ? (
-            <Image source={{ uri: selectedImage }} style={styles.avatar} contentFit="cover" />
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Ionicons name="person" size={44} color="#C7C7CC" />
@@ -146,7 +161,11 @@ export default function CompleteProfileScreen() {
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle}>Choose Photo</Text>
 
-            <TouchableOpacity style={styles.sheetOption} onPress={openCamera} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={openCamera}
+              activeOpacity={0.7}
+            >
               <View style={styles.sheetIconBg}>
                 <Ionicons name="camera" size={22} color="#D4501E" />
               </View>
@@ -156,13 +175,19 @@ export default function CompleteProfileScreen() {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.sheetOption} onPress={openGallery} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={openGallery}
+              activeOpacity={0.7}
+            >
               <View style={styles.sheetIconBg}>
                 <Ionicons name="images" size={22} color="#D4501E" />
               </View>
               <View>
                 <Text style={styles.sheetOptionTitle}>Choose from Gallery</Text>
-                <Text style={styles.sheetOptionSub}>Pick from your photo library</Text>
+                <Text style={styles.sheetOptionSub}>
+                  Pick from your photo library
+                </Text>
               </View>
             </TouchableOpacity>
 
@@ -258,7 +283,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  buttonDisabled: { backgroundColor: "#C5C5C5", shadowOpacity: 0, elevation: 0 },
+  buttonDisabled: {
+    backgroundColor: "#C5C5C5",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 
   // Modal / bottom sheet

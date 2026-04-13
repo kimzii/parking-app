@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/android-icon-background.png",
     "scheme": "mobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
