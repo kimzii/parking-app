@@ -11,6 +11,7 @@ export const userService = {
     phoneNumber?: string;
     profilePicture?: string;
     sex?: string;
+    dateOfBirth?: string;
   }) {
     const response = await api.put("/users/profile", data);
     return response.data;
@@ -34,13 +35,9 @@ export const userService = {
       type,
     } as unknown as Blob);
 
-    const response = await api.post(
-      "/users/upload-profile-picture",
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
+    const response = await api.post("/users/upload-profile-picture", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return response.data;
   },
 };

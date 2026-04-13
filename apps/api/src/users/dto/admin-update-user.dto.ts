@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsEmail,
   IsOptional,
   IsString,
@@ -51,4 +52,12 @@ export class AdminUpdateUserDto {
   @MinLength(10)
   @MaxLength(15)
   phoneNumber?: string;
+
+  @ApiPropertyOptional({
+    example: '2000-01-15',
+    description: 'User birthday in YYYY-MM-DD format',
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'dateOfBirth must be a valid date string' })
+  dateOfBirth?: string;
 }

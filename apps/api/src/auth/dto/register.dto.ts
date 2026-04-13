@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsDateString,
   IsEmail,
   IsNotEmpty,
   IsString,
@@ -67,6 +68,14 @@ export class RegisterDto {
   @IsString()
   @IsIn(['MALE', 'FEMALE'], { message: 'Sex must be MALE or FEMALE' })
   sex: string;
+
+  @ApiProperty({
+    example: '2000-01-15',
+    description: 'User birthday in YYYY-MM-DD format',
+  })
+  @IsNotEmpty({ message: 'Birthday is required' })
+  @IsDateString({}, { message: 'Birthday must be a valid date string' })
+  birthday: string;
 
   @ApiProperty({
     example: true,

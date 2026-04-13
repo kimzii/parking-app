@@ -38,6 +38,7 @@ export class UsersService {
         phoneNumber: true,
         profilePicture: true,
         sex: true,
+        dateOfBirth: true,
         emailVerified: true,
         lastLoginAt: true,
         createdAt: true,
@@ -80,9 +81,15 @@ export class UsersService {
 
   // Update user profile
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
+    const data: Prisma.UserUpdateInput = { ...updateProfileDto };
+
+    if (updateProfileDto.dateOfBirth !== undefined) {
+      data.dateOfBirth = new Date(updateProfileDto.dateOfBirth);
+    }
+
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: updateProfileDto,
+      data,
       select: {
         id: true,
         email: true,
@@ -90,6 +97,8 @@ export class UsersService {
         lastName: true,
         phoneNumber: true,
         profilePicture: true,
+        sex: true,
+        dateOfBirth: true,
         updatedAt: true,
       },
     });
@@ -386,6 +395,7 @@ export class UsersService {
         phoneNumber: true,
         profilePicture: true,
         sex: true,
+        dateOfBirth: true,
         emailVerified: true,
         lastLoginAt: true,
         createdAt: true,
@@ -622,16 +632,24 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    const data: Prisma.UserUpdateInput = { ...updateUserDto };
+
+    if (updateUserDto.dateOfBirth !== undefined) {
+      data.dateOfBirth = new Date(updateUserDto.dateOfBirth);
+    }
+
     try {
       const updatedUser = await this.prisma.user.update({
         where: { id: userId },
-        data: updateUserDto,
+        data,
         select: {
           id: true,
           email: true,
           firstName: true,
           lastName: true,
           phoneNumber: true,
+          sex: true,
+          dateOfBirth: true,
           profilePicture: true,
           updatedAt: true,
         },

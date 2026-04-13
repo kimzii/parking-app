@@ -11,16 +11,36 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { authService } from "../../src/services/auth";
 import Feather from "@expo/vector-icons/Feather";
 import LegalModal, { LegalTab } from "../../src/components/LegalModal";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const formatDateForApi = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateForDisplay = (date: Date) => {
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 export default function SignupScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [sex, setSex] = useState("");
+  const [birthdayDate, setBirthdayDate] = useState<Date | null>(null);
+  const [showBirthdayPicker, setShowBirthdayPicker] = useState(false);
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +60,26 @@ export default function SignupScreen() {
     setModalVisible(true);
   };
 
+  const handleBirthdayChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    if (Platform.OS === "android") {
+      setShowBirthdayPicker(false);
+    }
+
+    if (event.type === "dismissed") {
+      return;
+    }
+
+    if (selectedDate) {
+      setBirthdayDate(selectedDate);
+    }
+  };
+
   const handleSignup = async () => {
+    const birthdayValue = birthdayDate ? formatDateForApi(birthdayDate) : "";
+
     if (!firstName.trim()) {
       Alert.alert("Error", "Please enter your first name");
       return;
@@ -51,6 +90,10 @@ export default function SignupScreen() {
     }
     if (!sex) {
       Alert.alert("Error", "Please select your sex");
+      return;
+    }
+    if (!birthdayValue) {
+      Alert.alert("Error", "Please enter your birthday");
       return;
     }
     if (!email.trim()) {
@@ -82,7 +125,7 @@ export default function SignupScreen() {
     ) {
       Alert.alert(
         "Error",
-        "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character",
       );
       return;
     }
@@ -96,12 +139,13 @@ export default function SignupScreen() {
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
         sex,
+        birthday: birthdayValue,
         termsAccepted,
         privacyAccepted,
       });
       Alert.alert(
         "Verify your email First",
-        "We sent a verification code to your email."
+        "We sent a verification code to your email.",
       );
       router.replace({
         pathname: "/(auth)/verify",
@@ -109,10 +153,9 @@ export default function SignupScreen() {
       });
     } catch (error: any) {
       const raw = error.response?.data?.message;
-      const message =
-        Array.isArray(raw)
-          ? raw.join("\n")
-          : raw || error.message || "Signup failed. Please try again.";
+      const message = Array.isArray(raw)
+        ? raw.join("\n")
+        : raw || error.message || "Signup failed. Please try again.";
       Alert.alert("Signup Failed", message);
       console.error("Signup error:", error);
     } finally {
@@ -122,231 +165,372 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
-            <Feather name="user-plus" size={32} color="#fff" />
-          </View>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up to get started</Text>
-        </View>
-
-        <View style={styles.form}>
-          {/* Name Row */}
-          <View style={styles.nameRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>First Name</Text>
-              <View style={styles.inputContainer}>
-                <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="First Name"
-                  placeholderTextColor="#aaa"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                />
-              </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.logoContainer}>
+            <View style={styles.logoIcon}>
+              <Feather name="user-plus" size={32} color="#fff" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Last Name</Text>
-              <View style={styles.inputContainer}>
-                <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Last Name"
-                  placeholderTextColor="#aaa"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Sign up to get started</Text>
           </View>
 
-          <Text style={styles.label}>Sex</Text>
-          <View style={styles.sexRow}>
-            {["MALE", "FEMALE"].map((option) => (
+          <View style={styles.form}>
+            {/* Name Row */}
+            <View style={styles.nameRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>First Name</Text>
+                <View style={styles.inputContainer}>
+                  <Feather
+                    name="user"
+                    size={18}
+                    color="#A09A94"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="First Name"
+                    placeholderTextColor="#aaa"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Last Name</Text>
+                <View style={styles.inputContainer}>
+                  <Feather
+                    name="user"
+                    size={18}
+                    color="#A09A94"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Last Name"
+                    placeholderTextColor="#aaa"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.label}>Sex</Text>
+            <View style={styles.sexRow}>
+              {["MALE", "FEMALE"].map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.sexButton,
+                    sex === option && styles.sexButtonSelected,
+                  ]}
+                  onPress={() => setSex(option)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.sexButtonText,
+                      sex === option && styles.sexButtonTextSelected,
+                    ]}
+                  >
+                    {option.charAt(0) + option.slice(1).toLowerCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>Birthday</Text>
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setShowBirthdayPicker(true)}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="calendar"
+                size={18}
+                color="#A09A94"
+                style={styles.inputIcon}
+              />
+              <Text
+                style={[
+                  styles.input,
+                  !birthdayDate && styles.datePlaceholderText,
+                  styles.dateValueText,
+                ]}
+              >
+                {birthdayDate
+                  ? formatDateForDisplay(birthdayDate)
+                  : "Tap to select birthday"}
+              </Text>
+            </TouchableOpacity>
+
+            {showBirthdayPicker && (
+              <View style={styles.datePickerBox}>
+                <DateTimePicker
+                  value={birthdayDate ?? new Date(2000, 0, 1)}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  maximumDate={new Date()}
+                  minimumDate={new Date(1900, 0, 1)}
+                  onChange={handleBirthdayChange}
+                />
+                {Platform.OS === "ios" && (
+                  <TouchableOpacity
+                    onPress={() => setShowBirthdayPicker(false)}
+                    style={styles.datePickerDoneButton}
+                  >
+                    <Text style={styles.datePickerDoneText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputContainer}>
+              <Feather
+                name="mail"
+                size={18}
+                color="#A09A94"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#aaa"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <Text style={styles.label}>Mobile / GCash Number</Text>
+            <View style={styles.inputContainer}>
+              <Feather
+                name="phone"
+                size={18}
+                color="#A09A94"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. 09171234567"
+                placeholderTextColor="#aaa"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputContainer}>
+              <Feather
+                name="lock"
+                size={18}
+                color="#A09A94"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#aaa"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
               <TouchableOpacity
-                key={option}
-                style={[styles.sexButton, sex === option && styles.sexButtonSelected]}
-                onPress={() => setSex(option)}
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Feather
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={18}
+                  color="#A09A94"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {password.length > 0 && (
+              <View style={styles.requirements}>
+                <Text
+                  style={[
+                    styles.reqText,
+                    /[A-Z]/.test(password) && styles.reqMet,
+                  ]}
+                >
+                  {/[A-Z]/.test(password) ? "\u2713" : "\u2022"} Uppercase
+                  letter
+                </Text>
+                <Text
+                  style={[
+                    styles.reqText,
+                    /[a-z]/.test(password) && styles.reqMet,
+                  ]}
+                >
+                  {/[a-z]/.test(password) ? "\u2713" : "\u2022"} Lowercase
+                  letter
+                </Text>
+                <Text
+                  style={[
+                    styles.reqText,
+                    /[0-9]/.test(password) && styles.reqMet,
+                  ]}
+                >
+                  {/[0-9]/.test(password) ? "\u2713" : "\u2022"} Number
+                </Text>
+                <Text
+                  style={[
+                    styles.reqText,
+                    /[^A-Za-z0-9]/.test(password) && styles.reqMet,
+                  ]}
+                >
+                  {/[^A-Za-z0-9]/.test(password) ? "\u2713" : "\u2022"} Special
+                  character
+                </Text>
+                <Text
+                  style={[
+                    styles.reqText,
+                    password.length >= 8 && styles.reqMet,
+                  ]}
+                >
+                  {password.length >= 8 ? "\u2713" : "\u2022"} At least 8
+                  characters
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.label}>Confirm Password</Text>
+            <View style={styles.inputContainer}>
+              <Feather
+                name="lock"
+                size={18}
+                color="#A09A94"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm your password"
+                placeholderTextColor="#aaa"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeButton}
+              >
+                <Feather
+                  name={showConfirmPassword ? "eye-off" : "eye"}
+                  size={18}
+                  color="#A09A94"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Terms & Privacy Checkboxes */}
+            <View style={styles.consentSection}>
+              <TouchableOpacity
+                style={styles.consentRow}
+                onPress={() => setTermsAccepted(!termsAccepted)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.sexButtonText, sex === option && styles.sexButtonTextSelected]}>
-                  {option.charAt(0) + option.slice(1).toLowerCase()}
+                <View
+                  style={[
+                    styles.checkbox,
+                    termsAccepted && styles.checkboxChecked,
+                  ]}
+                >
+                  {termsAccepted && (
+                    <Feather name="check" size={12} color="#fff" />
+                  )}
+                </View>
+                <Text style={styles.consentText}>
+                  I have read and agree to the{" "}
+                  <Text
+                    style={styles.consentLink}
+                    onPress={() => openModal("terms")}
+                  >
+                    Terms and Conditions
+                  </Text>
                 </Text>
               </TouchableOpacity>
-            ))}
-          </View>
 
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.inputContainer}>
-            <Feather name="mail" size={18} color="#A09A94" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              placeholderTextColor="#aaa"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          <Text style={styles.label}>Mobile / GCash Number</Text>
-          <View style={styles.inputContainer}>
-            <Feather name="phone" size={18} color="#A09A94" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 09171234567"
-              placeholderTextColor="#aaa"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputContainer}>
-            <Feather name="lock" size={18} color="#A09A94" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#aaa"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeButton}
-            >
-              <Feather name={showPassword ? "eye-off" : "eye"} size={18} color="#A09A94" />
-            </TouchableOpacity>
-          </View>
-
-          {password.length > 0 && (
-            <View style={styles.requirements}>
-              <Text style={[styles.reqText, /[A-Z]/.test(password) && styles.reqMet]}>
-                {/[A-Z]/.test(password) ? "\u2713" : "\u2022"} Uppercase letter
-              </Text>
-              <Text style={[styles.reqText, /[a-z]/.test(password) && styles.reqMet]}>
-                {/[a-z]/.test(password) ? "\u2713" : "\u2022"} Lowercase letter
-              </Text>
-              <Text style={[styles.reqText, /[0-9]/.test(password) && styles.reqMet]}>
-                {/[0-9]/.test(password) ? "\u2713" : "\u2022"} Number
-              </Text>
-              <Text style={[styles.reqText, /[^A-Za-z0-9]/.test(password) && styles.reqMet]}>
-                {/[^A-Za-z0-9]/.test(password) ? "\u2713" : "\u2022"} Special character
-              </Text>
-              <Text style={[styles.reqText, password.length >= 8 && styles.reqMet]}>
-                {password.length >= 8 ? "\u2713" : "\u2022"} At least 8 characters
-              </Text>
+              <TouchableOpacity
+                style={styles.consentRow}
+                onPress={() => setPrivacyAccepted(!privacyAccepted)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    privacyAccepted && styles.checkboxChecked,
+                  ]}
+                >
+                  {privacyAccepted && (
+                    <Feather name="check" size={12} color="#fff" />
+                  )}
+                </View>
+                <Text style={styles.consentText}>
+                  I have read and agree to the{" "}
+                  <Text
+                    style={styles.consentLink}
+                    onPress={() => openModal("privacy")}
+                  >
+                    Data Privacy Policy
+                  </Text>
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
 
-          <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputContainer}>
-            <Feather name="lock" size={18} color="#A09A94" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm your password"
-              placeholderTextColor="#aaa"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              autoCapitalize="none"
-            />
             <TouchableOpacity
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={styles.eyeButton}
+              style={[styles.button, !canSubmit && styles.buttonDisabled]}
+              onPress={handleSignup}
+              disabled={!canSubmit}
+              activeOpacity={0.8}
             >
-              <Feather name={showConfirmPassword ? "eye-off" : "eye"} size={18} color="#A09A94" />
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Create Account</Text>
+              )}
             </TouchableOpacity>
           </View>
 
-          {/* Terms & Privacy Checkboxes */}
-          <View style={styles.consentSection}>
-            <TouchableOpacity
-              style={styles.consentRow}
-              onPress={() => setTermsAccepted(!termsAccepted)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-                {termsAccepted && <Feather name="check" size={12} color="#fff" />}
-              </View>
-              <Text style={styles.consentText}>
-                I have read and agree to the{" "}
-                <Text style={styles.consentLink} onPress={() => openModal("terms")}>
-                  Terms and Conditions
-                </Text>
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.consentRow}
-              onPress={() => setPrivacyAccepted(!privacyAccepted)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, privacyAccepted && styles.checkboxChecked]}>
-                {privacyAccepted && <Feather name="check" size={12} color="#fff" />}
-              </View>
-              <Text style={styles.consentText}>
-                I have read and agree to the{" "}
-                <Text style={styles.consentLink} onPress={() => openModal("privacy")}>
-                  Data Privacy Policy
-                </Text>
-              </Text>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
+              <Text style={styles.loginLink}>Log In</Text>
             </TouchableOpacity>
           </View>
+        </ScrollView>
 
-          <TouchableOpacity
-            style={[styles.button, !canSubmit && styles.buttonDisabled]}
-            onPress={handleSignup}
-            disabled={!canSubmit}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.loginContainer}>
-          <Text style={styles.loginText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-            <Text style={styles.loginLink}>Log In</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <LegalModal
-        visible={modalVisible}
-        initialTab={activeTab}
-        onClose={() => setModalVisible(false)}
-        onAccept={(tab) => {
-          if (tab === "terms") setTermsAccepted(true);
-          else setPrivacyAccepted(true);
-          setModalVisible(false);
-        }}
-      />
-    </KeyboardAvoidingView>
+        <LegalModal
+          visible={modalVisible}
+          initialTab={activeTab}
+          onClose={() => setModalVisible(false)}
+          onAccept={(tab) => {
+            if (tab === "terms") setTermsAccepted(true);
+            else setPrivacyAccepted(true);
+            setModalVisible(false);
+          }}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -456,6 +640,30 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 15,
     color: "#232230",
+  },
+  dateValueText: {
+    paddingTop: 14,
+  },
+  datePlaceholderText: {
+    color: "#aaa",
+  },
+  datePickerBox: {
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  datePickerDoneButton: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  datePickerDoneText: {
+    color: "#D4501E",
+    fontSize: 14,
+    fontWeight: "700",
   },
   eyeButton: {
     padding: 14,
