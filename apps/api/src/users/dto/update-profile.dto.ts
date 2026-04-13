@@ -1,4 +1,5 @@
 import {
+  IsDateString,
   IsOptional,
   IsString,
   IsIn,
@@ -61,4 +62,12 @@ export class UpdateProfileDto {
   @IsString()
   @IsIn(['MALE', 'FEMALE'])
   sex?: string;
+
+  @ApiPropertyOptional({
+    example: '2000-01-15',
+    description: 'User birthday in YYYY-MM-DD format',
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'dateOfBirth must be a valid date string' })
+  dateOfBirth?: string;
 }

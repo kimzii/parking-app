@@ -19,6 +19,7 @@ model User {
   phoneNumber    String?  @unique
   profilePicture String?
   sex            String?
+  dateOfBirth    DateTime? @map("date_of_birth")
 
   emailVerified       Boolean   @default(false)
   verificationCode    String?

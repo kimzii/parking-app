@@ -11,6 +11,9 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -19,11 +22,41 @@ import { userService } from "../../src/services/user";
 import { Ionicons } from "@expo/vector-icons";
 import Feather from "@expo/vector-icons/Feather";
 
+const parseDateFromApi = (value?: string | null): Date | null => {
+  if (!value) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDateForApi = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateForDisplay = (date: Date) => {
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
 export default function UpdateProfileScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [sex, setSex] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
+  const [showBirthdayPicker, setShowBirthdayPicker] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +73,7 @@ export default function UpdateProfileScreen() {
           setLastName(data.lastName || "");
           setPhoneNumber(data.phoneNumber || "");
           setSex(data.sex || "");
+          setDateOfBirth(parseDateFromApi(data.dateOfBirth));
           setProfilePicture(data.profilePicture || null);
         } catch {
           Alert.alert("Error", "Failed to load profile.");
@@ -53,7 +87,10 @@ export default function UpdateProfileScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow access to your photo library.");
+      Alert.alert(
+        "Permission needed",
+        "Please allow access to your photo library.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -65,7 +102,23 @@ export default function UpdateProfileScreen() {
     }
   };
 
+  const handleBirthdayChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    if (Platform.OS === "android") {
+      setShowBirthdayPicker(false);
+    }
+
+    if (event.type === "dismissed") return;
+    if (selectedDate) {
+      setDateOfBirth(selectedDate);
+    }
+  };
+
   const handleSave = async () => {
+    const birthdayValue = dateOfBirth ? formatDateForApi(dateOfBirth) : "";
+
     setSaving(true);
     try {
       let uploadedUrl: string | undefined;
@@ -78,6 +131,7 @@ export default function UpdateProfileScreen() {
         lastName,
         phoneNumber,
         sex,
+        dateOfBirth: birthdayValue || undefined,
         ...(uploadedUrl && { profilePicture: uploadedUrl }),
       };
       await userService.updateProfile(profileData);
@@ -115,9 +169,17 @@ export default function UpdateProfileScreen() {
           <Text style={styles.subtitle}>Update your personal information</Text>
         </View>
 
-        <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={pickImage}
+          activeOpacity={0.8}
+        >
           {displayImage ? (
-            <Image source={{ uri: displayImage }} style={styles.avatar} contentFit="cover" />
+            <Image
+              source={{ uri: displayImage }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Ionicons name="person" size={44} color="#C7C7CC" />
@@ -131,7 +193,12 @@ export default function UpdateProfileScreen() {
         <View style={styles.form}>
           <Text style={styles.label}>First Name</Text>
           <View style={styles.inputContainer}>
-            <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
+            <Feather
+              name="user"
+              size={18}
+              color="#A09A94"
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               placeholder="First Name"
@@ -146,7 +213,12 @@ export default function UpdateProfileScreen() {
 
           <Text style={styles.label}>Last Name</Text>
           <View style={styles.inputContainer}>
-            <Feather name="user" size={18} color="#A09A94" style={styles.inputIcon} />
+            <Feather
+              name="user"
+              size={18}
+              color="#A09A94"
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               placeholder="Last Name"
@@ -164,21 +236,81 @@ export default function UpdateProfileScreen() {
             {["MALE", "FEMALE"].map((option) => (
               <TouchableOpacity
                 key={option}
-                style={[styles.sexButton, sex === option && styles.sexButtonSelected]}
+                style={[
+                  styles.sexButton,
+                  sex === option && styles.sexButtonSelected,
+                ]}
                 onPress={() => setSex(option)}
                 disabled={saving}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.sexButtonText, sex === option && styles.sexButtonTextSelected]}>
+                <Text
+                  style={[
+                    styles.sexButtonText,
+                    sex === option && styles.sexButtonTextSelected,
+                  ]}
+                >
                   {option.charAt(0) + option.slice(1).toLowerCase()}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
+          <Text style={styles.label}>Birthday</Text>
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => !saving && setShowBirthdayPicker(true)}
+            activeOpacity={0.7}
+            disabled={saving}
+          >
+            <Feather
+              name="calendar"
+              size={18}
+              color="#A09A94"
+              style={styles.inputIcon}
+            />
+            <Text
+              style={[
+                styles.input,
+                styles.dateValueText,
+                !dateOfBirth && styles.datePlaceholderText,
+              ]}
+            >
+              {dateOfBirth
+                ? formatDateForDisplay(dateOfBirth)
+                : "Tap to select birthday"}
+            </Text>
+          </TouchableOpacity>
+
+          {showBirthdayPicker && (
+            <View style={styles.datePickerBox}>
+              <DateTimePicker
+                value={dateOfBirth ?? new Date(2000, 0, 1)}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                maximumDate={new Date()}
+                minimumDate={new Date(1900, 0, 1)}
+                onChange={handleBirthdayChange}
+              />
+              {Platform.OS === "ios" && (
+                <TouchableOpacity
+                  onPress={() => setShowBirthdayPicker(false)}
+                  style={styles.datePickerDoneButton}
+                >
+                  <Text style={styles.datePickerDoneText}>Done</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           <Text style={styles.label}>Mobile / GCash Number</Text>
           <View style={styles.inputContainer}>
-            <Feather name="phone" size={18} color="#A09A94" style={styles.inputIcon} />
+            <Feather
+              name="phone"
+              size={18}
+              color="#A09A94"
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               placeholder="e.g. 09171234567"
@@ -197,10 +329,19 @@ export default function UpdateProfileScreen() {
             disabled={saving}
             activeOpacity={0.8}
           >
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save Changes</Text>}
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Save Changes</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()} disabled={saving} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -211,52 +352,153 @@ export default function UpdateProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF" },
-  scrollContent: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 40 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
   logoContainer: { alignItems: "center", marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: "800", color: "#232230", letterSpacing: -0.5 },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#232230",
+    letterSpacing: -0.5,
+  },
   subtitle: { fontSize: 14, color: "#A09A94", marginTop: 4 },
   avatarContainer: { alignSelf: "center", marginBottom: 24 },
   avatar: {
-    width: 110, height: 110, borderRadius: 34, backgroundColor: "#E8ECF0",
-    borderWidth: 3, borderColor: "#fff",
+    width: 110,
+    height: 110,
+    borderRadius: 34,
+    backgroundColor: "#E8ECF0",
+    borderWidth: 3,
+    borderColor: "#fff",
   },
   avatarPlaceholder: {
-    width: 110, height: 110, borderRadius: 34, backgroundColor: "#E8ECF0",
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 3, borderColor: "#fff",
+    width: 110,
+    height: 110,
+    borderRadius: 34,
+    backgroundColor: "#E8ECF0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
   },
   cameraIcon: {
-    position: "absolute", bottom: 2, right: 2,
-    backgroundColor: "#D4501E", width: 34, height: 34, borderRadius: 12,
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 3, borderColor: "#fff",
-    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4,
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    backgroundColor: "#D4501E",
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+    shadowColor: "#D4501E",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   form: {
-    backgroundColor: "#fff", borderRadius: 20, padding: 24,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 4,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  label: { fontSize: 13, fontWeight: "600", color: "#232230", marginBottom: 8, marginTop: 14, textTransform: "uppercase", letterSpacing: 0.5 },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#232230",
+    marginBottom: 8,
+    marginTop: 14,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   inputContainer: {
-    flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: "#E8ECF0", borderRadius: 12, backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
   },
   inputIcon: { marginLeft: 14 },
-  input: { flex: 1, paddingHorizontal: 12, paddingVertical: 14, fontSize: 15, color: "#232230" },
+  input: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: "#232230",
+  },
+  dateValueText: {
+    paddingTop: 14,
+  },
+  datePlaceholderText: {
+    color: "#aaa",
+  },
+  datePickerBox: {
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+  datePickerDoneButton: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  datePickerDoneText: {
+    color: "#D4501E",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   button: {
-    backgroundColor: "#D4501E", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 24,
-    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 5,
+    backgroundColor: "#D4501E",
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 24,
+    shadowColor: "#D4501E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonDisabled: { backgroundColor: "#A8D5D1", shadowOpacity: 0 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   cancelButton: {
-    paddingVertical: 14, borderRadius: 14, alignItems: "center", marginTop: 10, backgroundColor: "#F2F2F7",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 10,
+    backgroundColor: "#F2F2F7",
   },
   cancelText: { color: "#A09A94", fontSize: 15, fontWeight: "600" },
   sexRow: { flexDirection: "row", gap: 10 },
   sexButton: {
-    flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center",
-    borderWidth: 1.5, borderColor: "#E8ECF0", backgroundColor: "#FFFFFF",
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
+    backgroundColor: "#FFFFFF",
   },
   sexButtonSelected: { backgroundColor: "#FFF0EC", borderColor: "#D4501E" },
   sexButtonText: { fontSize: 14, fontWeight: "600", color: "#232230" },

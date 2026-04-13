@@ -20,6 +20,7 @@ export const authService = {
     lastName: string;
     phoneNumber: string;
     sex: string;
+    birthday: string;
     termsAccepted: boolean;
     privacyAccepted: boolean;
   }) {

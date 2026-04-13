@@ -21,6 +21,8 @@ export interface UserProfileResponse {
   lastName: string | null;
   phoneNumber: string | null;
   profilePicture: string | null;
+  sex: string | null;
+  dateOfBirth: Date | null;
   emailVerified: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
