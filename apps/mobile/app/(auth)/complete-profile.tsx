@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sheetCancel: {
-    marginTop: 8,
+    marginTop: 16,
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: "#F5F4F2",

@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: 48,
     gap: 4,
   },
   sheetHandle: {
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sheetCancel: {
-    marginTop: 8,
+    marginTop: 16,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
