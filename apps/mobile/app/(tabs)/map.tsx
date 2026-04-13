@@ -63,7 +63,13 @@ const ParkingMarker = memo(function ParkingMarker({
       <View style={styles.markerContainer}>
         <View style={[styles.markerBubble, { backgroundColor: markerColor }]}>
           <MaterialIcons
-            name={motoOnly ? "two-wheeler" : carOnly ? "directions-car" : "local-parking"}
+            name={
+              motoOnly
+                ? "two-wheeler"
+                : carOnly
+                  ? "directions-car"
+                  : "local-parking"
+            }
             size={10}
             color="#fff"
           />
@@ -383,7 +389,7 @@ export default function MapScreen() {
             <MaterialIcons name="local-parking" size={14} color="#D4501E" />
             <Text style={styles.spotCountText}>
               {spots.length} spot{spots.length !== 1 ? "s" : ""} within{" "}
-              {RADIUS_KM}{" "}km
+              {RADIUS_KM} km
             </Text>
           </View>
         </View>
@@ -422,10 +428,16 @@ export default function MapScreen() {
                 </Text>
               </View>
               <View style={styles.spotDetailItem}>
-                {(!selectedSpot.acceptedVehicles || selectedSpot.acceptedVehicles.includes("CAR")) && (
-                  <MaterialIcons name="directions-car" size={16} color="#D4501E" />
+                {(!selectedSpot.acceptedVehicles ||
+                  selectedSpot.acceptedVehicles.includes("CAR")) && (
+                  <MaterialIcons
+                    name="directions-car"
+                    size={16}
+                    color="#D4501E"
+                  />
                 )}
-                {(!selectedSpot.acceptedVehicles || selectedSpot.acceptedVehicles.includes("MOTORCYCLE")) && (
+                {(!selectedSpot.acceptedVehicles ||
+                  selectedSpot.acceptedVehicles.includes("MOTORCYCLE")) && (
                   <MaterialIcons name="two-wheeler" size={16} color="#D4501E" />
                 )}
               </View>

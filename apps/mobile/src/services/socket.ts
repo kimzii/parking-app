@@ -6,7 +6,12 @@ const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 let socket: Socket | null = null;
 
 export async function connectSocket(): Promise<Socket | null> {
-  if (socket?.connected) return socket;
+  if (socket) {
+    if (!socket.connected) {
+      socket.connect();
+    }
+    return socket;
+  }
 
   try {
     const token = await SecureStore.getItemAsync("accessToken");

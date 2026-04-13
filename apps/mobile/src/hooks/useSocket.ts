@@ -10,11 +10,23 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    connectSocket().then((s) => {
-      socketRef.current = s;
-    });
+    let isMounted = true;
+
+    const ensureConnected = async () => {
+      const s = await connectSocket();
+      if (isMounted) {
+        socketRef.current = s;
+      }
+    };
+
+    void ensureConnected();
+    const interval = setInterval(() => {
+      void ensureConnected();
+    }, 5000);
 
     return () => {
+      isMounted = false;
+      clearInterval(interval);
       disconnectSocket();
     };
   }, []);
@@ -38,7 +50,9 @@ export function useSocketEvent(event: string, callback: (data: any) => void) {
     const socket = getSocket();
     if (socket) {
       socket.on(event, handler);
-      return () => { socket.off(event, handler); };
+      return () => {
+        socket.off(event, handler);
+      };
     }
 
     // Socket may not be connected yet — wait for it

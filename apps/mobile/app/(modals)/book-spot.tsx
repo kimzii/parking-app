@@ -8,9 +8,15 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, router } from "expo-router";
+import {
+  Stack,
+  useLocalSearchParams,
+  router,
+  useFocusEffect,
+} from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
@@ -23,6 +29,11 @@ const VEHICLE_IMAGES: Record<string, any> = {
   CAR: require("../../assets/images/ParkUp UI/sedan_14703757.png"),
   MOTORCYCLE: require("../../assets/images/ParkUp UI/scooter_16804043.png"),
 };
+
+const SLOT_GRID_GAP = 10;
+const MIN_SLOT_SIZE = 56;
+const MAX_SLOT_COLUMNS = 5;
+const SLOT_CARD_HEIGHT = 64;
 
 interface Vehicle {
   id: string;
@@ -75,6 +86,27 @@ export default function BookSpotScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [hasOutstandingBalance, setHasOutstandingBalance] = useState(false);
+  const [slotsGridWidth, setSlotsGridWidth] = useState(0);
+
+  const handleSlotsGridLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = Math.floor(event.nativeEvent.layout.width);
+    setSlotsGridWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+  }, []);
+
+  const refreshWalletState = useCallback(async () => {
+    try {
+      const [balanceData, pendingReservations] = await Promise.all([
+        walletService.getBalance(),
+        reservationsService
+          .getMyReservations("PAYMENT_PENDING")
+          .catch(() => []),
+      ]);
+      setWalletBalance(Number(balanceData.balance));
+      setHasOutstandingBalance(pendingReservations.length > 0);
+    } catch {
+      // Non-critical fallback refresh; ignore transient failures.
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!locationId) return;
@@ -82,7 +114,9 @@ export default function BookSpotScreen() {
       const [spotData, balanceData, pendingReservations] = await Promise.all([
         hostService.getPublicLocation(locationId),
         walletService.getBalance(),
-        reservationsService.getMyReservations("PAYMENT_PENDING").catch(() => []),
+        reservationsService
+          .getMyReservations("PAYMENT_PENDING")
+          .catch(() => []),
       ]);
       setSpot(spotData);
       setWalletBalance(Number(balanceData.balance));
@@ -92,7 +126,9 @@ export default function BookSpotScreen() {
       try {
         const vehicleData = await driversService.getVehicles();
         const all = Array.isArray(vehicleData) ? vehicleData : [];
-        const approved = all.filter((v: Vehicle) => v.verificationStatus === "APPROVED");
+        const approved = all.filter(
+          (v: Vehicle) => v.verificationStatus === "APPROVED",
+        );
         setVehicles(approved);
         if (approved.length === 1) setSelectedVehicle(approved[0]);
       } catch {
@@ -110,16 +146,27 @@ export default function BookSpotScreen() {
     fetchData();
   }, [fetchData]);
 
+  useFocusEffect(
+    useCallback(() => {
+      void refreshWalletState();
+    }, [refreshWalletState]),
+  );
+
   // Join the location-specific socket room for real-time slot updates
   useEffect(() => {
     if (!locationId) return;
     const join = () => {
       const s = getSocket();
-      if (s) { s.emit("join-location", locationId); return true; }
+      if (s) {
+        s.emit("join-location", locationId);
+        return true;
+      }
       return false;
     };
     if (!join()) {
-      const interval = setInterval(() => { if (join()) clearInterval(interval); }, 500);
+      const interval = setInterval(() => {
+        if (join()) clearInterval(interval);
+      }, 500);
       return () => clearInterval(interval);
     }
   }, [locationId]);
@@ -129,25 +176,39 @@ export default function BookSpotScreen() {
     setWalletBalance(parseFloat(data.balance));
   });
 
-  // Update space statuses in real-time when another driver books or cancels
-  useSocketEvent("slot-update", (data: { locationId: string; availableSlots: number; spaceId?: string; spaceStatus?: string }) => {
-    if (data.locationId !== locationId) return;
-    setSpot((prev) => {
-      if (!prev) return prev;
-      const spaces = data.spaceId
-        ? prev.parkingSpaces.map((s) =>
-            s.id === data.spaceId
-              ? { ...s, status: data.spaceStatus as ParkingSpace["status"] }
-              : s
-          )
-        : prev.parkingSpaces;
-      return { ...prev, parkingSpaces: spaces };
-    });
-    // Deselect the chosen space if it just became unavailable
-    if (data.spaceId && data.spaceStatus !== "AVAILABLE") {
-      setSelectedSpace((prev) => (prev?.id === data.spaceId ? null : prev));
+  useSocketEvent("notification", (data: { type?: string }) => {
+    if (data?.type === "TOPUP_APPROVED") {
+      void refreshWalletState();
     }
   });
+
+  // Update space statuses in real-time when another driver books or cancels
+  useSocketEvent(
+    "slot-update",
+    (data: {
+      locationId: string;
+      availableSlots: number;
+      spaceId?: string;
+      spaceStatus?: string;
+    }) => {
+      if (data.locationId !== locationId) return;
+      setSpot((prev) => {
+        if (!prev) return prev;
+        const spaces = data.spaceId
+          ? prev.parkingSpaces.map((s) =>
+              s.id === data.spaceId
+                ? { ...s, status: data.spaceStatus as ParkingSpace["status"] }
+                : s,
+            )
+          : prev.parkingSpaces;
+        return { ...prev, parkingSpaces: spaces };
+      });
+      // Deselect the chosen space if it just became unavailable
+      if (data.spaceId && data.spaceStatus !== "AVAILABLE") {
+        setSelectedSpace((prev) => (prev?.id === data.spaceId ? null : prev));
+      }
+    },
+  );
 
   const firstHourFee = spot ? Number(spot.basePricePerHour) : 0;
   const hasInsufficientBalance =
@@ -171,7 +232,9 @@ export default function BookSpotScreen() {
     try {
       const vehicleData = await driversService.getVehicles();
       const all = Array.isArray(vehicleData) ? vehicleData : [];
-      const approved = all.filter((v: Vehicle) => v.verificationStatus === "APPROVED");
+      const approved = all.filter(
+        (v: Vehicle) => v.verificationStatus === "APPROVED",
+      );
       setVehicles(approved);
 
       if (approved.length === 1) {
@@ -353,6 +416,28 @@ export default function BookSpotScreen() {
   ).length;
 
   const hasLevels = spot.parkingSpaces.some((s) => s.levelNumber != null);
+  const slotColumns =
+    slotsGridWidth > 0
+      ? Math.max(
+          2,
+          Math.min(
+            MAX_SLOT_COLUMNS,
+            Math.floor(
+              (slotsGridWidth + SLOT_GRID_GAP) /
+                (MIN_SLOT_SIZE + SLOT_GRID_GAP),
+            ),
+          ),
+        )
+      : MAX_SLOT_COLUMNS;
+  const slotSize =
+    slotsGridWidth > 0
+      ? Math.max(
+          MIN_SLOT_SIZE,
+          Math.floor(
+            (slotsGridWidth - SLOT_GRID_GAP * (slotColumns - 1)) / slotColumns,
+          ),
+        )
+      : MIN_SLOT_SIZE;
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -378,7 +463,8 @@ export default function BookSpotScreen() {
             <View style={styles.hoursRow}>
               <MaterialIcons name="access-time" size={16} color="#A09A94" />
               <Text style={styles.hoursText}>
-                Hours: {formatTime(spot.openTime)} - {formatTime(spot.closeTime)}
+                Hours: {formatTime(spot.openTime)} -{" "}
+                {formatTime(spot.closeTime)}
               </Text>
             </View>
           )}
@@ -430,13 +516,15 @@ export default function BookSpotScreen() {
           <View style={styles.lowBalanceBanner}>
             <MaterialIcons name="warning" size={20} color="#F57C00" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.lowBalanceTitle}>Balance covers 1 hour only</Text>
+              <Text style={styles.lowBalanceTitle}>
+                Balance covers 1 hour only
+              </Text>
               <Text style={styles.lowBalanceText}>
-                Your current balance (₱{walletBalance.toFixed(2)}) is only enough
-                for 1 hour. If you stay longer, the extra amount will be charged
-                when you exit. If your wallet is empty at that point, your booking
-                will be marked as unpaid and you won't be able to make new bookings
-                until you settle the balance.
+                Your current balance (₱{walletBalance.toFixed(2)}) is only
+                enough for 1 hour. If you stay longer, the extra amount will be
+                charged when you exit. If your wallet is empty at that point,
+                your booking will be marked as unpaid and you won&apos;t be able
+                to make new bookings until you settle the balance.
               </Text>
             </View>
           </View>
@@ -540,11 +628,7 @@ export default function BookSpotScreen() {
                     )}
                   </View>
                   {isSelected && (
-                    <MaterialIcons
-                      name="check-circle"
-                      size={22}
-                      color="#fff"
-                    />
+                    <MaterialIcons name="check-circle" size={22} color="#fff" />
                   )}
                 </TouchableOpacity>
               );
@@ -559,7 +643,11 @@ export default function BookSpotScreen() {
             <Text style={styles.incompatibleText}>
               This location does not accept{" "}
               {selectedVehicle?.vehicleType === "CAR" ? "cars" : "motorcycles"}.
-              Only {spot?.acceptedVehicles?.map((v) => v === "CAR" ? "Cars" : "Motorcycles").join(", ")} allowed.
+              Only{" "}
+              {spot?.acceptedVehicles
+                ?.map((v) => (v === "CAR" ? "Cars" : "Motorcycles"))
+                .join(", ")}{" "}
+              allowed.
             </Text>
           </View>
         )}
@@ -604,10 +692,11 @@ export default function BookSpotScreen() {
                   const levelSpaces = levelMap.get(level)!;
                   return (
                     <View key={level} style={{ gap: 8 }}>
-                      <Text style={styles.floorLabel}>
-                        Floor {level}
-                      </Text>
-                      <View style={styles.slotsGrid}>
+                      <Text style={styles.floorLabel}>Floor {level}</Text>
+                      <View
+                        style={styles.slotsGrid}
+                        onLayout={handleSlotsGridLayout}
+                      >
                         {levelSpaces.map((space) => {
                           const isSelected = selectedSpace?.id === space.id;
                           return (
@@ -615,6 +704,7 @@ export default function BookSpotScreen() {
                               key={space.id}
                               style={[
                                 styles.slotCell,
+                                { width: slotSize },
                                 isSelected && styles.slotCellSelected,
                               ]}
                               onPress={() => setSelectedSpace(space)}
@@ -635,17 +725,6 @@ export default function BookSpotScreen() {
                               >
                                 {space.name || `Slot ${space.slotNumber}`}
                               </Text>
-                              {space.description && (
-                                <Text
-                                  style={[
-                                    styles.slotDesc,
-                                    isSelected && styles.slotDescSelected,
-                                  ]}
-                                  numberOfLines={2}
-                                >
-                                  {space.description}
-                                </Text>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -656,7 +735,7 @@ export default function BookSpotScreen() {
               })()}
             </View>
           ) : (
-            <View style={styles.slotsGrid}>
+            <View style={styles.slotsGrid} onLayout={handleSlotsGridLayout}>
               {availableSpaces.map((space) => {
                 const isSelected = selectedSpace?.id === space.id;
                 return (
@@ -664,6 +743,7 @@ export default function BookSpotScreen() {
                     key={space.id}
                     style={[
                       styles.slotCell,
+                      { width: slotSize },
                       isSelected && styles.slotCellSelected,
                     ]}
                     onPress={() => setSelectedSpace(space)}
@@ -682,17 +762,6 @@ export default function BookSpotScreen() {
                     >
                       {space.name || `Slot ${space.slotNumber}`}
                     </Text>
-                    {space.description && (
-                      <Text
-                        style={[
-                          styles.slotDesc,
-                          isSelected && styles.slotDescSelected,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {space.description}
-                      </Text>
-                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -783,10 +852,19 @@ export default function BookSpotScreen() {
           <TouchableOpacity
             style={[
               styles.bookBtn,
-              (booking || hasOutstandingBalance || hasInsufficientBalance || isVehicleIncompatible) && styles.bookBtnDisabled,
+              (booking ||
+                hasOutstandingBalance ||
+                hasInsufficientBalance ||
+                isVehicleIncompatible) &&
+                styles.bookBtnDisabled,
             ]}
             onPress={handleBooking}
-            disabled={!!booking || hasOutstandingBalance || !!hasInsufficientBalance || isVehicleIncompatible}
+            disabled={
+              !!booking ||
+              hasOutstandingBalance ||
+              !!hasInsufficientBalance ||
+              isVehicleIncompatible
+            }
             activeOpacity={0.8}
           >
             {booking ? (
@@ -919,7 +997,12 @@ const styles = StyleSheet.create({
   noSlotsText: { fontSize: 14, color: "#A09A94", textAlign: "center" },
 
   // Slots Grid
-  slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  slotsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    alignItems: "flex-start",
+  },
   slotsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -954,14 +1037,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4501E",
   },
   slotCell: {
-    width: 100,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
+    height: SLOT_CARD_HEIGHT,
+    minHeight: SLOT_CARD_HEIGHT,
+    maxHeight: SLOT_CARD_HEIGHT,
+    backgroundColor: "#FFF0EC",
+    borderRadius: 14,
     padding: 12,
     alignItems: "center",
-    gap: 4,
-    borderWidth: 2,
-    borderColor: "#F5F5F5",
+    justifyContent: "center",
+    overflow: "hidden",
+    gap: 2,
+    borderWidth: 1.5,
+    borderColor: "#FFD5C8",
   },
   slotCellSelected: {
     backgroundColor: "#D4501E",
@@ -969,8 +1056,8 @@ const styles = StyleSheet.create({
   },
   slotNumber: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#232230",
+    fontWeight: "800",
+    color: "#D4501E",
     textAlign: "center",
   },
   slotNumberSelected: { color: "#fff" },

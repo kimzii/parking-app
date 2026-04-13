@@ -11,6 +11,7 @@ import {
   Dimensions,
   Modal,
   Alert,
+  LayoutChangeEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -23,9 +24,18 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { hostService } from "../../src/services/hosts";
 import * as reservationsService from "../../src/services/reservations";
-import { getLocationReviews, getLocationRating, Review, LocationRating } from "../../src/services/reviews";
+import {
+  getLocationReviews,
+  getLocationRating,
+  Review,
+  LocationRating,
+} from "../../src/services/reviews";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SLOT_GRID_GAP = 10;
+const MIN_SLOT_SIZE = 56;
+const MAX_SLOT_COLUMNS = 5;
+const SLOT_CARD_HEIGHT = 64;
 
 function formatTime(time: string): string {
   const [hourStr, minuteStr] = time.split(":");
@@ -99,9 +109,24 @@ const STATUS_CONFIG = {
 };
 
 const SLOT_STATUS_CONFIG = {
-  AVAILABLE: { color: "#D4501E", bg: "#FFF0EC", border: "#FFD5C8", icon: "event-seat" as const },
-  OCCUPIED: { color: "#A09A94", bg: "#F5F5F5", border: "#E0E0E0", icon: "event-seat" as const },
-  DISABLED: { color: "#C5C5C5", bg: "#F5F5F5", border: "#E0E0E0", icon: "block" as const },
+  AVAILABLE: {
+    color: "#D4501E",
+    bg: "#FFF0EC",
+    border: "#FFD5C8",
+    icon: "event-seat" as const,
+  },
+  OCCUPIED: {
+    color: "#A09A94",
+    bg: "#F5F5F5",
+    border: "#E0E0E0",
+    icon: "event-seat" as const,
+  },
+  DISABLED: {
+    color: "#C5C5C5",
+    bg: "#F5F5F5",
+    border: "#E0E0E0",
+    icon: "block" as const,
+  },
 };
 
 export default function LocationDetailScreen() {
@@ -117,6 +142,12 @@ export default function LocationDetailScreen() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [showReviews, setShowReviews] = useState(false);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [slotGridWidth, setSlotGridWidth] = useState(0);
+
+  const handleSlotGridLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = Math.floor(event.nativeEvent.layout.width);
+    setSlotGridWidth((prev) => (prev === nextWidth ? prev : nextWidth));
+  }, []);
 
   const fetchLocation = useCallback(async () => {
     if (!id) return;
@@ -157,7 +188,12 @@ export default function LocationDetailScreen() {
 
   useSocketEvent(
     "slot-update",
-    (data: { locationId: string; availableSlots: number; spaceId?: string; spaceStatus?: string }) => {
+    (data: {
+      locationId: string;
+      availableSlots: number;
+      spaceId?: string;
+      spaceStatus?: string;
+    }) => {
       if (data.locationId !== id) return;
       setLocation((prev) => {
         if (!prev) return prev;
@@ -168,7 +204,11 @@ export default function LocationDetailScreen() {
                 : s,
             )
           : prev.parkingSpaces;
-        return { ...prev, availableSlots: data.availableSlots, parkingSpaces: spaces };
+        return {
+          ...prev,
+          availableSlots: data.availableSlots,
+          parkingSpaces: spaces,
+        };
       });
     },
   );
@@ -296,8 +336,13 @@ export default function LocationDetailScreen() {
     if (!location) return;
     setViewingBooking(true);
     try {
-      const reservations = await reservationsService.getHostReservations(location.id, "ACTIVE");
-      const activeRes = reservations.find((r) => r.parkingSpace.id === space.id);
+      const reservations = await reservationsService.getHostReservations(
+        location.id,
+        "ACTIVE",
+      );
+      const activeRes = reservations.find(
+        (r) => r.parkingSpace.id === space.id,
+      );
       if (activeRes) {
         setSelectedSpace(null);
         router.push({
@@ -342,6 +387,28 @@ export default function LocationDetailScreen() {
   const availableCount = spaces.filter((s) => s.status === "AVAILABLE").length;
   const occupiedCount = spaces.filter((s) => s.status === "OCCUPIED").length;
   const disabledCount = spaces.filter((s) => s.status === "DISABLED").length;
+  const computedColumns =
+    slotGridWidth > 0
+      ? Math.max(
+          2,
+          Math.min(
+            MAX_SLOT_COLUMNS,
+            Math.floor(
+              (slotGridWidth + SLOT_GRID_GAP) / (MIN_SLOT_SIZE + SLOT_GRID_GAP),
+            ),
+          ),
+        )
+      : MAX_SLOT_COLUMNS;
+  const slotSize =
+    slotGridWidth > 0
+      ? Math.max(
+          MIN_SLOT_SIZE,
+          Math.floor(
+            (slotGridWidth - SLOT_GRID_GAP * (computedColumns - 1)) /
+              computedColumns,
+          ),
+        )
+      : Math.floor((SCREEN_WIDTH - 72) / MAX_SLOT_COLUMNS);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
@@ -405,7 +472,10 @@ export default function LocationDetailScreen() {
                   {location.images.map((_, i) => (
                     <View
                       key={i}
-                      style={[styles.dot, i === activeImage && styles.dotActive]}
+                      style={[
+                        styles.dot,
+                        i === activeImage && styles.dotActive,
+                      ]}
                     />
                   ))}
                 </View>
@@ -422,10 +492,19 @@ export default function LocationDetailScreen() {
         {/* Badge + title + address — grouped tightly */}
         <View style={styles.locationHeader}>
           <View
-            style={[styles.statusBadge, { backgroundColor: locStatus.bg, alignSelf: "flex-start" }]}
+            style={[
+              styles.statusBadge,
+              { backgroundColor: locStatus.bg, alignSelf: "flex-start" },
+            ]}
           >
-            <MaterialIcons name={locStatus.icon} size={14} color={locStatus.color} />
-            <Text style={[styles.statusText, { color: locStatus.color }]}>{locStatus.label}</Text>
+            <MaterialIcons
+              name={locStatus.icon}
+              size={14}
+              color={locStatus.color}
+            />
+            <Text style={[styles.statusText, { color: locStatus.color }]}>
+              {locStatus.label}
+            </Text>
           </View>
           <Text style={styles.locationTitle}>{location.title}</Text>
           <View style={styles.addressRow}>
@@ -439,13 +518,17 @@ export default function LocationDetailScreen() {
           <View style={styles.detailRow}>
             <MaterialIcons name="payments" size={16} color="#D4501E" />
             <Text style={styles.detailLabel}>Price</Text>
-            <Text style={styles.detailValue}>₱{Number(location.basePricePerHour).toFixed(2)}/hr</Text>
+            <Text style={styles.detailValue}>
+              ₱{Number(location.basePricePerHour).toFixed(2)}/hr
+            </Text>
           </View>
           <View style={styles.detailDivider} />
           <View style={styles.detailRow}>
             <MaterialIcons name="event-seat" size={16} color="#D4501E" />
             <Text style={styles.detailLabel}>Total Slots</Text>
-            <Text style={styles.detailValue}>{location.totalSlots ?? spaces.length}</Text>
+            <Text style={styles.detailValue}>
+              {location.totalSlots ?? spaces.length}
+            </Text>
           </View>
           {location.isMultiLevel && (
             <>
@@ -453,7 +536,9 @@ export default function LocationDetailScreen() {
               <View style={styles.detailRow}>
                 <MaterialIcons name="layers" size={16} color="#D4501E" />
                 <Text style={styles.detailLabel}>Levels</Text>
-                <Text style={styles.detailValue}>{location.numberOfLevels ?? "-"}</Text>
+                <Text style={styles.detailValue}>
+                  {location.numberOfLevels ?? "-"}
+                </Text>
               </View>
             </>
           )}
@@ -473,14 +558,24 @@ export default function LocationDetailScreen() {
           <View style={styles.detailRow}>
             <MaterialIcons name="directions-car" size={16} color="#D4501E" />
             <Text style={styles.detailLabel}>Accepts</Text>
-            <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-              {(location.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("CAR") && (
+            <View
+              style={{ flexDirection: "row", gap: 6, alignItems: "center" }}
+            >
+              {(location.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes(
+                "CAR",
+              ) && (
                 <View style={styles.vehicleBadge}>
-                  <MaterialIcons name="directions-car" size={12} color="#D4501E" />
+                  <MaterialIcons
+                    name="directions-car"
+                    size={12}
+                    color="#D4501E"
+                  />
                   <Text style={styles.vehicleBadgeText}>Car</Text>
                 </View>
               )}
-              {(location.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes("MOTORCYCLE") && (
+              {(location.acceptedVehicles ?? ["CAR", "MOTORCYCLE"]).includes(
+                "MOTORCYCLE",
+              ) && (
                 <View style={styles.vehicleBadge}>
                   <MaterialIcons name="two-wheeler" size={12} color="#D4501E" />
                   <Text style={styles.vehicleBadgeText}>Motorcycle</Text>
@@ -510,7 +605,9 @@ export default function LocationDetailScreen() {
                 <MaterialIcons
                   key={star}
                   name={
-                    rating && rating.averageRating !== null && star <= Math.round(rating.averageRating)
+                    rating &&
+                    rating.averageRating !== null &&
+                    star <= Math.round(rating.averageRating)
                       ? "star"
                       : "star-outline"
                   }
@@ -525,7 +622,9 @@ export default function LocationDetailScreen() {
                 : "No ratings yet"}
             </Text>
             <Text style={styles.ratingCount}>
-              {rating ? `${rating.totalReviews} review${rating.totalReviews !== 1 ? "s" : ""}` : ""}
+              {rating
+                ? `${rating.totalReviews} review${rating.totalReviews !== 1 ? "s" : ""}`
+                : ""}
             </Text>
           </View>
           <TouchableOpacity
@@ -541,17 +640,23 @@ export default function LocationDetailScreen() {
         {/* Spaces Summary */}
         <View style={styles.overviewRow}>
           <View style={styles.overviewItem}>
-            <Text style={[styles.overviewCount, { color: "#4CAF50" }]}>{availableCount}</Text>
+            <Text style={[styles.overviewCount, { color: "#4CAF50" }]}>
+              {availableCount}
+            </Text>
             <Text style={styles.overviewLabel}>Available</Text>
           </View>
           <View style={styles.overviewDivider} />
           <View style={styles.overviewItem}>
-            <Text style={[styles.overviewCount, { color: "#D4501E" }]}>{occupiedCount}</Text>
+            <Text style={[styles.overviewCount, { color: "#D4501E" }]}>
+              {occupiedCount}
+            </Text>
             <Text style={styles.overviewLabel}>Occupied</Text>
           </View>
           <View style={styles.overviewDivider} />
           <View style={styles.overviewItem}>
-            <Text style={[styles.overviewCount, { color: "#9E9E9E" }]}>{disabledCount}</Text>
+            <Text style={[styles.overviewCount, { color: "#9E9E9E" }]}>
+              {disabledCount}
+            </Text>
             <Text style={styles.overviewLabel}>Disabled</Text>
           </View>
         </View>
@@ -560,124 +665,133 @@ export default function LocationDetailScreen() {
         <View style={styles.slotMapCard}>
           <Text style={styles.sectionTitle}>Slot Map</Text>
           {spaces.length > 0 ? (
-          (() => {
-            const hasLevels = spaces.some((s) => s.levelNumber != null);
-            if (hasLevels) {
-              const levelMap = new Map<number, ParkingSpace[]>();
-              spaces.forEach((s) => {
-                const lvl = s.levelNumber ?? 0;
-                if (!levelMap.has(lvl)) levelMap.set(lvl, []);
-                levelMap.get(lvl)!.push(s);
-              });
-              const sortedLevels = [...levelMap.keys()].sort((a, b) => a - b);
-              return (
-                <View style={{ gap: 16 }}>
-                  {sortedLevels.map((level) => {
-                    const levelSpaces = levelMap.get(level)!;
-                    const levelAvail = levelSpaces.filter(
-                      (s) => s.status === "AVAILABLE",
-                    ).length;
-                    return (
-                      <View key={level} style={{ gap: 8 }}>
-                        <View style={styles.floorHeader}>
-                          <MaterialIcons
-                            name="layers"
-                            size={16}
-                            color="#232230"
-                          />
-                          <Text style={styles.floorTitle}>Floor {level}</Text>
-                          <Text style={styles.floorCount}>
-                            {levelAvail}/{levelSpaces.length} available
-                          </Text>
-                        </View>
-                        <View style={styles.spacesGrid}>
-                          {levelSpaces.map((space) => {
-                            const slotConfig = SLOT_STATUS_CONFIG[space.status];
-                            return (
-                              <TouchableOpacity
-                                key={space.id}
-                                style={[
-                                  styles.spaceSlot,
-                                  {
-                                    backgroundColor: slotConfig.bg,
-                                    borderColor: slotConfig.border,
-                                  },
-                                ]}
-                                onPress={() =>
-                                  space.status === "OCCUPIED"
-                                    ? handleViewBooking(space)
-                                    : setSelectedSpace(space)
-                                }
-                                activeOpacity={0.7}
-                              >
-                                <MaterialIcons
-                                  name={slotConfig.icon}
-                                  size={20}
-                                  color={slotConfig.color}
-                                />
-                                <Text
+            (() => {
+              const hasLevels = spaces.some((s) => s.levelNumber != null);
+              if (hasLevels) {
+                const levelMap = new Map<number, ParkingSpace[]>();
+                spaces.forEach((s) => {
+                  const lvl = s.levelNumber ?? 0;
+                  if (!levelMap.has(lvl)) levelMap.set(lvl, []);
+                  levelMap.get(lvl)!.push(s);
+                });
+                const sortedLevels = [...levelMap.keys()].sort((a, b) => a - b);
+                return (
+                  <View style={{ gap: 16 }}>
+                    {sortedLevels.map((level) => {
+                      const levelSpaces = levelMap.get(level)!;
+                      const levelAvail = levelSpaces.filter(
+                        (s) => s.status === "AVAILABLE",
+                      ).length;
+                      return (
+                        <View key={level} style={{ gap: 8 }}>
+                          <View style={styles.floorHeader}>
+                            <MaterialIcons
+                              name="layers"
+                              size={16}
+                              color="#232230"
+                            />
+                            <Text style={styles.floorTitle}>Floor {level}</Text>
+                            <Text style={styles.floorCount}>
+                              {levelAvail}/{levelSpaces.length} available
+                            </Text>
+                          </View>
+                          <View
+                            style={styles.spacesGrid}
+                            onLayout={handleSlotGridLayout}
+                          >
+                            {levelSpaces.map((space) => {
+                              const slotConfig =
+                                SLOT_STATUS_CONFIG[space.status];
+                              return (
+                                <TouchableOpacity
+                                  key={space.id}
                                   style={[
-                                    styles.slotNumber,
-                                    { color: slotConfig.color },
+                                    styles.spaceSlot,
+                                    {
+                                      width: slotSize,
+                                      backgroundColor: slotConfig.bg,
+                                      borderColor: slotConfig.border,
+                                    },
                                   ]}
+                                  onPress={() =>
+                                    space.status === "OCCUPIED"
+                                      ? handleViewBooking(space)
+                                      : setSelectedSpace(space)
+                                  }
+                                  activeOpacity={0.7}
                                 >
-                                  {space.name || space.slotNumber}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
+                                  <MaterialIcons
+                                    name={slotConfig.icon}
+                                    size={20}
+                                    color={slotConfig.color}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.slotNumber,
+                                      { color: slotConfig.color },
+                                    ]}
+                                  >
+                                    {space.name || space.slotNumber}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
                         </View>
-                      </View>
+                      );
+                    })}
+                  </View>
+                );
+              }
+              return (
+                <View style={styles.spacesGrid} onLayout={handleSlotGridLayout}>
+                  {spaces.map((space) => {
+                    const slotConfig = SLOT_STATUS_CONFIG[space.status];
+                    return (
+                      <TouchableOpacity
+                        key={space.id}
+                        style={[
+                          styles.spaceSlot,
+                          {
+                            width: slotSize,
+                            backgroundColor: slotConfig.bg,
+                            borderColor: slotConfig.border,
+                          },
+                        ]}
+                        onPress={() =>
+                          space.status === "OCCUPIED"
+                            ? handleViewBooking(space)
+                            : setSelectedSpace(space)
+                        }
+                        activeOpacity={0.7}
+                      >
+                        <MaterialIcons
+                          name={slotConfig.icon}
+                          size={20}
+                          color={slotConfig.color}
+                        />
+                        <Text
+                          style={[
+                            styles.slotNumber,
+                            { color: slotConfig.color },
+                          ]}
+                        >
+                          {space.name || space.slotNumber}
+                        </Text>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
               );
-            }
-            return (
-              <View style={styles.spacesGrid}>
-                {spaces.map((space) => {
-                  const slotConfig = SLOT_STATUS_CONFIG[space.status];
-                  return (
-                    <TouchableOpacity
-                      key={space.id}
-                      style={[
-                        styles.spaceSlot,
-                        {
-                          backgroundColor: slotConfig.bg,
-                          borderColor: slotConfig.border,
-                        },
-                      ]}
-                      onPress={() =>
-                        space.status === "OCCUPIED"
-                          ? handleViewBooking(space)
-                          : setSelectedSpace(space)
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <MaterialIcons
-                        name={slotConfig.icon}
-                        size={20}
-                        color={slotConfig.color}
-                      />
-                      <Text
-                        style={[styles.slotNumber, { color: slotConfig.color }]}
-                      >
-                        {space.name || space.slotNumber}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            );
-          })()
-        ) : (
-          <View style={styles.noSpaces}>
-            <MaterialIcons name="grid-off" size={40} color="#A09A94" />
-            <Text style={styles.noSpacesTitle}>No Parking Spaces</Text>
-            <Text style={styles.noSpacesText}>
-              This location has no individual parking spaces configured.
-            </Text>
-          </View>
+            })()
+          ) : (
+            <View style={styles.noSpaces}>
+              <MaterialIcons name="grid-off" size={40} color="#A09A94" />
+              <Text style={styles.noSpacesTitle}>No Parking Spaces</Text>
+              <Text style={styles.noSpacesText}>
+                This location has no individual parking spaces configured.
+              </Text>
+            </View>
           )}
         </View>
 
@@ -694,21 +808,36 @@ export default function LocationDetailScreen() {
 
         {/* Action buttons: disable/enable + delete */}
         <View style={styles.actionBtnRow}>
-          {(location.status === "APPROVED" || location.status === "DISABLED") && (
+          {(location.status === "APPROVED" ||
+            location.status === "DISABLED") && (
             <TouchableOpacity
               style={[
                 styles.actionBtn,
-                location.status === "DISABLED" ? styles.actionBtnEnable : styles.actionBtnDisable,
+                location.status === "DISABLED"
+                  ? styles.actionBtnEnable
+                  : styles.actionBtnDisable,
               ]}
               onPress={handleToggleLocation}
               activeOpacity={0.8}
             >
               <MaterialIcons
-                name={location.status === "DISABLED" ? "visibility" : "visibility-off"}
+                name={
+                  location.status === "DISABLED"
+                    ? "visibility"
+                    : "visibility-off"
+                }
                 size={16}
                 color={location.status === "DISABLED" ? "#D4501E" : "#A09A94"}
               />
-              <Text style={[styles.actionBtnText, { color: location.status === "DISABLED" ? "#D4501E" : "#A09A94" }]}>
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  {
+                    color:
+                      location.status === "DISABLED" ? "#D4501E" : "#A09A94",
+                  },
+                ]}
+              >
                 {location.status === "DISABLED" ? "Enable" : "Disable"}
               </Text>
             </TouchableOpacity>
@@ -719,7 +848,9 @@ export default function LocationDetailScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="delete-outline" size={16} color="#E53935" />
-            <Text style={[styles.actionBtnText, { color: "#E53935" }]}>Delete</Text>
+            <Text style={[styles.actionBtnText, { color: "#E53935" }]}>
+              Delete
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -744,7 +875,8 @@ export default function LocationDetailScreen() {
             {/* Summary row */}
             <View style={styles.reviewsSummaryRow}>
               <Text style={styles.reviewsSummaryScore}>
-                {rating?.averageRating !== null && rating?.averageRating !== undefined
+                {rating?.averageRating !== null &&
+                rating?.averageRating !== undefined
                   ? Number(rating.averageRating).toFixed(1)
                   : "—"}
               </Text>
@@ -754,7 +886,8 @@ export default function LocationDetailScreen() {
                     <MaterialIcons
                       key={star}
                       name={
-                        rating?.averageRating !== null && rating?.averageRating !== undefined &&
+                        rating?.averageRating !== null &&
+                        rating?.averageRating !== undefined &&
                         star <= Math.round(rating.averageRating!)
                           ? "star"
                           : "star-outline"
@@ -765,22 +898,32 @@ export default function LocationDetailScreen() {
                   ))}
                 </View>
                 <Text style={styles.reviewsSummaryCount}>
-                  {rating?.totalReviews ?? 0} review{(rating?.totalReviews ?? 0) !== 1 ? "s" : ""}
+                  {rating?.totalReviews ?? 0} review
+                  {(rating?.totalReviews ?? 0) !== 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
 
             {loadingReviews ? (
-              <ActivityIndicator size="large" color="#D4501E" style={{ marginVertical: 32 }} />
+              <ActivityIndicator
+                size="large"
+                color="#D4501E"
+                style={{ marginVertical: 32 }}
+              />
             ) : reviews.length === 0 ? (
               <View style={styles.reviewsEmpty}>
                 <MaterialIcons name="star-outline" size={40} color="#C7C7CC" />
                 <Text style={styles.reviewsEmptyText}>No reviews yet</Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 12 }}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ marginTop: 12 }}
+              >
                 {reviews.map((review) => {
-                  const name = `${review.reviewer.firstName ?? ""} ${review.reviewer.lastName ?? ""}`.trim() || "Anonymous";
+                  const name =
+                    `${review.reviewer.firstName ?? ""} ${review.reviewer.lastName ?? ""}`.trim() ||
+                    "Anonymous";
                   return (
                     <View key={review.id} style={styles.reviewItem}>
                       <View style={styles.reviewItemHeader}>
@@ -792,22 +935,33 @@ export default function LocationDetailScreen() {
                               contentFit="cover"
                             />
                           ) : (
-                            <MaterialIcons name="person" size={18} color="#fff" />
+                            <MaterialIcons
+                              name="person"
+                              size={18}
+                              color="#fff"
+                            />
                           )}
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.reviewerName}>{name}</Text>
                           <Text style={styles.reviewDate}>
-                            {new Date(review.createdAt).toLocaleDateString("en-PH", {
-                              month: "short", day: "numeric", year: "numeric",
-                            })}
+                            {new Date(review.createdAt).toLocaleDateString(
+                              "en-PH",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
                           </Text>
                         </View>
                         <View style={styles.reviewStarsRow}>
                           {[1, 2, 3, 4, 5].map((star) => (
                             <MaterialIcons
                               key={star}
-                              name={star <= review.rating ? "star" : "star-outline"}
+                              name={
+                                star <= review.rating ? "star" : "star-outline"
+                              }
                               size={14}
                               color="#FFD54F"
                             />
@@ -815,7 +969,9 @@ export default function LocationDetailScreen() {
                         </View>
                       </View>
                       {review.comment ? (
-                        <Text style={styles.reviewComment}>{review.comment}</Text>
+                        <Text style={styles.reviewComment}>
+                          {review.comment}
+                        </Text>
                       ) : null}
                     </View>
                   );
@@ -961,14 +1117,19 @@ export default function LocationDetailScreen() {
                               <ActivityIndicator color="#D4501E" size="small" />
                             ) : (
                               <>
-                                <MaterialIcons name="receipt-long" size={18} color="#D4501E" />
-                                <Text style={styles.modalViewBookingText}>View Active Booking</Text>
+                                <MaterialIcons
+                                  name="receipt-long"
+                                  size={18}
+                                  color="#D4501E"
+                                />
+                                <Text style={styles.modalViewBookingText}>
+                                  View Active Booking
+                                </Text>
                               </>
                             )}
                           </TouchableOpacity>
                         </>
                       )}
-
                     </View>
 
                     {/* Delete + Close row */}
@@ -999,7 +1160,8 @@ export default function LocationDetailScreen() {
                           name="delete-outline"
                           size={18}
                           color={
-                            hasReservations || selectedSpace.status === "OCCUPIED"
+                            hasReservations ||
+                            selectedSpace.status === "OCCUPIED"
                               ? "#E09090"
                               : "#fff"
                           }
@@ -1007,7 +1169,10 @@ export default function LocationDetailScreen() {
                         <Text
                           style={[
                             styles.modalDeleteBtnText,
-                            (hasReservations || selectedSpace.status === "OCCUPIED") && { color: "#E09090" },
+                            (hasReservations ||
+                              selectedSpace.status === "OCCUPIED") && {
+                              color: "#E09090",
+                            },
                           ]}
                         >
                           Delete
@@ -1122,8 +1287,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0EDE8",
   },
 
-
-
   slotMapCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -1140,8 +1303,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   spaceSlot: {
-    width: Math.floor((SCREEN_WIDTH - 72) / 5),
-    height: Math.floor((SCREEN_WIDTH - 72) / 5),
+    height: SLOT_CARD_HEIGHT,
     borderRadius: 14,
     borderWidth: 1.5,
     alignItems: "center",
@@ -1233,7 +1395,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   noImageText: { fontSize: 14, color: "#A09A94" },
-
 
   // Action buttons row
   actionBtnRow: {
@@ -1508,7 +1669,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   reviewsSummaryScore: { fontSize: 40, fontWeight: "800", color: "#D4501E" },
-  reviewsSummaryCount: { fontSize: 12, color: "#A09A94", fontWeight: "500", marginTop: 2 },
+  reviewsSummaryCount: {
+    fontSize: 12,
+    color: "#A09A94",
+    fontWeight: "500",
+    marginTop: 2,
+  },
   reviewsEmpty: { alignItems: "center", paddingVertical: 32, gap: 8 },
   reviewsEmptyText: { fontSize: 14, color: "#A09A94", fontWeight: "500" },
   reviewItem: {
@@ -1530,7 +1696,12 @@ const styles = StyleSheet.create({
   reviewerName: { fontSize: 13, fontWeight: "700", color: "#232230" },
   reviewDate: { fontSize: 11, color: "#A09A94", marginTop: 1 },
   reviewStarsRow: { flexDirection: "row", gap: 1 },
-  reviewComment: { fontSize: 13, color: "#6B6B6B", lineHeight: 18, paddingLeft: 46 },
+  reviewComment: {
+    fontSize: 13,
+    color: "#6B6B6B",
+    lineHeight: 18,
+    paddingLeft: 46,
+  },
   vehicleBadge: {
     flexDirection: "row",
     alignItems: "center",

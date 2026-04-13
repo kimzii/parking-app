@@ -140,15 +140,18 @@ export default function HostReservationDetailScreen() {
   );
 
   // Listen for real-time admin cancellation via socket
-  useSocketEvent("reservation-cancelled", (data: { reservationId: string; cancelledBy: string; reason?: string }) => {
-    if (reservation && data.reservationId === reservation.id) {
-      Alert.alert(
-        "Session Cancelled",
-        `This session has been cancelled by an administrator.${data.reason ? `\n\nReason: ${data.reason}` : ""}`,
-      );
-      setReservation((r) => (r ? { ...r, status: "CANCELLED" } : r));
-    }
-  });
+  useSocketEvent(
+    "reservation-cancelled",
+    (data: { reservationId: string; cancelledBy: string; reason?: string }) => {
+      if (reservation && data.reservationId === reservation.id) {
+        Alert.alert(
+          "Session Cancelled",
+          `This session has been cancelled by an administrator.${data.reason ? `\n\nReason: ${data.reason}` : ""}`,
+        );
+        setReservation((r) => (r ? { ...r, status: "CANCELLED" } : r));
+      }
+    },
+  );
 
   const handleApprove = () => {
     if (!reservation) return;
@@ -278,22 +281,33 @@ export default function HostReservationDetailScreen() {
               </View>
             )}
             <View style={styles.driverInfoColumn}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={styles.nameBadgeRow}>
                 <Text style={styles.driverDisplayName}>
                   {reservation.driver?.name || "Driver"}
                 </Text>
                 {reservation.driver?.sex ? (
-                  <View style={{
-                    backgroundColor: reservation.driver.sex === "Male" ? "#EBF5FF" : "#FFF0F6",
-                    borderRadius: 6,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                  }}>
-                    <Text style={{
-                      fontSize: 11,
-                      fontWeight: "600",
-                      color: reservation.driver.sex === "Male" ? "#1D6FA4" : "#C2185B",
-                    }}>
+                  <View
+                    style={[
+                      styles.sexBadge,
+                      {
+                        backgroundColor:
+                          reservation.driver.sex?.toLowerCase() === "male"
+                            ? "#EBF5FF"
+                            : "#FFF0F6",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.sexBadgeText,
+                        {
+                          color:
+                            reservation.driver.sex?.toLowerCase() === "male"
+                              ? "#1D6FA4"
+                              : "#C2185B",
+                        },
+                      ]}
+                    >
                       {reservation.driver.sex}
                     </Text>
                   </View>
@@ -496,10 +510,10 @@ export default function HostReservationDetailScreen() {
 
             {reservation.status !== "COMPLETED" &&
               reservation.status !== "PAYMENT_PENDING" && (
-              <Text style={styles.overtimeText}>
-                Additional charges apply based on session duration
-              </Text>
-            )}
+                <Text style={styles.overtimeText}>
+                  Additional charges apply based on session duration
+                </Text>
+              )}
 
             {(reservation.status === "COMPLETED" ||
               reservation.status === "PAYMENT_PENDING") && (
@@ -507,12 +521,18 @@ export default function HostReservationDetailScreen() {
                 <View style={styles.amountDivider} />
                 <View style={styles.amountMainRow}>
                   <Text
-                    style={[styles.amountLabel, { fontWeight: "700", color: "#232230" }]}
+                    style={[
+                      styles.amountLabel,
+                      { fontWeight: "700", color: "#232230" },
+                    ]}
                   >
                     Gross Total
                   </Text>
                   <Text
-                    style={[styles.amountValue, { fontWeight: "800", color: "#D4501E", fontSize: 20 }]}
+                    style={[
+                      styles.amountValue,
+                      { fontWeight: "800", color: "#D4501E", fontSize: 20 },
+                    ]}
                   >
                     ₱{grossTotal.toFixed(2)}
                   </Text>
@@ -525,10 +545,17 @@ export default function HostReservationDetailScreen() {
                 </View>
                 <View style={styles.amountMainRow}>
                   <Text style={styles.amountLabel}>Platform Fee</Text>
-                  <Text style={styles.amountValue}>₱{platformFee.toFixed(2)}</Text>
+                  <Text style={styles.amountValue}>
+                    ₱{platformFee.toFixed(2)}
+                  </Text>
                 </View>
                 <View style={styles.amountMainRow}>
-                  <Text style={[styles.amountLabel, { fontWeight: "700", color: "#232230" }]}>
+                  <Text
+                    style={[
+                      styles.amountLabel,
+                      { fontWeight: "700", color: "#232230" },
+                    ]}
+                  >
                     Host Total
                   </Text>
                   <Text style={[styles.amountValue, styles.hostPayoutValue]}>
@@ -539,11 +566,19 @@ export default function HostReservationDetailScreen() {
                 {reservation.status === "PAYMENT_PENDING" && (
                   <View style={styles.payoutHoldBox}>
                     <View style={styles.payoutHoldRow}>
-                      <MaterialIcons name="hourglass-top" size={16} color="#F57C00" />
+                      <MaterialIcons
+                        name="hourglass-top"
+                        size={16}
+                        color="#F57C00"
+                      />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.payoutHoldTitle}>Payout On Hold</Text>
+                        <Text style={styles.payoutHoldTitle}>
+                          Payout On Hold
+                        </Text>
                         <Text style={styles.payoutHoldSubtext}>
-                          Driver has an outstanding balance. Your payout of ₱{hostPayoutAmount.toFixed(2)} will be released once they settle.
+                          Driver has an outstanding balance. Your payout of ₱
+                          {hostPayoutAmount.toFixed(2)} will be released once
+                          they settle.
                         </Text>
                       </View>
                     </View>
@@ -552,8 +587,14 @@ export default function HostReservationDetailScreen() {
 
                 {reservation.status === "COMPLETED" && (
                   <View style={styles.payoutReleasedRow}>
-                    <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
-                    <Text style={styles.payoutReleasedText}>Payout Released</Text>
+                    <MaterialIcons
+                      name="check-circle"
+                      size={16}
+                      color="#4CAF50"
+                    />
+                    <Text style={styles.payoutReleasedText}>
+                      Payout Released
+                    </Text>
                   </View>
                 )}
               </>
@@ -714,6 +755,22 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#232230",
     marginBottom: 2,
+    flexShrink: 1,
+  },
+  nameBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  sexBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  sexBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   driverPhone: {
     fontSize: 14,

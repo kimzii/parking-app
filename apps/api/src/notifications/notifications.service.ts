@@ -8,6 +8,7 @@ import { NotificationsGateway } from './notifications.gateway';
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly expo = new Expo();
+  private readonly duplicateWindowMs = 10_000;
 
   constructor(
     private prisma: PrismaService,
@@ -27,6 +28,29 @@ export class NotificationsService {
   }) {
     const { userId, title, message, type, data } = params;
 
+    const cutoff = new Date(Date.now() - this.duplicateWindowMs);
+    const recentDuplicate = await this.prisma.notification.findFirst({
+      where: {
+        userId,
+        type,
+        title,
+        message,
+        createdAt: { gte: cutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (
+      recentDuplicate &&
+      this.normalizeDataForCompare(recentDuplicate.data) ===
+        this.normalizeDataForCompare(data)
+    ) {
+      this.logger.warn(
+        `Skipped duplicate notification for user ${userId} (type=${type}, title=${title})`,
+      );
+      return recentDuplicate;
+    }
+
     // Persist in DB
     const notification = await this.prisma.notification.create({
       data: { userId, title, message, type, data: data ?? undefined },
@@ -39,6 +63,29 @@ export class NotificationsService {
     await this.sendPush(userId, title, message, data);
 
     return notification;
+  }
+
+  private normalizeDataForCompare(data?: Record<string, any> | null): string {
+    return JSON.stringify(this.sortJsonValue(data ?? null));
+  }
+
+  private sortJsonValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.sortJsonValue(item));
+    }
+
+    if (value !== null && typeof value === 'object') {
+      return Object.keys(value as Record<string, unknown>)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = this.sortJsonValue(
+            (value as Record<string, unknown>)[key],
+          );
+          return acc;
+        }, {});
+    }
+
+    return value;
   }
 
   /**
@@ -416,7 +463,11 @@ export class NotificationsService {
     );
   }
 
-  async notifyAdminsPendingVehicle(vehicleId: string, plateNumber: string, driverUserId?: string): Promise<void> {
+  async notifyAdminsPendingVehicle(
+    vehicleId: string,
+    plateNumber: string,
+    driverUserId?: string,
+  ): Promise<void> {
     const adminIds = await this.getAdminUserIds();
     if (adminIds.length === 0) return;
 
@@ -463,7 +514,11 @@ export class NotificationsService {
     });
   }
 
-  async notifyVehicleRejected(driverUserId: string, plateNumber: string, reason?: string) {
+  async notifyVehicleRejected(
+    driverUserId: string,
+    plateNumber: string,
+    reason?: string,
+  ) {
     await this.send({
       userId: driverUserId,
       title: 'Vehicle Registration Rejected',

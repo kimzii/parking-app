@@ -16,7 +16,12 @@ export default function HostTabLayout() {
         const token = await SecureStore.getItemAsync("accessToken");
         if (!token) {
           router.replace("/(auth)/login");
-        } else if (!pushRegistered.current) {
+          return;
+        }
+
+        await SecureStore.setItemAsync("viewMode", "host");
+
+        if (!pushRegistered.current) {
           pushRegistered.current = true;
           registerForPushNotifications().catch(() => {});
         }
@@ -77,7 +82,11 @@ export default function HostTabLayout() {
           title: "Earnings",
           tabBarLabel: "Earnings",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="account-balance-wallet" color={color} size={size} />
+            <MaterialIcons
+              name="account-balance-wallet"
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
