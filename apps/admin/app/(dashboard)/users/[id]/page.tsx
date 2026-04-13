@@ -723,15 +723,24 @@ export default function UserProfileView() {
                         <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                           Sex
                         </p>
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            user.sex === "Male"
+                        {(() => {
+                          const normalizedSex = user.sex.trim().toLowerCase();
+                          const sexBadgeClass =
+                            normalizedSex === "male" || normalizedSex === "m"
                               ? "bg-blue-100 text-blue-700"
-                              : "bg-pink-100 text-pink-700"
-                          }`}
-                        >
-                          {user.sex}
-                        </span>
+                              : normalizedSex === "female" ||
+                                  normalizedSex === "f"
+                                ? "bg-pink-100 text-pink-700"
+                                : "bg-gray-100 text-gray-700";
+
+                          return (
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${sexBadgeClass}`}
+                            >
+                              {user.sex}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}

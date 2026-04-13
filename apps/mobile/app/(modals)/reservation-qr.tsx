@@ -35,7 +35,11 @@ const STATUS_CONFIG: Record<
   COMPLETED: { color: "#4CAF50", bg: "#E8F5E9", label: "Completed" },
   CANCELLED: { color: "#E53935", bg: "#FFEBEE", label: "Cancelled" },
   EXPIRED: { color: "#D4501E", bg: "#FFF0EC", label: "Expired" },
-  PAYMENT_PENDING: { color: "#E53935", bg: "#FFEBEE", label: "Payment Pending" },
+  PAYMENT_PENDING: {
+    color: "#E53935",
+    bg: "#FFEBEE",
+    label: "Payment Pending",
+  },
 };
 
 function formatCountdown(ms: number): string {
@@ -115,15 +119,18 @@ export default function ReservationQRScreen() {
   }, [reservationStatus, fetchReservation]);
 
   // Listen for real-time admin cancellation via socket
-  useSocketEvent("reservation-cancelled", (data: { reservationId: string; cancelledBy: string; reason?: string }) => {
-    if (data.reservationId === id) {
-      Alert.alert(
-        "Session Cancelled",
-        `Your session has been cancelled by an administrator.${data.reason ? `\n\nReason: ${data.reason}` : ""}`,
-      );
-      fetchReservation();
-    }
-  });
+  useSocketEvent(
+    "reservation-cancelled",
+    (data: { reservationId: string; cancelledBy: string; reason?: string }) => {
+      if (data.reservationId === id) {
+        Alert.alert(
+          "Session Cancelled",
+          `Your session has been cancelled by an administrator.${data.reason ? `\n\nReason: ${data.reason}` : ""}`,
+        );
+        fetchReservation();
+      }
+    },
+  );
 
   // Start/stop geofencing based on reservation status
   useEffect(() => {
@@ -226,7 +233,10 @@ export default function ReservationQRScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
         <Stack.Screen options={{ title: "Reservation" }} />
         <ActivityIndicator
           size="large"
@@ -239,7 +249,10 @@ export default function ReservationQRScreen() {
 
   if (!reservation) {
     return (
-      <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
         <Stack.Screen options={{ title: "Reservation" }} />
         <View style={styles.errorContainer}>
           <MaterialIcons name="error-outline" size={48} color="#E53935" />
@@ -263,7 +276,10 @@ export default function ReservationQRScreen() {
             setSettling(true);
             try {
               await settleRemainingDue(reservation.id);
-              Alert.alert("Done", "Outstanding balance settled. Booking is now complete.");
+              Alert.alert(
+                "Done",
+                "Outstanding balance settled. Booking is now complete.",
+              );
               fetchReservation();
             } catch (err: any) {
               const msg: string = err?.response?.data?.message ?? "";
@@ -466,27 +482,42 @@ export default function ReservationQRScreen() {
             <Text style={styles.sectionTitle}>Host</Text>
             <View style={styles.locationCard}>
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Text style={styles.locationTitle}>{reservation.host.name || "Host"}</Text>
+                <View style={styles.nameBadgeRow}>
+                  <Text style={styles.locationTitle}>
+                    {reservation.host.name || "Host"}
+                  </Text>
                   {reservation.host.sex ? (
-                    <View style={{
-                      backgroundColor: reservation.host.sex === "Male" ? "#EBF5FF" : "#FFF0F6",
-                      borderRadius: 6,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                    }}>
-                      <Text style={{
-                        fontSize: 11,
-                        fontWeight: "600",
-                        color: reservation.host.sex === "Male" ? "#1D6FA4" : "#C2185B",
-                      }}>
+                    <View
+                      style={[
+                        styles.sexBadge,
+                        {
+                          backgroundColor:
+                            reservation.host.sex?.toLowerCase() === "male"
+                              ? "#EBF5FF"
+                              : "#FFF0F6",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.sexBadgeText,
+                          {
+                            color:
+                              reservation.host.sex?.toLowerCase() === "male"
+                                ? "#1D6FA4"
+                                : "#C2185B",
+                          },
+                        ]}
+                      >
                         {reservation.host.sex}
                       </Text>
                     </View>
                   ) : null}
                 </View>
                 {reservation.host.phone && (
-                  <Text style={styles.locationAddress}>{reservation.host.phone}</Text>
+                  <Text style={styles.locationAddress}>
+                    {reservation.host.phone}
+                  </Text>
                 )}
               </View>
             </View>
@@ -597,9 +628,12 @@ export default function ReservationQRScreen() {
                   <View style={styles.outstandingRow}>
                     <MaterialIcons name="warning" size={18} color="#E53935" />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.outstandingTitle}>Outstanding Balance</Text>
+                      <Text style={styles.outstandingTitle}>
+                        Outstanding Balance
+                      </Text>
                       <Text style={styles.outstandingSubtext}>
-                        ₱{(reservation.remainingDue ?? 0).toFixed(2)} unpaid — wallet was insufficient at exit
+                        ₱{(reservation.remainingDue ?? 0).toFixed(2)} unpaid —
+                        wallet was insufficient at exit
                       </Text>
                     </View>
                   </View>
@@ -614,7 +648,10 @@ export default function ReservationQRScreen() {
                     ) : (
                       <>
                         <MaterialIcons name="payments" size={18} color="#fff" />
-                        <Text style={styles.settleBtnText}>Settle Now — ₱{(reservation.remainingDue ?? 0).toFixed(2)}</Text>
+                        <Text style={styles.settleBtnText}>
+                          Settle Now — ₱
+                          {(reservation.remainingDue ?? 0).toFixed(2)}
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -662,9 +699,13 @@ export default function ReservationQRScreen() {
                 {[1, 2, 3, 4, 5].map((star) => (
                   <MaterialIcons
                     key={star}
-                    name={star <= existingReview.rating ? "star" : "star-outline"}
+                    name={
+                      star <= existingReview.rating ? "star" : "star-outline"
+                    }
                     size={28}
-                    color={star <= existingReview.rating ? "#FFB300" : "#D0D0D0"}
+                    color={
+                      star <= existingReview.rating ? "#FFB300" : "#D0D0D0"
+                    }
                   />
                 ))}
               </View>
@@ -828,7 +869,27 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   locationInfo: { flex: 1, gap: 4 },
-  locationTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#232230",
+    flexShrink: 1,
+  },
+  nameBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  sexBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  sexBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
   locationAddress: { fontSize: 13, color: "#A09A94" },
   slotBadge: {
     flexDirection: "row",
