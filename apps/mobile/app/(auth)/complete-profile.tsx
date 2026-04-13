@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { userService } from "../../src/services/user";
@@ -29,6 +30,30 @@ export default function CompleteProfileScreen() {
     await new Promise((resolve) => setTimeout(resolve, 180));
   };
 
+  const cropToSquare = async (asset: ImagePicker.ImagePickerAsset) => {
+    const width = asset.width ?? 0;
+    const height = asset.height ?? 0;
+
+    if (!width || !height) {
+      return asset.uri;
+    }
+
+    const size = Math.min(width, height);
+    const originX = Math.floor((width - size) / 2);
+    const originY = Math.floor((height - size) / 2);
+
+    const manipulated = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      [
+        { crop: { originX, originY, width: size, height: size } },
+        { resize: { width: 1024, height: 1024 } },
+      ],
+      { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG },
+    );
+
+    return manipulated.uri;
+  };
+
   const openCamera = async () => {
     await closeSourcePickerBeforeNativeUi();
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -38,11 +63,10 @@ export default function CompleteProfileScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
     });
     if (!result.canceled && result.assets[0]) {
-      setSelectedImage(result.assets[0].uri);
+      const croppedUri = await cropToSquare(result.assets[0]);
+      setSelectedImage(croppedUri);
     }
   };
 
@@ -59,13 +83,10 @@ export default function CompleteProfileScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
-      allowsEditing: true,
-      aspect: [1, 1],
-      // Android legacy picker has more reliable crop toolbar contrast on some devices.
-      legacy: Platform.OS === "android",
     });
     if (!result.canceled && result.assets[0]) {
-      setSelectedImage(result.assets[0].uri);
+      const croppedUri = await cropToSquare(result.assets[0]);
+      setSelectedImage(croppedUri);
     }
   };
 
