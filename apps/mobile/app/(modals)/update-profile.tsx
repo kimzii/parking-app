@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
 } from "react-native";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -59,6 +60,7 @@ export default function UpdateProfileScreen() {
   const [showBirthdayPicker, setShowBirthdayPicker] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -84,7 +86,32 @@ export default function UpdateProfileScreen() {
     fetchUser();
   }, []);
 
-  const pickImage = async () => {
+  const closeSourcePickerBeforeNativeUi = async () => {
+    setShowSourcePicker(false);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+  };
+
+  const openCamera = async () => {
+    await closeSourcePickerBeforeNativeUi();
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Please allow camera access.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const openGallery = async () => {
+    await closeSourcePickerBeforeNativeUi();
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
@@ -93,10 +120,15 @@ export default function UpdateProfileScreen() {
       );
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
+      allowsEditing: true,
+      aspect: [1, 1],
+      legacy: Platform.OS === "android",
     });
+
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
     }
@@ -171,7 +203,7 @@ export default function UpdateProfileScreen() {
 
         <TouchableOpacity
           style={styles.avatarContainer}
-          onPress={pickImage}
+          onPress={() => !saving && setShowSourcePicker(true)}
           activeOpacity={0.8}
         >
           {displayImage ? (
@@ -346,6 +378,62 @@ export default function UpdateProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showSourcePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSourcePicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSourcePicker(false)}
+        >
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Choose Photo</Text>
+
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={openCamera}
+              activeOpacity={0.7}
+            >
+              <View style={styles.sheetIconBg}>
+                <Ionicons name="camera" size={22} color="#D4501E" />
+              </View>
+              <View>
+                <Text style={styles.sheetOptionTitle}>Take a Photo</Text>
+                <Text style={styles.sheetOptionSub}>Use your camera</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sheetOption}
+              onPress={openGallery}
+              activeOpacity={0.7}
+            >
+              <View style={styles.sheetIconBg}>
+                <Ionicons name="images" size={22} color="#D4501E" />
+              </View>
+              <View>
+                <Text style={styles.sheetOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.sheetOptionSub}>
+                  Pick from your photo library
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sheetCancel}
+              onPress={() => setShowSourcePicker(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -408,6 +496,71 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 48,
+    gap: 4,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0E0E0",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#232230",
+    marginBottom: 12,
+  },
+  sheetOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    paddingHorizontal: 4,
+  },
+  sheetIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#FFF0EC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sheetOptionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#232230",
+  },
+  sheetOptionSub: {
+    fontSize: 12,
+    color: "#A09A94",
+    marginTop: 2,
+  },
+  sheetCancel: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    backgroundColor: "#F2F2F7",
+  },
+  sheetCancelText: {
+    color: "#6B7280",
+    fontSize: 15,
+    fontWeight: "700",
   },
   form: {
     backgroundColor: "#fff",

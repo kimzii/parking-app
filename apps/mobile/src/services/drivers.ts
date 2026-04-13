@@ -1,6 +1,10 @@
 import api from "./api";
 
 export const driversService = {
+  getProfile: async () => {
+    const res = await api.get("/drivers/profile");
+    return res.data;
+  },
   applyAsDriver: async (payload: {
     licenseNumber: string;
     licenseImageUrl?: string;
