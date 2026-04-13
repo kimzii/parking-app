@@ -65,7 +65,7 @@ export class NotificationsService {
     return notification;
   }
 
-  private normalizeDataForCompare(data?: Record<string, any> | null): string {
+  private normalizeDataForCompare(data?: unknown | null): string {
     return JSON.stringify(this.sortJsonValue(data ?? null));
   }
 
