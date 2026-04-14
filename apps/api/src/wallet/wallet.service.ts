@@ -295,22 +295,24 @@ export class WalletService {
 
     if (expired.length === 0) return;
 
-    await this.prisma.topUpRequest.updateMany({
-      where: {
-        status: 'PENDING',
-        expiresAt: { lt: now },
-      },
-      data: { status: 'EXPIRED' },
-    });
-
+    // Update and notify per-row: only send notification if this call is the one
+    // that actually flipped the status from PENDING → EXPIRED. This prevents
+    // duplicate notifications when two endpoints call this method concurrently.
     for (const req of expired) {
-      await this.notificationsService.send({
-        userId: req.userId,
-        title: 'Top-Up Expired',
-        message: `Your top-up request for ₱${new Decimal(req.amount).toFixed(2)} has expired.`,
-        type: 'TOPUP_REJECTED',
-        data: { topUpRequestId: req.id },
+      const result = await this.prisma.topUpRequest.updateMany({
+        where: { id: req.id, status: 'PENDING' },
+        data: { status: 'EXPIRED' },
       });
+
+      if (result.count > 0) {
+        await this.notificationsService.send({
+          userId: req.userId,
+          title: 'Top-Up Expired',
+          message: `Your top-up request for ₱${new Decimal(req.amount).toFixed(2)} has expired.`,
+          type: 'TOPUP_REJECTED',
+          data: { topUpRequestId: req.id },
+        });
+      }
     }
   }
 

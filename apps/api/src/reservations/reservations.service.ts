@@ -1698,15 +1698,17 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       reservation.parkingSpace.parkingLocation.host.userId,
     );
 
-    // Notify driver and host
+    // Notify driver (booking completed) and host (payout released) separately
+    // to avoid the host receiving two BOOKING_COMPLETED notifications
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
     this.notificationsService
-      .notifyBookingCompleted(
-        userId,
-        host.userId,
-        reservation.id,
-        locationTitle,
-      )
+      .send({
+        userId: userId,
+        title: 'Booking Completed',
+        message: `Your parking session at ${locationTitle} has been completed.`,
+        type: 'BOOKING_COMPLETED',
+        data: { reservationId: reservation.id, screen: 'reservation-qr' },
+      })
       .catch(() => {});
     this.notificationsService
       .send({
