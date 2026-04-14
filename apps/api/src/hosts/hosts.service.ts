@@ -41,6 +41,27 @@ function getDistanceKm(
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+type BrowseLocationRow = {
+  id: string;
+  title: string;
+  address: string;
+  latitude: Prisma.Decimal;
+  longitude: Prisma.Decimal;
+  basePricePerHour: Prisma.Decimal;
+  totalSlots: number | null;
+  availableSlots: number | null;
+  acceptedVehicles: VehicleType[];
+  openTime: string | null;
+  closeTime: string | null;
+  is24Hours: boolean;
+  images: { imageUrl: string }[];
+};
+
+type PublicBrowseLocation = Omit<
+  BrowseLocationRow,
+  'openTime' | 'closeTime' | 'is24Hours'
+>;
+
 @Injectable()
 export class HostsService {
   constructor(
@@ -494,8 +515,12 @@ export class HostsService {
     const newStatus =
       location.status === 'APPROVED' ? 'PENDING' : location.status;
 
-    const { imageUrls, proofOfResidenceUrl, acceptedVehicles, ...locationData } =
-      updateLocationDto;
+    const {
+      imageUrls,
+      proofOfResidenceUrl,
+      acceptedVehicles,
+      ...locationData
+    } = updateLocationDto;
 
     // Delete old images from S3 if new ones are provided
     if (imageUrls && imageUrls.length > 0) {
@@ -1008,7 +1033,7 @@ export class HostsService {
       };
     }
 
-    const locations = await this.prisma.parkingLocation.findMany({
+    const locations = (await this.prisma.parkingLocation.findMany({
       where,
       take: hasCoordinates ? Math.min(boundedLimit * 2, 200) : boundedLimit,
       select: {
@@ -1021,6 +1046,9 @@ export class HostsService {
         totalSlots: true,
         availableSlots: true,
         acceptedVehicles: true,
+        openTime: true,
+        closeTime: true,
+        is24Hours: true,
         images: {
           where: { isPrimary: true },
           take: 1,
@@ -1028,18 +1056,29 @@ export class HostsService {
         },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    })) as BrowseLocationRow[];
+
+    const openLocations = locations.filter((location) =>
+      this.isLocationCurrentlyOpen(location),
+    );
+
+    const toPublicBrowseLocation = (
+      location: BrowseLocationRow,
+    ): PublicBrowseLocation => {
+      const { openTime, closeTime, is24Hours, ...publicLocation } = location;
+      return publicLocation;
+    };
 
     if (!hasCoordinates) {
-      return locations;
+      return openLocations.map(toPublicBrowseLocation);
     }
 
     const centerLatitude = Number(latitude);
     const centerLongitude = Number(longitude);
 
-    return locations
+    return openLocations
       .map((location) => ({
-        location,
+        location: toPublicBrowseLocation(location),
         distanceKm: getDistanceKm(
           centerLatitude,
           centerLongitude,
@@ -1051,6 +1090,82 @@ export class HostsService {
       .sort((a, b) => a.distanceKm - b.distanceKm)
       .slice(0, boundedLimit)
       .map((item) => item.location);
+  }
+
+  private isLocationCurrentlyOpen(location: {
+    openTime?: string | null;
+    closeTime?: string | null;
+    is24Hours?: boolean;
+  }): boolean {
+    if (location.is24Hours) {
+      return true;
+    }
+
+    if (!location.openTime || !location.closeTime) {
+      return true;
+    }
+
+    const openMinutes = this.parseTimeToMinutes(location.openTime);
+    const closeMinutes = this.parseTimeToMinutes(location.closeTime);
+
+    if (openMinutes === null || closeMinutes === null) {
+      return true;
+    }
+
+    if (openMinutes === closeMinutes) {
+      return true;
+    }
+
+    const currentMinutes = this.getCurrentMinutesInTimezone('Asia/Manila');
+
+    if (closeMinutes > openMinutes) {
+      return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+    }
+
+    return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+  }
+
+  private parseTimeToMinutes(value: string): number | null {
+    const [hourRaw, minuteRaw] = value.split(':');
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+
+    if (
+      !Number.isInteger(hour) ||
+      !Number.isInteger(minute) ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return null;
+    }
+
+    return hour * 60 + minute;
+  }
+
+  private getCurrentMinutesInTimezone(timeZone: string, date = new Date()) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(date);
+
+      const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+      const minute = Number(
+        parts.find((part) => part.type === 'minute')?.value,
+      );
+
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+        return date.getHours() * 60 + date.getMinutes();
+      }
+
+      return hour * 60 + minute;
+    } catch {
+      return date.getHours() * 60 + date.getMinutes();
+    }
   }
 
   // Public: Get single approved parking location details

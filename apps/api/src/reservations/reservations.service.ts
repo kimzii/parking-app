@@ -329,7 +329,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     const [openH, openM] = location.openTime.split(':').map(Number);
     const [closeH, closeM] = location.closeTime.split(':').map(Number);
 
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutes = this.getCurrentMinutesInTimezone('Asia/Manila', now);
     const openMinutes = openH * 60 + openM;
     const closeMinutes = closeH * 60 + closeM;
 
@@ -338,6 +338,30 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     }
     // Overnight hours (e.g. 22:00 - 06:00)
     return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+  }
+
+  private getCurrentMinutesInTimezone(timeZone: string, date = new Date()) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(date);
+
+      const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+      const minute = Number(
+        parts.find((part) => part.type === 'minute')?.value,
+      );
+
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+        return date.getHours() * 60 + date.getMinutes();
+      }
+
+      return hour * 60 + minute;
+    } catch {
+      return date.getHours() * 60 + date.getMinutes();
+    }
   }
 
   /**
@@ -741,7 +765,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       hostPayoutAmount:
         r.hostPayoutAmount != null ? Number(r.hostPayoutAmount) : null,
       overtimeAmount: toNullable(r.overtimeAmount),
-      remainingDue: (r as any).remainingDue != null ? Number((r as any).remainingDue) : null,
+      remainingDue:
+        (r as any).remainingDue != null
+          ? Number((r as any).remainingDue)
+          : null,
       createdAt: r.createdAt,
       parkingSpace: {
         id: r.parkingSpace.id,
@@ -835,7 +862,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       commissionRate: reservation.commissionRate,
       platformFee: toNullable(reservation.platformFee),
       hostPayoutAmount:
-        reservation.hostPayoutAmount != null ? Number(reservation.hostPayoutAmount) : null,
+        reservation.hostPayoutAmount != null
+          ? Number(reservation.hostPayoutAmount)
+          : null,
       overtimeAmount: toNullable(reservation.overtimeAmount),
       remainingDue:
         (reservation as any).remainingDue != null
@@ -857,11 +886,13 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         images: location.images,
         basePricePerHour: location.basePricePerHour,
       },
-      host: location.host ? {
-        name: `${location.host.user.firstName || ''} ${location.host.user.lastName || ''}`.trim(),
-        phone: location.host.user.phoneNumber,
-        sex: (location.host.user as any).sex ?? null,
-      } : null,
+      host: location.host
+        ? {
+            name: `${location.host.user.firstName || ''} ${location.host.user.lastName || ''}`.trim(),
+            phone: location.host.user.phoneNumber,
+            sex: (location.host.user as any).sex ?? null,
+          }
+        : null,
     };
   }
 
@@ -1379,7 +1410,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
           if (driverWallet) {
             const balance = new Decimal(driverWallet.balance);
             const chargeAmount = Decimal.min(additionalCharge, balance);
-            remainingDue = Decimal.max(additionalCharge.sub(chargeAmount), 0).toDecimalPlaces(2);
+            remainingDue = Decimal.max(
+              additionalCharge.sub(chargeAmount),
+              0,
+            ).toDecimalPlaces(2);
 
             if (chargeAmount.gt(0)) {
               await tx.walletTransaction.create({
@@ -1544,12 +1578,15 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
    */
   async settleRemainingDue(userId: string, reservationId: string) {
     const driver = await this.prisma.driver.findUnique({ where: { userId } });
-    if (!driver) throw new ForbiddenException('Only drivers can settle payments.');
+    if (!driver)
+      throw new ForbiddenException('Only drivers can settle payments.');
 
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
       include: {
-        parkingSpace: { include: { parkingLocation: { include: { host: true } } } },
+        parkingSpace: {
+          include: { parkingLocation: { include: { host: true } } },
+        },
         driver: true,
       },
     });
@@ -1558,15 +1595,21 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Reservation not found.');
     }
     if (reservation.status !== 'PAYMENT_PENDING') {
-      throw new BadRequestException('This reservation has no outstanding balance.');
+      throw new BadRequestException(
+        'This reservation has no outstanding balance.',
+      );
     }
 
-    const remainingDue = new Decimal(String((reservation as any).remainingDue ?? 0));
+    const remainingDue = new Decimal(
+      String((reservation as any).remainingDue ?? 0),
+    );
     if (remainingDue.lte(0)) {
       throw new BadRequestException('No remaining due on this reservation.');
     }
 
-    const driverWallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    const driverWallet = await this.prisma.wallet.findUnique({
+      where: { userId },
+    });
     if (!driverWallet) throw new BadRequestException('Wallet not found.');
 
     const balance = new Decimal(driverWallet.balance);
@@ -1577,9 +1620,16 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const host = reservation.parkingSpace.parkingLocation.host;
-    const totalFee = new Decimal(String(reservation.finalAmount ?? reservation.totalAmount));
-    const platformCommission = totalFee.mul(this.PLATFORM_COMMISSION_RATE).toDecimalPlaces(2);
-    const hostPayoutAmount = Decimal.max(totalFee.sub(platformCommission), 0).toDecimalPlaces(2);
+    const totalFee = new Decimal(
+      String(reservation.finalAmount ?? reservation.totalAmount),
+    );
+    const platformCommission = totalFee
+      .mul(this.PLATFORM_COMMISSION_RATE)
+      .toDecimalPlaces(2);
+    const hostPayoutAmount = Decimal.max(
+      totalFee.sub(platformCommission),
+      0,
+    ).toDecimalPlaces(2);
 
     await this.prisma.$transaction(async (tx) => {
       // Deduct remaining due from driver wallet
@@ -1600,7 +1650,9 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Credit host now that full payment is received
-      const hostWallet = await tx.wallet.findUnique({ where: { userId: host.userId } });
+      const hostWallet = await tx.wallet.findUnique({
+        where: { userId: host.userId },
+      });
       if (hostWallet) {
         await tx.walletTransaction.create({
           data: {
@@ -1624,7 +1676,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
         where: { id: reservation.parkingSpaceId },
         data: { status: 'AVAILABLE' },
       });
-      await this.syncLocationAvailableSlotsBySpaceId(tx, reservation.parkingSpaceId);
+      await this.syncLocationAvailableSlotsBySpaceId(
+        tx,
+        reservation.parkingSpaceId,
+      );
 
       // Mark reservation as COMPLETED
       await tx.reservation.update({
@@ -1646,7 +1701,12 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     // Notify driver and host
     const locationTitle = reservation.parkingSpace.parkingLocation.title;
     this.notificationsService
-      .notifyBookingCompleted(userId, host.userId, reservation.id, locationTitle)
+      .notifyBookingCompleted(
+        userId,
+        host.userId,
+        reservation.id,
+        locationTitle,
+      )
       .catch(() => {});
     this.notificationsService
       .send({
@@ -1661,7 +1721,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       })
       .catch(() => {});
 
-    return { success: true, message: 'Outstanding balance settled. Booking is now complete.' };
+    return {
+      success: true,
+      message: 'Outstanding balance settled. Booking is now complete.',
+    };
   }
 
   /**
@@ -1936,7 +1999,10 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       hostPayoutAmount:
         r.hostPayoutAmount != null ? Number(r.hostPayoutAmount) : null,
       overtimeAmount: toNullable(r.overtimeAmount),
-      remainingDue: (r as any).remainingDue != null ? Number((r as any).remainingDue) : null,
+      remainingDue:
+        (r as any).remainingDue != null
+          ? Number((r as any).remainingDue)
+          : null,
       createdAt: r.createdAt,
       parkingSpace: {
         id: r.parkingSpace.id,

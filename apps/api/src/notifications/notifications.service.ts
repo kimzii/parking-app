@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
-import { NotificationType } from '@prisma/client';
+import { Notification, NotificationType } from '@prisma/client';
 import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
@@ -9,6 +9,11 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly expo = new Expo();
   private readonly duplicateWindowMs = 10_000;
+  private readonly recentFingerprints = new Map<string, number>();
+  private readonly inFlightNotifications = new Map<
+    string,
+    Promise<Notification>
+  >();
 
   constructor(
     private prisma: PrismaService,
@@ -25,29 +30,83 @@ export class NotificationsService {
     message: string;
     type: NotificationType;
     data?: Record<string, any>;
-  }) {
+  }): Promise<Notification> {
     const { userId, title, message, type, data } = params;
-
-    const cutoff = new Date(Date.now() - this.duplicateWindowMs);
-    const recentDuplicate = await this.prisma.notification.findFirst({
-      where: {
-        userId,
-        type,
-        title,
-        message,
-        createdAt: { gte: cutoff },
-      },
-      orderBy: { createdAt: 'desc' },
+    const normalizedData = this.normalizeDataForCompare(data);
+    const fingerprint = this.buildNotificationFingerprint({
+      userId,
+      title,
+      message,
+      type,
+      normalizedData,
     });
 
+    const existingInFlight = this.inFlightNotifications.get(fingerprint);
+    if (existingInFlight) {
+      return existingInFlight;
+    }
+
+    const sendPromise = this.sendWithDuplicateProtection(
+      params,
+      normalizedData,
+      fingerprint,
+    );
+    this.inFlightNotifications.set(fingerprint, sendPromise);
+
+    try {
+      return await sendPromise;
+    } finally {
+      this.inFlightNotifications.delete(fingerprint);
+    }
+  }
+
+  private async sendWithDuplicateProtection(
+    params: {
+      userId: string;
+      title: string;
+      message: string;
+      type: NotificationType;
+      data?: Record<string, any>;
+    },
+    normalizedData: string,
+    fingerprint: string,
+  ): Promise<Notification> {
+    const { userId, title, message, type, data } = params;
+
+    const recentlySentAt = this.recentFingerprints.get(fingerprint);
     if (
-      recentDuplicate &&
-      this.normalizeDataForCompare(recentDuplicate.data) ===
-        this.normalizeDataForCompare(data)
+      recentlySentAt &&
+      Date.now() - recentlySentAt < this.duplicateWindowMs
     ) {
+      const recentDuplicate = await this.findRecentDuplicate({
+        userId,
+        title,
+        message,
+        type,
+        normalizedData,
+      });
+
+      if (recentDuplicate) {
+        this.logger.warn(
+          `Skipped duplicate notification (fingerprint window) for user ${userId} (type=${type}, title=${title})`,
+        );
+        return recentDuplicate;
+      }
+    }
+
+    const recentDuplicate = await this.findRecentDuplicate({
+      userId,
+      title,
+      message,
+      type,
+      normalizedData,
+    });
+
+    if (recentDuplicate) {
       this.logger.warn(
         `Skipped duplicate notification for user ${userId} (type=${type}, title=${title})`,
       );
+      this.markRecentFingerprint(fingerprint);
       return recentDuplicate;
     }
 
@@ -62,10 +121,73 @@ export class NotificationsService {
     // Send push notification
     await this.sendPush(userId, title, message, data);
 
+    this.markRecentFingerprint(fingerprint);
+
     return notification;
   }
 
-  private normalizeDataForCompare(data?: unknown | null): string {
+  private buildNotificationFingerprint(input: {
+    userId: string;
+    title: string;
+    message: string;
+    type: NotificationType;
+    normalizedData: string;
+  }) {
+    return [
+      input.userId,
+      input.type,
+      input.title,
+      input.message,
+      input.normalizedData,
+    ].join('|');
+  }
+
+  private markRecentFingerprint(fingerprint: string) {
+    this.recentFingerprints.set(fingerprint, Date.now());
+
+    setTimeout(() => {
+      const storedAt = this.recentFingerprints.get(fingerprint);
+      if (!storedAt) return;
+
+      if (Date.now() - storedAt >= this.duplicateWindowMs) {
+        this.recentFingerprints.delete(fingerprint);
+      }
+    }, this.duplicateWindowMs + 100);
+  }
+
+  private async findRecentDuplicate(params: {
+    userId: string;
+    title: string;
+    message: string;
+    type: NotificationType;
+    normalizedData: string;
+  }): Promise<Notification | null> {
+    const { userId, title, message, type, normalizedData } = params;
+    const cutoff = new Date(Date.now() - this.duplicateWindowMs);
+
+    const recentDuplicate = await this.prisma.notification.findFirst({
+      where: {
+        userId,
+        type,
+        title,
+        message,
+        createdAt: { gte: cutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!recentDuplicate) {
+      return null;
+    }
+
+    if (this.normalizeDataForCompare(recentDuplicate.data) === normalizedData) {
+      return recentDuplicate;
+    }
+
+    return null;
+  }
+
+  private normalizeDataForCompare(data?: unknown): string {
     return JSON.stringify(this.sortJsonValue(data ?? null));
   }
 
@@ -102,20 +224,22 @@ export class NotificationsService {
       select: { pushToken: true },
     });
 
-    if (!user?.pushToken) {
+    const pushToken = user?.pushToken;
+
+    if (!pushToken) {
       this.logger.warn(`No push token for user ${userId}, skipping push`);
       return;
     }
 
-    if (!Expo.isExpoPushToken(user.pushToken)) {
+    if (!Expo.isExpoPushToken(pushToken)) {
       this.logger.warn(
-        `Invalid push token for user ${userId}: ${user.pushToken}`,
+        `Invalid push token for user ${userId}: ${String(pushToken)}`,
       );
       return;
     }
 
     const message: ExpoPushMessage = {
-      to: user.pushToken,
+      to: pushToken,
       sound: 'default',
       title,
       body,
@@ -123,7 +247,7 @@ export class NotificationsService {
     };
 
     this.logger.log(
-      `Sending push to ${userId} (token: ${user.pushToken}): "${title}"`,
+      `Sending push to ${userId} (token: ${pushToken}): "${title}"`,
     );
 
     try {
@@ -509,7 +633,7 @@ export class NotificationsService {
       userId: driverUserId,
       title: 'Vehicle Approved',
       message: `Your vehicle (${plateNumber}) has been verified and is now ready for booking.`,
-      type: 'VEHICLE_APPROVED',
+      type: 'VEHICLE_APPROVED' as NotificationType,
       data: { screen: 'my-vehicles' },
     });
   }
@@ -525,7 +649,7 @@ export class NotificationsService {
       message: reason
         ? `Your vehicle (${plateNumber}) registration was rejected. Reason: ${reason}`
         : `Your vehicle (${plateNumber}) registration was rejected. Please re-upload a valid Certificate of Registration.`,
-      type: 'VEHICLE_REJECTED',
+      type: 'VEHICLE_REJECTED' as NotificationType,
       data: { screen: 'my-vehicles' },
     });
   }
