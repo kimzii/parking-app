@@ -269,6 +269,43 @@ function ArrivalCountdown({ deadline }: { deadline: string }) {
   );
 }
 
+function isListingOpenNow(listing: { is24Hours: boolean; openTime: string | null; closeTime: string | null }): boolean {
+  if (listing.is24Hours) return true;
+  if (!listing.openTime || !listing.closeTime) return true;
+
+  const parseToMinutes = (time: string): number | null => {
+    const [hourRaw, minuteRaw] = time.split(":");
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    return hour * 60 + minute;
+  };
+
+  const openMinutes = parseToMinutes(listing.openTime);
+  const closeMinutes = parseToMinutes(listing.closeTime);
+  if (openMinutes === null || closeMinutes === null) return true;
+  if (openMinutes === closeMinutes) return true;
+
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+
+  const hour = Number(parts.find((p) => p.type === "hour")?.value);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return true;
+  const currentMinutes = hour * 60 + minute;
+
+  if (closeMinutes > openMinutes) {
+    return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+  }
+  // Overnight range (e.g. 10 PM – 6 AM)
+  return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+}
+
 export default function PendingListings() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -315,6 +352,7 @@ export default function PendingListings() {
   const [listingCancelTarget, setListingCancelTarget] = useState<ListingSession | null>(null);
   const [listingCancelLoading, setListingCancelLoading] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
+  const [slotFilter, setSlotFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "DISABLED">("ALL");
 
   const toCoordinate = useCallback((value: number | string | null | undefined) => {
     if (value === null || value === undefined || value === "") {
@@ -751,6 +789,12 @@ export default function PendingListings() {
               <StatusIcon className="w-3 h-3" />
               {selectedListing.status}
             </span>
+            {selectedListing.status === "APPROVED" && (
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isListingOpenNow(selectedListing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(selectedListing) ? "bg-green-500 animate-pulse" : "bg-red-400"}`} />
+                {isListingOpenNow(selectedListing) ? "Open Now" : "Closed"}
+              </span>
+            )}
             <button
               onClick={() => setSelectedListing(null)}
               className="text-sm text-gray-600 hover:text-gray-900"
@@ -951,65 +995,112 @@ export default function PendingListings() {
                   <div className="py-6 text-center text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                     No parking spaces configured.
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {(selectedListing.isMultiLevel
-                      ? [...new Set(selectedListing.parkingSpaces.map((s) => s.levelNumber))].sort((a, b) => (a ?? 0) - (b ?? 0))
-                      : [null]
-                    ).map((level) => {
-                      const spaces = selectedListing.parkingSpaces!.filter((s) =>
-                        selectedListing.isMultiLevel ? s.levelNumber === level : true
-                      );
-                      return (
-                        <div key={level ?? "flat"}>
-                          {selectedListing.isMultiLevel && (
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 mt-3 first:mt-0">
-                              Level {level}
-                            </p>
-                          )}
-                          <div className="grid grid-cols-2 gap-2">
-                            {spaces.map((space) => {
-                              const effectiveStatus = !space.isActive ? "DISABLED" : (space.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
-                              return (
-                              <button
-                                key={space.id}
-                                onClick={() => setSelectedSpace(space)}
-                                className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
-                                  effectiveStatus === "DISABLED"
-                                    ? "bg-gray-50 border-gray-200 opacity-60"
-                                    : effectiveStatus === "AVAILABLE"
-                                    ? "bg-green-50 border-green-200"
-                                    : effectiveStatus === "OCCUPIED"
-                                    ? "bg-blue-50 border-blue-200"
-                                    : "bg-gray-50 border-gray-300"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-semibold text-gray-900">
-                                    {space.name || `Slot ${space.slotNumber}`}
-                                  </span>
-                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                    effectiveStatus === "DISABLED"
-                                      ? "bg-gray-200 text-gray-500"
-                                      : effectiveStatus === "AVAILABLE"
-                                      ? "bg-green-100 text-green-700"
-                                      : effectiveStatus === "OCCUPIED"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-gray-200 text-gray-600"
-                                  }`}>
-                                    {effectiveStatus === "DISABLED" ? "Disabled" : effectiveStatus.charAt(0) + effectiveStatus.slice(1).toLowerCase()}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-400">#{space.slotNumber}</p>
-                              </button>
-                              );
-                            })}
+                ) : (() => {
+                  const allSpaces = selectedListing.parkingSpaces!;
+                  const counts = {
+                    ALL: allSpaces.length,
+                    AVAILABLE: allSpaces.filter((s) => s.isActive && (s.reservations?.length ?? 0) === 0).length,
+                    OCCUPIED: allSpaces.filter((s) => s.isActive && (s.reservations?.length ?? 0) > 0).length,
+                    DISABLED: allSpaces.filter((s) => !s.isActive).length,
+                  };
+                  const filteredSpaces = slotFilter === "ALL" ? allSpaces : allSpaces.filter((s) => {
+                    const status = !s.isActive ? "DISABLED" : (s.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
+                    return status === slotFilter;
+                  });
+                  const levels = selectedListing.isMultiLevel
+                    ? [...new Set(filteredSpaces.map((s) => s.levelNumber))].sort((a, b) => (a ?? 0) - (b ?? 0))
+                    : [null];
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Filter tabs */}
+                      <div className="flex gap-1.5 flex-wrap">
+                        {(["ALL", "AVAILABLE", "OCCUPIED", "DISABLED"] as const).map((f) => (
+                          <button
+                            key={f}
+                            onClick={() => setSlotFilter(f)}
+                            className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+                              slotFilter === f
+                                ? f === "ALL"
+                                  ? "bg-gray-800 text-white border-gray-800"
+                                  : f === "AVAILABLE"
+                                  ? "bg-green-600 text-white border-green-600"
+                                  : f === "OCCUPIED"
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-gray-500 text-white border-gray-500"
+                                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+                            }`}
+                          >
+                            {f === "ALL" ? "All" : f.charAt(0) + f.slice(1).toLowerCase()} ({counts[f]})
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Scrollable slot grid */}
+                      <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
+                        {filteredSpaces.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                            No {slotFilter.charAt(0) + slotFilter.slice(1).toLowerCase()} slots.
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        ) : (
+                          levels.map((level) => {
+                            const spaces = selectedListing.isMultiLevel
+                              ? filteredSpaces.filter((s) => s.levelNumber === level)
+                              : filteredSpaces;
+                            if (spaces.length === 0) return null;
+                            return (
+                              <div key={level ?? "flat"}>
+                                {selectedListing.isMultiLevel && (
+                                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 mt-3 first:mt-0">
+                                    Level {level}
+                                  </p>
+                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  {spaces.map((space) => {
+                                    const effectiveStatus = !space.isActive ? "DISABLED" : (space.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
+                                    return (
+                                      <button
+                                        key={space.id}
+                                        onClick={() => setSelectedSpace(space)}
+                                        className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
+                                          effectiveStatus === "DISABLED"
+                                            ? "bg-gray-50 border-gray-200 opacity-60"
+                                            : effectiveStatus === "AVAILABLE"
+                                            ? "bg-green-50 border-green-200"
+                                            : effectiveStatus === "OCCUPIED"
+                                            ? "bg-blue-50 border-blue-200"
+                                            : "bg-gray-50 border-gray-300"
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="font-semibold text-gray-900">
+                                            {space.name || `Slot ${space.slotNumber}`}
+                                          </span>
+                                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            effectiveStatus === "DISABLED"
+                                              ? "bg-gray-200 text-gray-500"
+                                              : effectiveStatus === "AVAILABLE"
+                                              ? "bg-green-100 text-green-700"
+                                              : effectiveStatus === "OCCUPIED"
+                                              ? "bg-blue-100 text-blue-700"
+                                              : "bg-gray-200 text-gray-600"
+                                          }`}>
+                                            {effectiveStatus === "DISABLED" ? "Disabled" : effectiveStatus.charAt(0) + effectiveStatus.slice(1).toLowerCase()}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-gray-400">#{space.slotNumber}</p>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </div>
@@ -1928,7 +2019,7 @@ export default function PendingListings() {
               return (
                 <div
                   key={listing.id}
-                  onClick={() => setSelectedListing(listing)}
+                  onClick={() => { setSelectedListing(listing); setSlotFilter("ALL"); }}
                   className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
                   {/* Host Profile Picture */}
@@ -1954,7 +2045,13 @@ export default function PendingListings() {
                     <h2 className="text-lg font-bold text-gray-900 truncate">
                       {listing.host.user.firstName} {listing.host.user.lastName}
                     </h2>
-                    <p className="text-sm font-medium text-gray-700 truncate">{listing.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-700 truncate">{listing.title}</p>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`} />
+                        {isListingOpenNow(listing) ? "Open" : "Closed"}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-500 truncate max-w-[500px]">
                       {listing.address}
                     </p>
@@ -2075,7 +2172,7 @@ export default function PendingListings() {
               return (
                 <div
                   key={listing.id}
-                  onClick={() => setSelectedListing(listing)}
+                  onClick={() => { setSelectedListing(listing); setSlotFilter("ALL"); }}
                   className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
                   {/* Host Profile Picture */}
@@ -2117,6 +2214,12 @@ export default function PendingListings() {
                         )}
                         {listing.status}
                       </span>
+                      {listing.status === "APPROVED" && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`} />
+                          {isListingOpenNow(listing) ? "Open" : "Closed"}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm font-medium text-gray-700 truncate">{listing.title}</p>
                     <p className="text-sm text-gray-500 truncate max-w-[500px]">
