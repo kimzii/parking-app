@@ -61,7 +61,11 @@ export default function AddLocationScreen() {
   const [closeHour, setCloseHour] = useState("10");
   const [closeMinute, setCloseMinute] = useState("00");
   const [closePeriod, setClosePeriod] = useState<"AM" | "PM">("PM");
-  const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>(["CAR", "MOTORCYCLE"]);
+  const [allowParkAnywhere, setAllowParkAnywhere] = useState(false);
+  const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>([
+    "CAR",
+    "MOTORCYCLE",
+  ]);
   const [mapExpanded, setMapExpanded] = useState(false);
 
   const toggleVehicleType = (type: string) => {
@@ -240,7 +244,9 @@ export default function AddLocationScreen() {
     });
 
     if (!result.canceled && result.assets) {
-      setImages((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 5));
+      setImages((prev) =>
+        [...prev, ...result.assets.map((a) => a.uri)].slice(0, 5),
+      );
     }
   };
 
@@ -350,11 +356,10 @@ export default function AddLocationScreen() {
       // Upload proof of residence to S3
       let proofOfResidenceUrl: string | undefined;
       if (proofOfResidence) {
-        proofOfResidenceUrl =
-          await hostService.uploadProofOfResidence(
-            proofOfResidence,
-            title.trim(),
-          );
+        proofOfResidenceUrl = await hostService.uploadProofOfResidence(
+          proofOfResidence,
+          title.trim(),
+        );
       }
 
       const parsedLevelSlots = isMultiLevel
@@ -384,17 +389,25 @@ export default function AddLocationScreen() {
         is24Hours: is24Hours || undefined,
         openTime: is24Hours ? undefined : openTime,
         closeTime: is24Hours ? undefined : closeTime,
+        allowParkAnywhere: allowParkAnywhere || undefined,
         acceptedVehicles,
       });
       Alert.alert("Success", "Parking location created successfully!", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      console.log("CREATE LOCATION ERROR:", JSON.stringify({
-        status: err?.response?.status,
-        data: err?.response?.data,
-        message: err?.message,
-      }, null, 2));
+      console.log(
+        "CREATE LOCATION ERROR:",
+        JSON.stringify(
+          {
+            status: err?.response?.status,
+            data: err?.response?.data,
+            message: err?.message,
+          },
+          null,
+          2,
+        ),
+      );
       const rawMsg = err?.response?.data?.message;
       const msg = Array.isArray(rawMsg)
         ? rawMsg.join(", ")
@@ -501,7 +514,11 @@ export default function AddLocationScreen() {
                 />
                 {searchQuery ? (
                   <TouchableOpacity onPress={handleSearch}>
-                    <MaterialIcons name="arrow-forward" size={20} color="#D4501E" />
+                    <MaterialIcons
+                      name="arrow-forward"
+                      size={20}
+                      color="#D4501E"
+                    />
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -531,7 +548,11 @@ export default function AddLocationScreen() {
                 onPress={() => setMapExpanded(false)}
                 activeOpacity={0.8}
               >
-                <MaterialIcons name="fullscreen-exit" size={22} color="#D4501E" />
+                <MaterialIcons
+                  name="fullscreen-exit"
+                  size={22}
+                  color="#D4501E"
+                />
                 <Text style={styles.collapseBtnText}>Done</Text>
               </TouchableOpacity>
             </SafeAreaView>
@@ -613,7 +634,8 @@ export default function AddLocationScreen() {
               <TouchableOpacity
                 style={[
                   styles.vehicleTypeBtn,
-                  acceptedVehicles.includes("CAR") && styles.vehicleTypeBtnActive,
+                  acceptedVehicles.includes("CAR") &&
+                    styles.vehicleTypeBtnActive,
                 ]}
                 onPress={() => toggleVehicleType("CAR")}
                 activeOpacity={0.7}
@@ -626,7 +648,8 @@ export default function AddLocationScreen() {
                 <Text
                   style={[
                     styles.vehicleTypeText,
-                    acceptedVehicles.includes("CAR") && styles.vehicleTypeTextActive,
+                    acceptedVehicles.includes("CAR") &&
+                      styles.vehicleTypeTextActive,
                   ]}
                 >
                   Cars
@@ -635,7 +658,8 @@ export default function AddLocationScreen() {
               <TouchableOpacity
                 style={[
                   styles.vehicleTypeBtn,
-                  acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeBtnActive,
+                  acceptedVehicles.includes("MOTORCYCLE") &&
+                    styles.vehicleTypeBtnActive,
                 ]}
                 onPress={() => toggleVehicleType("MOTORCYCLE")}
                 activeOpacity={0.7}
@@ -643,12 +667,15 @@ export default function AddLocationScreen() {
                 <MaterialIcons
                   name="two-wheeler"
                   size={24}
-                  color={acceptedVehicles.includes("MOTORCYCLE") ? "#fff" : "#D4501E"}
+                  color={
+                    acceptedVehicles.includes("MOTORCYCLE") ? "#fff" : "#D4501E"
+                  }
                 />
                 <Text
                   style={[
                     styles.vehicleTypeText,
-                    acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeTextActive,
+                    acceptedVehicles.includes("MOTORCYCLE") &&
+                      styles.vehicleTypeTextActive,
                   ]}
                 >
                   Motorcycles
@@ -676,6 +703,24 @@ export default function AddLocationScreen() {
                 onValueChange={setIsMultiLevel}
                 trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
                 thumbColor={isMultiLevel ? "#D4501E" : "#fff"}
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchInfo}>
+                <MaterialIcons name="local-parking" size={20} color="#D4501E" />
+                <View>
+                  <Text style={styles.switchLabel}>Allow Park Anywhere</Text>
+                  <Text style={styles.switchHint}>
+                    Drivers can book without choosing a specific slot
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={allowParkAnywhere}
+                onValueChange={setAllowParkAnywhere}
+                trackColor={{ false: "#E0E0E0", true: "#A5D6D0" }}
+                thumbColor={allowParkAnywhere ? "#D4501E" : "#fff"}
               />
             </View>
 
@@ -877,7 +922,9 @@ export default function AddLocationScreen() {
                       placeholder="8"
                       placeholderTextColor="#C7C7CC"
                       value={openHour}
-                      onChangeText={(t) => setOpenHour(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      onChangeText={(t) =>
+                        setOpenHour(t.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       keyboardType="number-pad"
                       maxLength={2}
                     />
@@ -887,13 +934,17 @@ export default function AddLocationScreen() {
                       placeholder="00"
                       placeholderTextColor="#C7C7CC"
                       value={openMinute}
-                      onChangeText={(t) => setOpenMinute(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      onChangeText={(t) =>
+                        setOpenMinute(t.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       keyboardType="number-pad"
                       maxLength={2}
                     />
                     <TouchableOpacity
                       style={styles.periodToggle}
-                      onPress={() => setOpenPeriod(openPeriod === "AM" ? "PM" : "AM")}
+                      onPress={() =>
+                        setOpenPeriod(openPeriod === "AM" ? "PM" : "AM")
+                      }
                     >
                       <Text style={styles.periodText}>{openPeriod}</Text>
                     </TouchableOpacity>
@@ -919,7 +970,9 @@ export default function AddLocationScreen() {
                       placeholder="10"
                       placeholderTextColor="#C7C7CC"
                       value={closeHour}
-                      onChangeText={(t) => setCloseHour(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      onChangeText={(t) =>
+                        setCloseHour(t.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       keyboardType="number-pad"
                       maxLength={2}
                     />
@@ -929,13 +982,17 @@ export default function AddLocationScreen() {
                       placeholder="00"
                       placeholderTextColor="#C7C7CC"
                       value={closeMinute}
-                      onChangeText={(t) => setCloseMinute(t.replace(/[^0-9]/g, "").slice(0, 2))}
+                      onChangeText={(t) =>
+                        setCloseMinute(t.replace(/[^0-9]/g, "").slice(0, 2))
+                      }
                       keyboardType="number-pad"
                       maxLength={2}
                     />
                     <TouchableOpacity
                       style={styles.periodToggle}
-                      onPress={() => setClosePeriod(closePeriod === "AM" ? "PM" : "AM")}
+                      onPress={() =>
+                        setClosePeriod(closePeriod === "AM" ? "PM" : "AM")
+                      }
                     >
                       <Text style={styles.periodText}>{closePeriod}</Text>
                     </TouchableOpacity>

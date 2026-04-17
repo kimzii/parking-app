@@ -471,9 +471,61 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    // Get parking space and location
+    if (!dto.parkingSpaceId && !dto.parkingLocationId) {
+      throw new BadRequestException(
+        'Please select a parking slot or location before booking.',
+      );
+    }
+
+    let reservedSpaceId = dto.parkingSpaceId;
+
+    // Park-anywhere mode: resolve to a currently available slot by location
+    if (!reservedSpaceId && dto.parkingLocationId) {
+      const requestedLocationId = String(dto.parkingLocationId);
+
+      const parkingLocation = await this.prisma.parkingLocation.findUnique({
+        where: { id: requestedLocationId },
+      });
+
+      if (!parkingLocation || parkingLocation.status !== 'APPROVED') {
+        throw new NotFoundException('Parking location not found');
+      }
+
+      const allowParkAnywhere = Boolean(
+        (parkingLocation as { allowParkAnywhere?: boolean }).allowParkAnywhere,
+      );
+
+      if (!allowParkAnywhere) {
+        throw new BadRequestException(
+          'This location requires selecting a specific slot before booking.',
+        );
+      }
+
+      const nextAvailableSpace = await this.prisma.parkingSpace.findFirst({
+        where: {
+          parkingLocationId: parkingLocation.id,
+          status: 'AVAILABLE',
+        },
+        orderBy: [{ levelNumber: 'asc' }, { slotNumber: 'asc' }],
+        select: { id: true },
+      });
+
+      if (!nextAvailableSpace) {
+        throw new BadRequestException(
+          'No available parking slots at this location.',
+        );
+      }
+
+      reservedSpaceId = nextAvailableSpace.id;
+    }
+
+    if (!reservedSpaceId) {
+      throw new BadRequestException('Parking space not found');
+    }
+
+    // Get resolved parking space and location
     const parkingSpace = await this.prisma.parkingSpace.findUnique({
-      where: { id: dto.parkingSpaceId },
+      where: { id: reservedSpaceId },
       include: {
         parkingLocation: {
           include: {
@@ -607,17 +659,27 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Mark parking space as occupied (reserved)
-      await tx.parkingSpace.update({
-        where: { id: dto.parkingSpaceId },
+      const claimed = await tx.parkingSpace.updateMany({
+        where: {
+          id: reservedSpaceId,
+          status: 'AVAILABLE',
+        },
         data: { status: 'OCCUPIED' },
       });
-      await this.syncLocationAvailableSlotsBySpaceId(tx, dto.parkingSpaceId);
+
+      if (claimed.count !== 1) {
+        throw new BadRequestException(
+          'Selected parking slot is no longer available. Please try again.',
+        );
+      }
+
+      await this.syncLocationAvailableSlotsBySpaceId(tx, reservedSpaceId);
 
       // Create reservation
       const reservation = await tx.reservation.create({
         data: {
           driverId: driver.id,
-          parkingSpaceId: dto.parkingSpaceId,
+          parkingSpaceId: reservedSpaceId,
           vehicleId: selectedVehicle.id,
           status: 'PENDING',
           qrCode,
@@ -644,7 +706,7 @@ export class ReservationsService implements OnModuleInit, OnModuleDestroy {
     })) as CreatedReservation;
 
     // Push real-time updates after transaction commits
-    void this.emitSlotUpdate(dto.parkingSpaceId);
+    void this.emitSlotUpdate(reservedSpaceId);
     void this.emitBalanceUpdate(userId);
 
     const space = result.parkingSpace;

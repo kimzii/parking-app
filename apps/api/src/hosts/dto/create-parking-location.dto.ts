@@ -160,6 +160,15 @@ export class CreateParkingLocationDto {
   is24Hours?: boolean;
 
   @ApiPropertyOptional({
+    example: false,
+    description:
+      'If true, drivers can book this location without selecting a specific slot.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowParkAnywhere?: boolean;
+
+  @ApiPropertyOptional({
     example: ['CAR', 'MOTORCYCLE'],
     description:
       'Vehicle types accepted at this location. Defaults to both CAR and MOTORCYCLE.',

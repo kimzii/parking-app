@@ -62,6 +62,7 @@ interface SpotDetail {
   openTime?: string;
   closeTime?: string;
   is24Hours?: boolean;
+  allowParkAnywhere?: boolean;
   acceptedVehicles?: string[];
   parkingSpaces: ParkingSpace[];
 }
@@ -301,7 +302,23 @@ export default function BookSpotScreen() {
   };
 
   const handleBooking = async () => {
-    if (!selectedSpace || !spot) return;
+    if (!spot) return;
+
+    const requiresSlotSelection = !spot.allowParkAnywhere;
+    if (requiresSlotSelection && !selectedSpace) return;
+
+    if (spot.allowParkAnywhere) {
+      const hasAvailableSlot = spot.parkingSpaces.some(
+        (space) => space.status === "AVAILABLE",
+      );
+      if (!hasAvailableSlot) {
+        Alert.alert(
+          "No Available Slots",
+          "This location currently has no available slots.",
+        );
+        return;
+      }
+    }
 
     const hasVehicle = await ensureVehicleRegistered();
     if (!hasVehicle) {
@@ -324,9 +341,13 @@ export default function BookSpotScreen() {
       ? `\n\n⚠️ Warning: Your balance only covers 1 hour. Extra time will be charged at exit. If your wallet is empty, the booking will be marked as unpaid.`
       : "";
 
+    const bookedSlotLabel = spot.allowParkAnywhere
+      ? "Any available slot"
+      : selectedSpace?.name || `Slot ${selectedSpace?.slotNumber}`;
+
     Alert.alert(
       "Confirm Booking",
-      `Book ${spot.title}\nSlot: ${selectedSpace.name || `Slot ${selectedSpace.slotNumber}`}\n\nFirst hour fee: ₱${firstHourFee.toFixed(2)}\nRate: ₱${firstHourFee.toFixed(2)}/hr (pay-as-you-go)\n\nHost has 5 minutes to approve your request.\nOnce approved, you have 60 minutes to arrive.\nThis amount will be deducted from your wallet.${lowBalanceWarning}`,
+      `Book ${spot.title}\nSlot: ${bookedSlotLabel}\n\nFirst hour fee: ₱${firstHourFee.toFixed(2)}\nRate: ₱${firstHourFee.toFixed(2)}/hr (pay-as-you-go)\n\nHost has 5 minutes to approve your request.\nOnce approved, you have 60 minutes to arrive.\nThis amount will be deducted from your wallet.${lowBalanceWarning}`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -334,9 +355,18 @@ export default function BookSpotScreen() {
           onPress: async () => {
             setBooking(true);
             try {
+              const reservationPayload = spot.allowParkAnywhere
+                ? {
+                    parkingLocationId: spot.id,
+                    ...(selectedVehicle && { vehicleId: selectedVehicle.id }),
+                  }
+                : {
+                    parkingSpaceId: selectedSpace!.id,
+                    ...(selectedVehicle && { vehicleId: selectedVehicle.id }),
+                  };
+
               const result = await reservationsService.createReservation({
-                parkingSpaceId: selectedSpace.id,
-                ...(selectedVehicle && { vehicleId: selectedVehicle.id }),
+                ...reservationPayload,
               });
 
               Alert.alert("Booking Requested", result.message, [
@@ -411,6 +441,8 @@ export default function BookSpotScreen() {
   const availableSpaces = spot.parkingSpaces.filter(
     (s) => s.status === "AVAILABLE",
   );
+  const canProceedToCheckout =
+    (spot.allowParkAnywhere && availableSpaces.length > 0) || !!selectedSpace;
   const occupiedCount = spot.parkingSpaces.filter(
     (s) => s.status === "OCCUPIED",
   ).length;
@@ -655,7 +687,11 @@ export default function BookSpotScreen() {
         {/* Select Slot */}
         <View style={styles.section}>
           <View style={styles.slotsHeader}>
-            <Text style={styles.sectionTitle}>Select a Parking Slot</Text>
+            <Text style={styles.sectionTitle}>
+              {spot.allowParkAnywhere
+                ? "Parking Availability"
+                : "Select a Parking Slot"}
+            </Text>
             <View style={styles.slotsSummaryRow}>
               <View style={styles.slotsSummaryItem}>
                 <View style={styles.slotsSummaryDotFree} />
@@ -676,6 +712,17 @@ export default function BookSpotScreen() {
               <MaterialIcons name="event-busy" size={32} color="#A09A94" />
               <Text style={styles.noSlotsText}>
                 No available slots at this location
+              </Text>
+            </View>
+          ) : spot.allowParkAnywhere ? (
+            <View style={styles.parkAnywhereCard}>
+              <MaterialIcons name="local-parking" size={28} color="#D4501E" />
+              <Text style={styles.parkAnywhereTitle}>
+                Park Anywhere Enabled
+              </Text>
+              <Text style={styles.parkAnywhereText}>
+                You can park in any currently available slot after host
+                approval.
               </Text>
             </View>
           ) : hasLevels ? (
@@ -770,14 +817,17 @@ export default function BookSpotScreen() {
         </View>
 
         {/* Booking Summary */}
-        {selectedSpace && (
+        {canProceedToCheckout && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Booking Summary</Text>
             <View style={styles.summaryCard}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Slot</Text>
                 <Text style={styles.summaryValue}>
-                  {selectedSpace.name || `Slot ${selectedSpace.slotNumber}`}
+                  {spot.allowParkAnywhere
+                    ? "Any available slot"
+                    : selectedSpace?.name ||
+                      `Slot ${selectedSpace?.slotNumber}`}
                 </Text>
               </View>
               <View style={styles.summaryRow}>
@@ -810,7 +860,7 @@ export default function BookSpotScreen() {
         )}
 
         {/* How it Works */}
-        {selectedSpace && (
+        {canProceedToCheckout && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>How it Works</Text>
             <View style={styles.stepsCard}>
@@ -847,7 +897,7 @@ export default function BookSpotScreen() {
       </ScrollView>
 
       {/* Book Button */}
-      {selectedSpace && (
+      {canProceedToCheckout && (
         <View style={styles.footer}>
           <TouchableOpacity
             style={[
@@ -995,6 +1045,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   noSlotsText: { fontSize: 14, color: "#A09A94", textAlign: "center" },
+  parkAnywhereCard: {
+    backgroundColor: "#FFF8F3",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFD8C2",
+    padding: 16,
+    alignItems: "center",
+    gap: 6,
+  },
+  parkAnywhereTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#D4501E",
+  },
+  parkAnywhereText: {
+    fontSize: 13,
+    color: "#7A756F",
+    textAlign: "center",
+    lineHeight: 18,
+  },
 
   // Slots Grid
   slotsGrid: {

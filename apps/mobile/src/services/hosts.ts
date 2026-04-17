@@ -56,7 +56,11 @@ export const hostService = {
       console.log("[uploadImages] success, urls:", res.data.urls);
       return res.data.urls;
     } catch (e: any) {
-      console.log("[uploadImages] FAILED:", e?.response?.status, JSON.stringify(e?.response?.data));
+      console.log(
+        "[uploadImages] FAILED:",
+        e?.response?.status,
+        JSON.stringify(e?.response?.data),
+      );
       throw e;
     }
   },
@@ -92,7 +96,11 @@ export const hostService = {
       console.log("[uploadProofOfResidence] success, url:", res.data.url);
       return res.data.url;
     } catch (e: any) {
-      console.log("[uploadProofOfResidence] FAILED:", e?.response?.status, JSON.stringify(e?.response?.data));
+      console.log(
+        "[uploadProofOfResidence] FAILED:",
+        e?.response?.status,
+        JSON.stringify(e?.response?.data),
+      );
       throw e;
     }
   },
@@ -136,7 +144,6 @@ export const hostService = {
     return res.data;
   },
   createLocation: async (data: {
-    
     title: string;
     address: string;
     latitude: number;
@@ -153,6 +160,7 @@ export const hostService = {
     openTime?: string;
     closeTime?: string;
     is24Hours?: boolean;
+    allowParkAnywhere?: boolean;
     acceptedVehicles?: string[];
   }) => {
     const res = await api.post("/hosts/locations", data);
@@ -171,6 +179,7 @@ export const hostService = {
       openTime?: string;
       closeTime?: string;
       is24Hours?: boolean;
+      allowParkAnywhere?: boolean;
       acceptedVehicles?: string[];
     },
   ) => {

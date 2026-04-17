@@ -1,8 +1,13 @@
 import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateReservationDto {
+  @IsOptional()
   @IsUUID()
-  parkingSpaceId: string;
+  parkingSpaceId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  parkingLocationId?: string;
 
   @IsOptional()
   @IsUUID()

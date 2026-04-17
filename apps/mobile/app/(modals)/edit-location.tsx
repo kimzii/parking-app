@@ -13,7 +13,12 @@ import {
   Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, router, useLocalSearchParams, useFocusEffect } from "expo-router";
+import {
+  Stack,
+  router,
+  useLocalSearchParams,
+  useFocusEffect,
+} from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import MapView, { Marker, Region, PROVIDER_GOOGLE } from "react-native-maps";
 import * as ImagePicker from "expo-image-picker";
@@ -34,7 +39,10 @@ export default function EditLocationScreen() {
   const [description, setDescription] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
   const [address, setAddress] = useState("");
-  const [marker, setMarker] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [marker, setMarker] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [region, setRegion] = useState<Region | null>(null);
 
   // Operating hours
@@ -45,14 +53,20 @@ export default function EditLocationScreen() {
   const [closeHour, setCloseHour] = useState("10");
   const [closeMinute, setCloseMinute] = useState("00");
   const [closePeriod, setClosePeriod] = useState<"AM" | "PM">("PM");
+  const [allowParkAnywhere, setAllowParkAnywhere] = useState(false);
 
   // Images
-  const [existingImages, setExistingImages] = useState<{ id: string; imageUrl: string; isPrimary: boolean }[]>([]);
+  const [existingImages, setExistingImages] = useState<
+    { id: string; imageUrl: string; isPrimary: boolean }[]
+  >([]);
   const [newImages, setNewImages] = useState<string[]>([]);
   const [imagesChanged, setImagesChanged] = useState(false);
 
   // Accepted vehicles
-  const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>(["CAR", "MOTORCYCLE"]);
+  const [acceptedVehicles, setAcceptedVehicles] = useState<string[]>([
+    "CAR",
+    "MOTORCYCLE",
+  ]);
 
   const toggleVehicleType = (type: string) => {
     setAcceptedVehicles((prev) => {
@@ -105,6 +119,7 @@ export default function EditLocationScreen() {
       setRegion(newRegion);
 
       setIs24Hours(data.is24Hours || false);
+      setAllowParkAnywhere(!!data.allowParkAnywhere);
       if (data.openTime) {
         const open = from24Hour(data.openTime);
         setOpenHour(open.hour);
@@ -160,7 +175,10 @@ export default function EditLocationScreen() {
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow access to your photo library.");
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -170,7 +188,12 @@ export default function EditLocationScreen() {
       quality: 0.7,
     });
     if (!result.canceled && result.assets) {
-      setNewImages((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 5 - existingImages.length));
+      setNewImages((prev) =>
+        [...prev, ...result.assets.map((a) => a.uri)].slice(
+          0,
+          5 - existingImages.length,
+        ),
+      );
       setImagesChanged(true);
     }
   };
@@ -253,6 +276,7 @@ export default function EditLocationScreen() {
           is24Hours: is24Hours || undefined,
           openTime: is24Hours ? undefined : openTime,
           closeTime: is24Hours ? undefined : closeTime,
+          allowParkAnywhere: allowParkAnywhere || undefined,
           ...(imageUrls ? { imageUrls } : {}),
           acceptedVehicles,
         });
@@ -293,7 +317,11 @@ export default function EditLocationScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
         <Stack.Screen options={{ title: "Edit Location" }} />
-        <ActivityIndicator size="large" color="#D4501E" style={{ marginTop: 60 }} />
+        <ActivityIndicator
+          size="large"
+          color="#D4501E"
+          style={{ marginTop: 60 }}
+        />
       </SafeAreaView>
     );
   }
@@ -317,7 +345,8 @@ export default function EditLocationScreen() {
             <View style={styles.warningBanner}>
               <MaterialIcons name="info" size={20} color="#D4501E" />
               <Text style={styles.warningText}>
-                Editing this location will require admin re-approval before it becomes visible to drivers again.
+                Editing this location will require admin re-approval before it
+                becomes visible to drivers again.
               </Text>
             </View>
           )}
@@ -387,18 +416,23 @@ export default function EditLocationScreen() {
                 </Text>
               </View>
             ) : null}
-            <Text style={styles.hintText}>Tap the map to update the pin location</Text>
+            <Text style={styles.hintText}>
+              Tap the map to update the pin location
+            </Text>
           </View>
 
           {/* Accepted Vehicle Types */}
           <Text style={styles.sectionTitle}>Accepted Vehicles</Text>
           <View style={styles.card}>
-            <Text style={styles.hintText}>Select which vehicle types can park here</Text>
+            <Text style={styles.hintText}>
+              Select which vehicle types can park here
+            </Text>
             <View style={styles.vehicleTypeRow}>
               <TouchableOpacity
                 style={[
                   styles.vehicleTypeBtn,
-                  acceptedVehicles.includes("CAR") && styles.vehicleTypeBtnActive,
+                  acceptedVehicles.includes("CAR") &&
+                    styles.vehicleTypeBtnActive,
                 ]}
                 onPress={() => toggleVehicleType("CAR")}
                 activeOpacity={0.7}
@@ -411,7 +445,8 @@ export default function EditLocationScreen() {
                 <Text
                   style={[
                     styles.vehicleTypeText,
-                    acceptedVehicles.includes("CAR") && styles.vehicleTypeTextActive,
+                    acceptedVehicles.includes("CAR") &&
+                      styles.vehicleTypeTextActive,
                   ]}
                 >
                   Cars
@@ -420,7 +455,8 @@ export default function EditLocationScreen() {
               <TouchableOpacity
                 style={[
                   styles.vehicleTypeBtn,
-                  acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeBtnActive,
+                  acceptedVehicles.includes("MOTORCYCLE") &&
+                    styles.vehicleTypeBtnActive,
                 ]}
                 onPress={() => toggleVehicleType("MOTORCYCLE")}
                 activeOpacity={0.7}
@@ -428,18 +464,37 @@ export default function EditLocationScreen() {
                 <MaterialIcons
                   name="two-wheeler"
                   size={24}
-                  color={acceptedVehicles.includes("MOTORCYCLE") ? "#fff" : "#D4501E"}
+                  color={
+                    acceptedVehicles.includes("MOTORCYCLE") ? "#fff" : "#D4501E"
+                  }
                 />
                 <Text
                   style={[
                     styles.vehicleTypeText,
-                    acceptedVehicles.includes("MOTORCYCLE") && styles.vehicleTypeTextActive,
+                    acceptedVehicles.includes("MOTORCYCLE") &&
+                      styles.vehicleTypeTextActive,
                   ]}
                 >
                   Motorcycles
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Parking Mode</Text>
+          <View style={styles.card}>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>Allow Park Anywhere</Text>
+              <Switch
+                value={allowParkAnywhere}
+                onValueChange={setAllowParkAnywhere}
+                trackColor={{ false: "#E0E0E0", true: "#A8D5D1" }}
+                thumbColor={allowParkAnywhere ? "#D4501E" : "#fff"}
+              />
+            </View>
+            <Text style={styles.hintText}>
+              Drivers can book this location without selecting a specific slot.
+            </Text>
           </View>
 
           {/* Operating Hours */}
@@ -476,16 +531,36 @@ export default function EditLocationScreen() {
                       onChangeText={setOpenMinute}
                     />
                     <TouchableOpacity
-                      style={[styles.periodBtn, openPeriod === "AM" && styles.periodBtnActive]}
+                      style={[
+                        styles.periodBtn,
+                        openPeriod === "AM" && styles.periodBtnActive,
+                      ]}
                       onPress={() => setOpenPeriod("AM")}
                     >
-                      <Text style={[styles.periodText, openPeriod === "AM" && styles.periodTextActive]}>AM</Text>
+                      <Text
+                        style={[
+                          styles.periodText,
+                          openPeriod === "AM" && styles.periodTextActive,
+                        ]}
+                      >
+                        AM
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.periodBtn, openPeriod === "PM" && styles.periodBtnActive]}
+                      style={[
+                        styles.periodBtn,
+                        openPeriod === "PM" && styles.periodBtnActive,
+                      ]}
                       onPress={() => setOpenPeriod("PM")}
                     >
-                      <Text style={[styles.periodText, openPeriod === "PM" && styles.periodTextActive]}>PM</Text>
+                      <Text
+                        style={[
+                          styles.periodText,
+                          openPeriod === "PM" && styles.periodTextActive,
+                        ]}
+                      >
+                        PM
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -509,16 +584,36 @@ export default function EditLocationScreen() {
                       onChangeText={setCloseMinute}
                     />
                     <TouchableOpacity
-                      style={[styles.periodBtn, closePeriod === "AM" && styles.periodBtnActive]}
+                      style={[
+                        styles.periodBtn,
+                        closePeriod === "AM" && styles.periodBtnActive,
+                      ]}
                       onPress={() => setClosePeriod("AM")}
                     >
-                      <Text style={[styles.periodText, closePeriod === "AM" && styles.periodTextActive]}>AM</Text>
+                      <Text
+                        style={[
+                          styles.periodText,
+                          closePeriod === "AM" && styles.periodTextActive,
+                        ]}
+                      >
+                        AM
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.periodBtn, closePeriod === "PM" && styles.periodBtnActive]}
+                      style={[
+                        styles.periodBtn,
+                        closePeriod === "PM" && styles.periodBtnActive,
+                      ]}
                       onPress={() => setClosePeriod("PM")}
                     >
-                      <Text style={[styles.periodText, closePeriod === "PM" && styles.periodTextActive]}>PM</Text>
+                      <Text
+                        style={[
+                          styles.periodText,
+                          closePeriod === "PM" && styles.periodTextActive,
+                        ]}
+                      >
+                        PM
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -527,9 +622,7 @@ export default function EditLocationScreen() {
           </View>
 
           {/* Images */}
-          <Text style={styles.sectionTitle}>
-            Images ({totalImages}/5)
-          </Text>
+          <Text style={styles.sectionTitle}>Images ({totalImages}/5)</Text>
           <View style={styles.card}>
             {/* Existing images */}
             {existingImages.length > 0 && (
@@ -583,11 +676,21 @@ export default function EditLocationScreen() {
 
             {totalImages < 5 && (
               <View style={styles.imageActions}>
-                <TouchableOpacity style={styles.imageActionBtn} onPress={pickImages}>
-                  <MaterialIcons name="photo-library" size={20} color="#D4501E" />
+                <TouchableOpacity
+                  style={styles.imageActionBtn}
+                  onPress={pickImages}
+                >
+                  <MaterialIcons
+                    name="photo-library"
+                    size={20}
+                    color="#D4501E"
+                  />
                   <Text style={styles.imageActionText}>Gallery</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.imageActionBtn} onPress={takePhoto}>
+                <TouchableOpacity
+                  style={styles.imageActionBtn}
+                  onPress={takePhoto}
+                >
                   <MaterialIcons name="camera-alt" size={20} color="#D4501E" />
                   <Text style={styles.imageActionText}>Camera</Text>
                 </TouchableOpacity>
