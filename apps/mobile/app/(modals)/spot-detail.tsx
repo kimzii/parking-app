@@ -62,6 +62,7 @@ interface SpotDetail {
   openTime: string | null;
   closeTime: string | null;
   is24Hours: boolean;
+  allowParkAnywhere?: boolean;
   acceptedVehicles?: string[];
   createdAt: string;
   images: SpotImage[];
@@ -98,10 +99,15 @@ export default function SpotDetailScreen() {
   const [loadingReviews, setLoadingReviews] = useState(false);
 
   // Update available slot count in real-time
-  useSocketEvent("slot-update", (data: { locationId: string; availableSlots: number }) => {
-    if (data.locationId !== id) return;
-    setSpot((prev) => prev ? { ...prev, availableSlots: data.availableSlots } : prev);
-  });
+  useSocketEvent(
+    "slot-update",
+    (data: { locationId: string; availableSlots: number }) => {
+      if (data.locationId !== id) return;
+      setSpot((prev) =>
+        prev ? { ...prev, availableSlots: data.availableSlots } : prev,
+      );
+    },
+  );
 
   const fetchSpot = useCallback(async () => {
     if (!id) return;
@@ -431,18 +437,50 @@ export default function SpotDetailScreen() {
                 <Text style={styles.infoValue}>{total}</Text>
               </View>
               <View style={styles.infoRow}>
-                <MaterialIcons name="directions-car" size={20} color="#D4501E" />
+                <MaterialIcons
+                  name={spot.allowParkAnywhere ? "local-parking" : "touch-app"}
+                  size={20}
+                  color={spot.allowParkAnywhere ? "#2E7D6C" : "#D4501E"}
+                />
+                <Text style={styles.infoLabel}>Booking Mode</Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    spot.allowParkAnywhere
+                      ? { color: "#2E7D6C" }
+                      : { color: "#D4501E" },
+                  ]}
+                >
+                  {spot.allowParkAnywhere ? "Park Anywhere" : "Slot Selection"}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <MaterialIcons
+                  name="directions-car"
+                  size={20}
+                  color="#D4501E"
+                />
                 <Text style={styles.infoLabel}>Vehicles</Text>
                 <View style={styles.vehicleIconsRow}>
-                  {(!spot.acceptedVehicles || spot.acceptedVehicles.includes("CAR")) && (
+                  {(!spot.acceptedVehicles ||
+                    spot.acceptedVehicles.includes("CAR")) && (
                     <View style={styles.vehicleTag}>
-                      <MaterialIcons name="directions-car" size={14} color="#D4501E" />
+                      <MaterialIcons
+                        name="directions-car"
+                        size={14}
+                        color="#D4501E"
+                      />
                       <Text style={styles.vehicleTagText}>Car</Text>
                     </View>
                   )}
-                  {(!spot.acceptedVehicles || spot.acceptedVehicles.includes("MOTORCYCLE")) && (
+                  {(!spot.acceptedVehicles ||
+                    spot.acceptedVehicles.includes("MOTORCYCLE")) && (
                     <View style={styles.vehicleTag}>
-                      <MaterialIcons name="two-wheeler" size={14} color="#D4501E" />
+                      <MaterialIcons
+                        name="two-wheeler"
+                        size={14}
+                        color="#D4501E"
+                      />
                       <Text style={styles.vehicleTagText}>Motorcycle</Text>
                     </View>
                   )}
@@ -973,7 +1011,7 @@ const styles = StyleSheet.create({
   bookBtnDisabled: {
     opacity: 0.75,
   },
-    bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  bookBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 
   // Space Action Modal
   modalOverlay: {

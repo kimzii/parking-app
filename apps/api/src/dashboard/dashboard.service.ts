@@ -61,6 +61,7 @@ export interface RecentListing {
   address: string;
   latitude: number;
   longitude: number;
+  allowParkAnywhere: boolean;
   hostName: string;
   status: LocationStatus;
   createdAt: Date;
@@ -107,11 +108,14 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.unsuspendInterval = setInterval(() => {
-      void this.autoUnsuspendExpired().catch((error: unknown) => {
-        console.error('Failed to auto-unsuspend expired users:', error);
-      });
-    }, 60 * 60 * 1000); // every hour
+    this.unsuspendInterval = setInterval(
+      () => {
+        void this.autoUnsuspendExpired().catch((error: unknown) => {
+          console.error('Failed to auto-unsuspend expired users:', error);
+        });
+      },
+      60 * 60 * 1000,
+    ); // every hour
   }
 
   onModuleDestroy() {
@@ -214,6 +218,7 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
         address: listing.address,
         latitude: parseFloat(listing.latitude.toString()),
         longitude: parseFloat(listing.longitude.toString()),
+        allowParkAnywhere: listing.allowParkAnywhere,
         hostName,
         status: listing.status,
         createdAt: listing.createdAt,
@@ -335,7 +340,13 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
     const prevEnd = new Date(start.getTime() - 1);
 
     // Get total revenue, platformFee, hostPayoutAmount this period (completed reservations)
-    const [currentRevenue, previousRevenue, currentPlatformFees, currentHostPayouts, pendingPayoutsData] = await Promise.all([
+    const [
+      currentRevenue,
+      previousRevenue,
+      currentPlatformFees,
+      currentHostPayouts,
+      pendingPayoutsData,
+    ] = await Promise.all([
       this.prisma.reservation.aggregate({
         where: {
           status: ReservationStatus.COMPLETED,
@@ -428,7 +439,8 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
     const pendingPayouts = pendingPayoutsData._sum.hostPayoutAmount
       ? parseFloat(pendingPayoutsData._sum.hostPayoutAmount.toString())
       : pendingPayoutsData._sum.totalAmount
-        ? parseFloat(pendingPayoutsData._sum.totalAmount.toString()) * (1 - commissionRate)
+        ? parseFloat(pendingPayoutsData._sum.totalAmount.toString()) *
+          (1 - commissionRate)
         : 0;
 
     return {
@@ -557,12 +569,22 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Group by date
-    const dailyData: Record<string, { revenue: number; platformFee: number; hostPayout: number; commissionRate: number }> = {};
+    const dailyData: Record<
+      string,
+      {
+        revenue: number;
+        platformFee: number;
+        hostPayout: number;
+        commissionRate: number;
+      }
+    > = {};
 
     for (const res of reservations) {
       const dateKey = res.createdAt.toISOString().split('T')[0];
       const amount = parseFloat(res.totalAmount.toString());
-      const rate = res.commissionRate ? parseFloat(res.commissionRate.toString()) : 0.1;
+      const rate = res.commissionRate
+        ? parseFloat(res.commissionRate.toString())
+        : 0.1;
       const platformFee = res.platformFee
         ? parseFloat(res.platformFee.toString())
         : amount * rate;
@@ -571,7 +593,12 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
         : amount * (1 - rate);
 
       if (!dailyData[dateKey]) {
-        dailyData[dateKey] = { revenue: 0, platformFee: 0, hostPayout: 0, commissionRate: rate };
+        dailyData[dateKey] = {
+          revenue: 0,
+          platformFee: 0,
+          hostPayout: 0,
+          commissionRate: rate,
+        };
       }
       dailyData[dateKey].revenue += amount;
       dailyData[dateKey].platformFee += platformFee;
@@ -910,7 +937,10 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
         reservation.parkingSpace.parkingLocation.basePricePerHour,
       );
       const durationMs = now.getTime() - sessionStart.getTime();
-      const durationHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
+      const durationHours = Math.max(
+        1,
+        Math.ceil(durationMs / (1000 * 60 * 60)),
+      );
 
       finalAmount = pricePerHour.mul(durationHours);
       platformFee = finalAmount
@@ -1015,8 +1045,14 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
 
     // Emit real-time socket events for instant mobile UI updates
     const socketPayload = { reservationId: id, cancelledBy: 'admin', reason };
-    this.notificationsGateway.sendReservationCancelled(driverUserId, socketPayload);
-    this.notificationsGateway.sendReservationCancelled(hostUserId, socketPayload);
+    this.notificationsGateway.sendReservationCancelled(
+      driverUserId,
+      socketPayload,
+    );
+    this.notificationsGateway.sendReservationCancelled(
+      hostUserId,
+      socketPayload,
+    );
 
     return {
       success: true,
@@ -1059,7 +1095,10 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Reservation not found');
     }
 
-    if (reservation.status !== 'CANCELLED' || reservation.cancelledBy !== 'ADMIN') {
+    if (
+      reservation.status !== 'CANCELLED' ||
+      reservation.cancelledBy !== 'ADMIN'
+    ) {
       throw new BadRequestException(
         'Can only settle payouts for admin-cancelled reservations',
       );
@@ -1069,7 +1108,9 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Host payout has already been settled');
     }
 
-    const hostPayoutAmount = new Decimal(String(reservation.hostPayoutAmount ?? 0));
+    const hostPayoutAmount = new Decimal(
+      String(reservation.hostPayoutAmount ?? 0),
+    );
     if (hostPayoutAmount.lte(0)) {
       throw new BadRequestException('No host payout amount to settle');
     }
@@ -1161,7 +1202,10 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Reservation not found');
     }
 
-    if (reservation.status !== 'CANCELLED' || reservation.cancelledBy !== 'ADMIN') {
+    if (
+      reservation.status !== 'CANCELLED' ||
+      reservation.cancelledBy !== 'ADMIN'
+    ) {
       throw new BadRequestException(
         'Can only refund drivers for admin-cancelled reservations',
       );
@@ -1326,7 +1370,14 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
                     select: {
                       reviews: {
                         where: { reviewType: 'DRIVER_TO_LOCATION' },
-                        select: { rating: true, comment: true, createdAt: true, reviewer: { select: { firstName: true, lastName: true } } },
+                        select: {
+                          rating: true,
+                          comment: true,
+                          createdAt: true,
+                          reviewer: {
+                            select: { firstName: true, lastName: true },
+                          },
+                        },
                       },
                     },
                   },
@@ -1350,13 +1401,19 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
       suspendedAt: Date | null;
       suspendUntil: Date | null;
       suspensionReason: string | null;
-      recentReviews: { rating: number; comment: string | null; createdAt: Date; reviewer?: { firstName: string | null; lastName: string | null } }[];
+      recentReviews: {
+        rating: number;
+        comment: string | null;
+        createdAt: Date;
+        reviewer?: { firstName: string | null; lastName: string | null };
+      }[];
     }[] = [];
 
     for (const driver of driverResults) {
       const allReviews = driver.reservations.flatMap((r) => r.reviews);
       if (allReviews.length < 10) continue;
-      const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      const avg =
+        allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
       if (avg >= 2.5) continue;
 
       const roleInfo = driver.user.userRoles[0];
@@ -1387,7 +1444,8 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
         .flatMap((res) => res.reviews);
 
       if (allReviews.length < 10) continue;
-      const avg = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+      const avg =
+        allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
       if (avg >= 2.5) continue;
 
       const roleInfo = host.user.userRoles[0];
@@ -1475,7 +1533,10 @@ export class DashboardService implements OnModuleInit, OnModuleDestroy {
       data: { roleId, role: userRole.role.name, days, reason, suspendUntil },
     });
 
-    return { success: true, message: `User suspended until ${suspendUntil.toISOString()}.` };
+    return {
+      success: true,
+      message: `User suspended until ${suspendUntil.toISOString()}.`,
+    };
   }
 
   async unsuspendUser(userId: string, roleId: string) {

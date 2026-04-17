@@ -50,7 +50,13 @@ type ParkingSpace = {
   createdAt: string;
   reservations?: Array<{
     id: string;
-    status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+    status:
+      | "PENDING"
+      | "CONFIRMED"
+      | "ACTIVE"
+      | "COMPLETED"
+      | "CANCELLED"
+      | "EXPIRED";
   }>;
 };
 
@@ -90,6 +96,7 @@ type ParkingLocation = {
   openTime: string | null;
   closeTime: string | null;
   is24Hours: boolean;
+  allowParkAnywhere?: boolean;
   acceptedVehicles?: string[];
   proofOfResidenceUrl: string | null;
   createdAt: string;
@@ -238,13 +245,19 @@ function ElapsedTimer({ startedAt }: { startedAt: string }) {
       const hours = Math.floor(diffMs / 3600000);
       const minutes = Math.floor((diffMs % 3600000) / 60000);
       const seconds = Math.floor((diffMs % 60000) / 1000);
-      setElapsed(hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`);
+      setElapsed(
+        hours > 0
+          ? `${hours}h ${minutes}m ${seconds}s`
+          : `${minutes}m ${seconds}s`,
+      );
     };
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, [startedAt]);
-  return <span className="font-mono font-semibold tabular-nums">{elapsed}</span>;
+  return (
+    <span className="font-mono font-semibold tabular-nums">{elapsed}</span>
+  );
 }
 
 function ArrivalCountdown({ deadline }: { deadline: string }) {
@@ -253,7 +266,11 @@ function ArrivalCountdown({ deadline }: { deadline: string }) {
   useEffect(() => {
     const update = () => {
       const diffMs = new Date(deadline).getTime() - Date.now();
-      if (diffMs <= 0) { setExpired(true); setRemaining("Overdue"); return; }
+      if (diffMs <= 0) {
+        setExpired(true);
+        setRemaining("Overdue");
+        return;
+      }
       const minutes = Math.floor(diffMs / 60000);
       const seconds = Math.floor((diffMs % 60000) / 1000);
       setRemaining(`${minutes}m ${seconds}s`);
@@ -263,13 +280,19 @@ function ArrivalCountdown({ deadline }: { deadline: string }) {
     return () => clearInterval(id);
   }, [deadline]);
   return (
-    <span className={`font-mono font-semibold tabular-nums ${expired ? "text-red-500" : "text-yellow-600"}`}>
+    <span
+      className={`font-mono font-semibold tabular-nums ${expired ? "text-red-500" : "text-yellow-600"}`}
+    >
       {remaining}
     </span>
   );
 }
 
-function isListingOpenNow(listing: { is24Hours: boolean; openTime: string | null; closeTime: string | null }): boolean {
+function isListingOpenNow(listing: {
+  is24Hours: boolean;
+  openTime: string | null;
+  closeTime: string | null;
+}): boolean {
   if (listing.is24Hours) return true;
   if (!listing.openTime || !listing.closeTime) return true;
 
@@ -277,7 +300,15 @@ function isListingOpenNow(listing: { is24Hours: boolean; openTime: string | null
     const [hourRaw, minuteRaw] = time.split(":");
     const hour = Number(hourRaw);
     const minute = Number(minuteRaw);
-    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+    if (
+      !Number.isInteger(hour) ||
+      !Number.isInteger(minute) ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    )
+      return null;
     return hour * 60 + minute;
   };
 
@@ -318,12 +349,17 @@ export default function PendingListings() {
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>("pending");
-  const [listingStatusFilter, setListingStatusFilter] = useState<"ALL" | "APPROVED" | "REJECTED">("ALL");
-  const [driverStatusFilter, setDriverStatusFilter] = useState<"ALL" | "APPROVED" | "REJECTED">("ALL");
+  const [listingStatusFilter, setListingStatusFilter] = useState<
+    "ALL" | "APPROVED" | "REJECTED"
+  >("ALL");
+  const [driverStatusFilter, setDriverStatusFilter] = useState<
+    "ALL" | "APPROVED" | "REJECTED"
+  >("ALL");
   const [listings, setListings] = useState<ParkingLocation[]>([]);
   const [recentListings, setRecentListings] = useState<ParkingLocation[]>([]);
   const [recentDrivers, setRecentDrivers] = useState<Driver[]>([]);
-  const [selectedListing, setSelectedListing] = useState<ParkingLocation | null>(null);
+  const [selectedListing, setSelectedListing] =
+    useState<ParkingLocation | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentLoading, setRecentLoading] = useState(false);
@@ -342,52 +378,73 @@ export default function PendingListings() {
   const [driversPage, setDriversPage] = useState(1);
   const [driversTotalPages, setDriversTotalPages] = useState(1);
   const [driversTotal, setDriversTotal] = useState(0);
-  const [listingActiveSessions, setListingActiveSessions] = useState<ListingSession[]>([]);
-  const [listingConfirmedSessions, setListingConfirmedSessions] = useState<ListingSession[]>([]);
+  const [listingActiveSessions, setListingActiveSessions] = useState<
+    ListingSession[]
+  >([]);
+  const [listingConfirmedSessions, setListingConfirmedSessions] = useState<
+    ListingSession[]
+  >([]);
   const [listingSessionsLoading, setListingSessionsLoading] = useState(false);
-  const [listingSelectedSession, setListingSelectedSession] = useState<ListingSessionDetails | null>(null);
+  const [listingSelectedSession, setListingSelectedSession] =
+    useState<ListingSessionDetails | null>(null);
   const [listingDetailsLoading, setListingDetailsLoading] = useState(false);
-  const [listingTransactions, setListingTransactions] = useState<ListingTransaction[]>([]);
-  const [listingTransactionsLoading, setListingTransactionsLoading] = useState(false);
-  const [listingCancelTarget, setListingCancelTarget] = useState<ListingSession | null>(null);
+  const [listingTransactions, setListingTransactions] = useState<
+    ListingTransaction[]
+  >([]);
+  const [listingTransactionsLoading, setListingTransactionsLoading] =
+    useState(false);
+  const [listingCancelTarget, setListingCancelTarget] =
+    useState<ListingSession | null>(null);
   const [listingCancelLoading, setListingCancelLoading] = useState(false);
   const [selectedSpace, setSelectedSpace] = useState<ParkingSpace | null>(null);
-  const [slotFilter, setSlotFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "DISABLED">("ALL");
+  const [slotFilter, setSlotFilter] = useState<
+    "ALL" | "AVAILABLE" | "OCCUPIED" | "DISABLED"
+  >("ALL");
 
-  const toCoordinate = useCallback((value: number | string | null | undefined) => {
-    if (value === null || value === undefined || value === "") {
-      return null;
-    }
+  const toCoordinate = useCallback(
+    (value: number | string | null | undefined) => {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
 
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }, []);
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    },
+    [],
+  );
 
-  const normalizeLocation = useCallback((location: RawParkingLocation): ParkingLocation => {
-    const latitude =
-      toCoordinate(location.latitude) ?? toCoordinate(location.lat) ?? 0;
-    const longitude =
-      toCoordinate(location.longitude) ?? toCoordinate(location.lng) ?? 0;
+  const normalizeLocation = useCallback(
+    (location: RawParkingLocation): ParkingLocation => {
+      const latitude =
+        toCoordinate(location.latitude) ?? toCoordinate(location.lat) ?? 0;
+      const longitude =
+        toCoordinate(location.longitude) ?? toCoordinate(location.lng) ?? 0;
 
-    return {
-      ...location,
-      latitude,
-      longitude,
-    };
-  }, [toCoordinate]);
+      return {
+        ...location,
+        latitude,
+        longitude,
+      };
+    },
+    [toCoordinate],
+  );
 
-  const fetchListingById = useCallback(async (targetListingId: string) => {
-    const encodedListingId = encodeURIComponent(targetListingId);
-    const response = await api.get<ListingsResponse>(
-      `/hosts/admin/locations?page=1&limit=1&search=${encodedListingId}`
-    );
+  const fetchListingById = useCallback(
+    async (targetListingId: string) => {
+      const encodedListingId = encodeURIComponent(targetListingId);
+      const response = await api.get<ListingsResponse>(
+        `/hosts/admin/locations?page=1&limit=1&search=${encodedListingId}`,
+      );
 
-    const matchedListing =
-      response.data.data.find((location) => location.id === targetListingId) ||
-      response.data.data[0];
+      const matchedListing =
+        response.data.data.find(
+          (location) => location.id === targetListingId,
+        ) || response.data.data[0];
 
-    return matchedListing ? normalizeLocation(matchedListing) : null;
-  }, [normalizeLocation]);
+      return matchedListing ? normalizeLocation(matchedListing) : null;
+    },
+    [normalizeLocation],
+  );
 
   // Fetch pending listings from API
   const fetchListings = useCallback(async () => {
@@ -396,7 +453,7 @@ export default function PendingListings() {
       setError(null);
 
       const response = await api.get<ListingsResponse>(
-        `/hosts/admin/locations?status=PENDING&page=${page}&limit=10`
+        `/hosts/admin/locations?status=PENDING&page=${page}&limit=10`,
       );
 
       setListings(response.data.data.map(normalizeLocation));
@@ -419,10 +476,10 @@ export default function PendingListings() {
       // Fetch both APPROVED and REJECTED listings
       const [approvedResponse, rejectedResponse] = await Promise.all([
         api.get<ListingsResponse>(
-          `/hosts/admin/locations?status=APPROVED&page=${recentPage}&limit=5`
+          `/hosts/admin/locations?status=APPROVED&page=${recentPage}&limit=5`,
         ),
         api.get<ListingsResponse>(
-          `/hosts/admin/locations?status=REJECTED&page=${recentPage}&limit=5`
+          `/hosts/admin/locations?status=REJECTED&page=${recentPage}&limit=5`,
         ),
       ]);
 
@@ -432,15 +489,21 @@ export default function PendingListings() {
         ...rejectedResponse.data.data,
       ]
         .map(normalizeLocation)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
 
       setRecentListings(combinedListings);
-      setRecentTotalPages(Math.max(
-        approvedResponse.data.pagination.totalPages,
-        rejectedResponse.data.pagination.totalPages
-      ));
+      setRecentTotalPages(
+        Math.max(
+          approvedResponse.data.pagination.totalPages,
+          rejectedResponse.data.pagination.totalPages,
+        ),
+      );
       setRecentTotal(
-        approvedResponse.data.pagination.total + rejectedResponse.data.pagination.total
+        approvedResponse.data.pagination.total +
+          rejectedResponse.data.pagination.total,
       );
     } catch (err) {
       console.error("Error fetching recent listings:", err);
@@ -459,10 +522,10 @@ export default function PendingListings() {
       // Fetch both VERIFIED and REJECTED drivers
       const [verifiedResponse, rejectedResponse] = await Promise.all([
         api.get<DriversResponse>(
-          `/drivers/admin/all?status=VERIFIED&page=${driversPage}&limit=5`
+          `/drivers/admin/all?status=VERIFIED&page=${driversPage}&limit=5`,
         ),
         api.get<DriversResponse>(
-          `/drivers/admin/all?status=REJECTED&page=${driversPage}&limit=5`
+          `/drivers/admin/all?status=REJECTED&page=${driversPage}&limit=5`,
         ),
       ]);
 
@@ -470,19 +533,27 @@ export default function PendingListings() {
       const combinedDrivers = [
         ...verifiedResponse.data.drivers,
         ...rejectedResponse.data.drivers,
-      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      ].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
 
       setRecentDrivers(combinedDrivers);
-      setDriversTotalPages(Math.max(
-        verifiedResponse.data.pagination.totalPages,
-        rejectedResponse.data.pagination.totalPages
-      ));
+      setDriversTotalPages(
+        Math.max(
+          verifiedResponse.data.pagination.totalPages,
+          rejectedResponse.data.pagination.totalPages,
+        ),
+      );
       setDriversTotal(
-        verifiedResponse.data.pagination.total + rejectedResponse.data.pagination.total
+        verifiedResponse.data.pagination.total +
+          rejectedResponse.data.pagination.total,
       );
     } catch (err) {
       console.error("Error fetching recent drivers:", err);
-      setDriversError("Failed to load recently verified/rejected driver applications");
+      setDriversError(
+        "Failed to load recently verified/rejected driver applications",
+      );
     } finally {
       setDriversLoading(false);
     }
@@ -493,7 +564,11 @@ export default function PendingListings() {
   }, [fetchListings]);
 
   useEffect(() => {
-    if (tabParam === "pending" || tabParam === "recent" || tabParam === "recentDrivers") {
+    if (
+      tabParam === "pending" ||
+      tabParam === "recent" ||
+      tabParam === "recentDrivers"
+    ) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
@@ -509,7 +584,9 @@ export default function PendingListings() {
 
         if (matchedListing) {
           setSelectedListing(matchedListing);
-          setActiveTab(matchedListing.status === "PENDING" ? "pending" : "recent");
+          setActiveTab(
+            matchedListing.status === "PENDING" ? "pending" : "recent",
+          );
         }
       } catch (err) {
         console.error("Error loading listing from query:", err);
@@ -583,14 +660,16 @@ export default function PendingListings() {
       try {
         const [activeRes, confirmedRes] = await Promise.all([
           api.get<{ reservations: ListingSessionRaw[]; total: number }>(
-            "/dashboard/reservations?status=ACTIVE&limit=100"
+            "/dashboard/reservations?status=ACTIVE&limit=100",
           ),
           api.get<{ reservations: ListingSessionRaw[]; total: number }>(
-            "/dashboard/reservations?status=CONFIRMED&limit=100"
+            "/dashboard/reservations?status=CONFIRMED&limit=100",
           ),
         ]);
         const filter = (list: ListingSessionRaw[]) =>
-          list.filter((s) => s.propertyTitle === title).map(normalizeListingSession);
+          list
+            .filter((s) => s.propertyTitle === title)
+            .map(normalizeListingSession);
         setListingActiveSessions(filter(activeRes.data.reservations));
         setListingConfirmedSessions(filter(confirmedRes.data.reservations));
       } catch (err) {
@@ -602,7 +681,7 @@ export default function PendingListings() {
     fetchSessions();
     const id = setInterval(fetchSessions, 30000);
     return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedListing?.id, selectedListing?.title]);
 
   useEffect(() => {
@@ -617,16 +696,19 @@ export default function PendingListings() {
         const encoded = encodeURIComponent(title);
         const [completedRes, cancelledRes] = await Promise.all([
           api.get<{ reservations: ListingTransaction[]; total: number }>(
-            `/dashboard/reservations?status=COMPLETED&limit=100&search=${encoded}`
+            `/dashboard/reservations?status=COMPLETED&limit=100&search=${encoded}`,
           ),
           api.get<{ reservations: ListingTransaction[]; total: number }>(
-            `/dashboard/reservations?status=CANCELLED&limit=100&search=${encoded}`
+            `/dashboard/reservations?status=CANCELLED&limit=100&search=${encoded}`,
           ),
         ]);
         const all = [
           ...completedRes.data.reservations,
           ...cancelledRes.data.reservations,
-        ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        ].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
         setListingTransactions(all);
       } catch (err) {
         console.error("Error fetching listing transactions:", err);
@@ -635,7 +717,7 @@ export default function PendingListings() {
       }
     };
     fetchTransactions();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedListing?.id, selectedListing?.title]);
 
   const handleListingCancelSession = async () => {
@@ -644,8 +726,12 @@ export default function PendingListings() {
       setListingCancelLoading(true);
       await api.delete(`/dashboard/reservations/${listingCancelTarget.id}`);
       setListingCancelTarget(null);
-      setListingActiveSessions((prev) => prev.filter((s) => s.id !== listingCancelTarget.id));
-      setListingConfirmedSessions((prev) => prev.filter((s) => s.id !== listingCancelTarget.id));
+      setListingActiveSessions((prev) =>
+        prev.filter((s) => s.id !== listingCancelTarget.id),
+      );
+      setListingConfirmedSessions((prev) =>
+        prev.filter((s) => s.id !== listingCancelTarget.id),
+      );
     } catch {
       alert("Failed to cancel session. Please try again.");
     } finally {
@@ -735,23 +821,39 @@ export default function PendingListings() {
     const hasValidCoordinates =
       listingLatitude !== null && listingLongitude !== null;
     const hostVerificationStatus =
-      selectedListing.host.user.userRoles?.find((userRole) => userRole.role?.name === "HOST")
-        ?.status ?? selectedListing.host.user.userRoles?.[0]?.status ?? "PENDING";
+      selectedListing.host.user.userRoles?.find(
+        (userRole) => userRole.role?.name === "HOST",
+      )?.status ??
+      selectedListing.host.user.userRoles?.[0]?.status ??
+      "PENDING";
 
     const isPending = selectedListing.status === "PENDING";
     const statusConfig = {
       PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
-      APPROVED: { bg: "bg-green-100", text: "text-green-800", icon: CheckCircle },
+      APPROVED: {
+        bg: "bg-green-100",
+        text: "text-green-800",
+        icon: CheckCircle,
+      },
       REJECTED: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
     };
     const hostVerificationConfig = {
       PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
-      VERIFIED: { bg: "bg-green-100", text: "text-green-800", icon: CheckCircle },
+      VERIFIED: {
+        bg: "bg-green-100",
+        text: "text-green-800",
+        icon: CheckCircle,
+      },
       REJECTED: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
-      SUSPENDED: { bg: "bg-orange-100", text: "text-orange-800", icon: AlertCircle },
+      SUSPENDED: {
+        bg: "bg-orange-100",
+        text: "text-orange-800",
+        icon: AlertCircle,
+      },
     };
     const statusStyle = statusConfig[selectedListing.status];
-    const hostVerificationStyle = hostVerificationConfig[hostVerificationStatus];
+    const hostVerificationStyle =
+      hostVerificationConfig[hostVerificationStatus];
     const StatusIcon = statusStyle.icon;
     const HostVerificationIcon = hostVerificationStyle.icon;
     const parkingTypeLabel = selectedListing.isMultiLevel
@@ -762,12 +864,18 @@ export default function PendingListings() {
     const operatingHoursLabel = selectedListing.is24Hours
       ? "Open 24 hours"
       : `${formatOperatingTime(selectedListing.openTime)} - ${formatOperatingTime(
-          selectedListing.closeTime
+          selectedListing.closeTime,
         )}`;
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
         {/* Breadcrumb */}
-        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals", href: "/listings" }, { label: selectedListing.title }]} />
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Approvals", href: "/listings" },
+            { label: selectedListing.title },
+          ]}
+        />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -781,17 +889,40 @@ export default function PendingListings() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <h1 className="text-2xl font-bold text-gray-900">
-              Listing Details{isPending ? " - Pending Approval" : ""}: {selectedListing.title}
+              Listing Details{isPending ? " - Pending Approval" : ""}:{" "}
+              {selectedListing.title}
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
+            >
               <StatusIcon className="w-3 h-3" />
               {selectedListing.status}
             </span>
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                selectedListing.allowParkAnywhere
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {selectedListing.allowParkAnywhere ? (
+                <MapPin className="h-3 w-3" />
+              ) : (
+                <Car className="h-3 w-3" />
+              )}
+              {selectedListing.allowParkAnywhere
+                ? "Park Anywhere"
+                : "Slot Selection"}
+            </span>
             {selectedListing.status === "APPROVED" && (
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isListingOpenNow(selectedListing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(selectedListing) ? "bg-green-500 animate-pulse" : "bg-red-400"}`} />
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isListingOpenNow(selectedListing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(selectedListing) ? "bg-green-500 animate-pulse" : "bg-red-400"}`}
+                />
                 {isListingOpenNow(selectedListing) ? "Open Now" : "Closed"}
               </span>
             )}
@@ -831,14 +962,21 @@ export default function PendingListings() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">
-                      {selectedListing.host.user.firstName} {selectedListing.host.user.lastName}
+                      {selectedListing.host.user.firstName}{" "}
+                      {selectedListing.host.user.lastName}
                     </h3>
-                    <p className="text-sm text-gray-600">{selectedListing.host.user.phoneNumber || "No Phone"}</p>
-                    <p className="text-sm text-gray-600">{selectedListing.host.user.email}</p>
+                    <p className="text-sm text-gray-600">
+                      {selectedListing.host.user.phoneNumber || "No Phone"}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {selectedListing.host.user.email}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">Verification Status:</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Verification Status:
+                  </span>
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${hostVerificationStyle.bg} ${hostVerificationStyle.text}`}
                   >
@@ -848,7 +986,9 @@ export default function PendingListings() {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Proof of Residence</p>
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Proof of Residence
+                  </p>
                   {selectedListing.proofOfResidenceUrl ? (
                     <a
                       href={selectedListing.proofOfResidenceUrl}
@@ -860,7 +1000,9 @@ export default function PendingListings() {
                       View Document
                     </a>
                   ) : (
-                    <p className="text-sm text-gray-500">No proof of residence uploaded.</p>
+                    <p className="text-sm text-gray-500">
+                      No proof of residence uploaded.
+                    </p>
                   )}
                 </div>
               </CardContent>
@@ -874,25 +1016,49 @@ export default function PendingListings() {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Title</p>
-                    <p className="text-sm text-gray-900">{selectedListing.title}</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Title
+                    </p>
+                    <p className="text-sm text-gray-900">
+                      {selectedListing.title}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Description</p>
-                    <p className="text-sm text-gray-900">{selectedListing.description || "No description"}</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </p>
+                    <p className="text-sm text-gray-900">
+                      {selectedListing.description || "No description"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Address</p>
-                    <p className="text-sm text-gray-900">{selectedListing.address}</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Address
+                    </p>
+                    <p className="text-sm text-gray-900">
+                      {selectedListing.address}
+                    </p>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Vehicles Accepted</p>
-                    {selectedListing.acceptedVehicles && selectedListing.acceptedVehicles.length > 0 ? (
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Vehicles Accepted
+                    </p>
+                    {selectedListing.acceptedVehicles &&
+                    selectedListing.acceptedVehicles.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {selectedListing.acceptedVehicles.map((v) => (
-                          <span key={v} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#C94B1E]/10 text-[#C94B1E] border border-[#C94B1E]/20">
-                            {v === "CAR" ? "🚗" : v === "MOTORCYCLE" ? "🏍️" : v === "SUV" ? "🚙" : "🚘"}
+                          <span
+                            key={v}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#C94B1E]/10 text-[#C94B1E] border border-[#C94B1E]/20"
+                          >
+                            {v === "CAR"
+                              ? "🚗"
+                              : v === "MOTORCYCLE"
+                                ? "🏍️"
+                                : v === "SUV"
+                                  ? "🚙"
+                                  : "🚘"}
                             {v.charAt(0) + v.slice(1).toLowerCase()}
                           </span>
                         ))}
@@ -907,28 +1073,36 @@ export default function PendingListings() {
                       <div className="h-full flex items-center justify-center text-center px-4">
                         <div>
                           <MapPin className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm text-gray-500">Google Maps key is missing</p>
+                          <p className="text-sm text-gray-500">
+                            Google Maps key is missing
+                          </p>
                         </div>
                       </div>
                     ) : loadError ? (
                       <div className="h-full flex items-center justify-center text-center px-4">
                         <div>
                           <MapPin className="w-10 h-10 mx-auto mb-2 text-red-400" />
-                          <p className="text-sm text-red-600">Failed to load Google Maps</p>
+                          <p className="text-sm text-red-600">
+                            Failed to load Google Maps
+                          </p>
                         </div>
                       </div>
                     ) : !isMapLoaded ? (
                       <div className="h-full flex items-center justify-center text-center px-4">
                         <div>
                           <Loader2 className="w-6 h-6 mx-auto mb-2 text-gray-500 animate-spin" />
-                          <p className="text-sm text-gray-500">Loading map...</p>
+                          <p className="text-sm text-gray-500">
+                            Loading map...
+                          </p>
                         </div>
                       </div>
                     ) : !hasValidCoordinates ? (
                       <div className="h-full flex items-center justify-center text-center px-4">
                         <div>
                           <MapPin className="w-10 h-10 mx-auto mb-2 text-amber-500" />
-                          <p className="text-sm text-amber-700">Location coordinates are unavailable from API</p>
+                          <p className="text-sm text-amber-700">
+                            Location coordinates are unavailable from API
+                          </p>
                         </div>
                       </div>
                     ) : (
@@ -958,24 +1132,58 @@ export default function PendingListings() {
 
                   {hasValidCoordinates && (
                     <p className="text-xs text-gray-400 -mt-2">
-                      {listingLatitude.toFixed(4)}, {listingLongitude.toFixed(4)}
+                      {listingLatitude.toFixed(4)},{" "}
+                      {listingLongitude.toFixed(4)}
                     </p>
                   )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Capacity</p>
-                      <p className="text-sm text-gray-900">{selectedListing.totalSlots || 0} Vehicle Slot(s)</p>
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Capacity
+                      </p>
+                      <p className="text-sm text-gray-900">
+                        {selectedListing.totalSlots || 0} Vehicle Slot(s)
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Price/Hour</p>
-                      <p className="text-sm text-gray-900">{formatCurrency(selectedListing.basePricePerHour)}</p>
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Price/Hour
+                      </p>
+                      <p className="text-sm text-gray-900">
+                        {formatCurrency(selectedListing.basePricePerHour)}
+                      </p>
                     </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Booking Mode
+                    </p>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        selectedListing.allowParkAnywhere
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {selectedListing.allowParkAnywhere ? (
+                        <MapPin className="h-3 w-3" />
+                      ) : (
+                        <Car className="h-3 w-3" />
+                      )}
+                      {selectedListing.allowParkAnywhere
+                        ? "Park Anywhere"
+                        : "Slot Selection"}
+                    </span>
                   </div>
                   {selectedListing.isMultiLevel && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Multi-Level</p>
-                      <p className="text-sm text-gray-900">{selectedListing.numberOfLevels} Levels</p>
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Multi-Level
+                      </p>
+                      <p className="text-sm text-gray-900">
+                        {selectedListing.numberOfLevels} Levels
+                      </p>
                     </div>
                   )}
                 </div>
@@ -991,116 +1199,166 @@ export default function PendingListings() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {!selectedListing.parkingSpaces || selectedListing.parkingSpaces.length === 0 ? (
+                {!selectedListing.parkingSpaces ||
+                selectedListing.parkingSpaces.length === 0 ? (
                   <div className="py-6 text-center text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                     No parking spaces configured.
                   </div>
-                ) : (() => {
-                  const allSpaces = selectedListing.parkingSpaces!;
-                  const counts = {
-                    ALL: allSpaces.length,
-                    AVAILABLE: allSpaces.filter((s) => s.isActive && (s.reservations?.length ?? 0) === 0).length,
-                    OCCUPIED: allSpaces.filter((s) => s.isActive && (s.reservations?.length ?? 0) > 0).length,
-                    DISABLED: allSpaces.filter((s) => !s.isActive).length,
-                  };
-                  const filteredSpaces = slotFilter === "ALL" ? allSpaces : allSpaces.filter((s) => {
-                    const status = !s.isActive ? "DISABLED" : (s.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
-                    return status === slotFilter;
-                  });
-                  const levels = selectedListing.isMultiLevel
-                    ? [...new Set(filteredSpaces.map((s) => s.levelNumber))].sort((a, b) => (a ?? 0) - (b ?? 0))
-                    : [null];
+                ) : (
+                  (() => {
+                    const allSpaces = selectedListing.parkingSpaces!;
+                    const counts = {
+                      ALL: allSpaces.length,
+                      AVAILABLE: allSpaces.filter(
+                        (s) =>
+                          s.isActive && (s.reservations?.length ?? 0) === 0,
+                      ).length,
+                      OCCUPIED: allSpaces.filter(
+                        (s) => s.isActive && (s.reservations?.length ?? 0) > 0,
+                      ).length,
+                      DISABLED: allSpaces.filter((s) => !s.isActive).length,
+                    };
+                    const filteredSpaces =
+                      slotFilter === "ALL"
+                        ? allSpaces
+                        : allSpaces.filter((s) => {
+                            const status = !s.isActive
+                              ? "DISABLED"
+                              : (s.reservations?.length ?? 0) > 0
+                                ? "OCCUPIED"
+                                : "AVAILABLE";
+                            return status === slotFilter;
+                          });
+                    const levels = selectedListing.isMultiLevel
+                      ? [
+                          ...new Set(filteredSpaces.map((s) => s.levelNumber)),
+                        ].sort((a, b) => (a ?? 0) - (b ?? 0))
+                      : [null];
 
-                  return (
-                    <div className="space-y-3">
-                      {/* Filter tabs */}
-                      <div className="flex gap-1.5 flex-wrap">
-                        {(["ALL", "AVAILABLE", "OCCUPIED", "DISABLED"] as const).map((f) => (
-                          <button
-                            key={f}
-                            onClick={() => setSlotFilter(f)}
-                            className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-                              slotFilter === f
-                                ? f === "ALL"
-                                  ? "bg-gray-800 text-white border-gray-800"
-                                  : f === "AVAILABLE"
-                                  ? "bg-green-600 text-white border-green-600"
-                                  : f === "OCCUPIED"
-                                  ? "bg-blue-600 text-white border-blue-600"
-                                  : "bg-gray-500 text-white border-gray-500"
-                                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
-                            }`}
-                          >
-                            {f === "ALL" ? "All" : f.charAt(0) + f.slice(1).toLowerCase()} ({counts[f]})
-                          </button>
-                        ))}
-                      </div>
+                    return (
+                      <div className="space-y-3">
+                        {/* Filter tabs */}
+                        <div className="flex gap-1.5 flex-wrap">
+                          {(
+                            [
+                              "ALL",
+                              "AVAILABLE",
+                              "OCCUPIED",
+                              "DISABLED",
+                            ] as const
+                          ).map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => setSlotFilter(f)}
+                              className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+                                slotFilter === f
+                                  ? f === "ALL"
+                                    ? "bg-gray-800 text-white border-gray-800"
+                                    : f === "AVAILABLE"
+                                      ? "bg-green-600 text-white border-green-600"
+                                      : f === "OCCUPIED"
+                                        ? "bg-blue-600 text-white border-blue-600"
+                                        : "bg-gray-500 text-white border-gray-500"
+                                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
+                              }`}
+                            >
+                              {f === "ALL"
+                                ? "All"
+                                : f.charAt(0) + f.slice(1).toLowerCase()}{" "}
+                              ({counts[f]})
+                            </button>
+                          ))}
+                        </div>
 
-                      {/* Scrollable slot grid */}
-                      <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
-                        {filteredSpaces.length === 0 ? (
-                          <div className="py-6 text-center text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            No {slotFilter.charAt(0) + slotFilter.slice(1).toLowerCase()} slots.
-                          </div>
-                        ) : (
-                          levels.map((level) => {
-                            const spaces = selectedListing.isMultiLevel
-                              ? filteredSpaces.filter((s) => s.levelNumber === level)
-                              : filteredSpaces;
-                            if (spaces.length === 0) return null;
-                            return (
-                              <div key={level ?? "flat"}>
-                                {selectedListing.isMultiLevel && (
-                                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 mt-3 first:mt-0">
-                                    Level {level}
-                                  </p>
-                                )}
-                                <div className="grid grid-cols-2 gap-2">
-                                  {spaces.map((space) => {
-                                    const effectiveStatus = !space.isActive ? "DISABLED" : (space.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
-                                    return (
-                                      <button
-                                        key={space.id}
-                                        onClick={() => setSelectedSpace(space)}
-                                        className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
-                                          effectiveStatus === "DISABLED"
-                                            ? "bg-gray-50 border-gray-200 opacity-60"
-                                            : effectiveStatus === "AVAILABLE"
-                                            ? "bg-green-50 border-green-200"
-                                            : effectiveStatus === "OCCUPIED"
-                                            ? "bg-blue-50 border-blue-200"
-                                            : "bg-gray-50 border-gray-300"
-                                        }`}
-                                      >
-                                        <div className="flex items-center justify-between mb-1">
-                                          <span className="font-semibold text-gray-900">
-                                            {space.name || `Slot ${space.slotNumber}`}
-                                          </span>
-                                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        {/* Scrollable slot grid */}
+                        <div className="max-h-72 overflow-y-auto pr-1 space-y-2">
+                          {filteredSpaces.length === 0 ? (
+                            <div className="py-6 text-center text-sm text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                              No{" "}
+                              {slotFilter.charAt(0) +
+                                slotFilter.slice(1).toLowerCase()}{" "}
+                              slots.
+                            </div>
+                          ) : (
+                            levels.map((level) => {
+                              const spaces = selectedListing.isMultiLevel
+                                ? filteredSpaces.filter(
+                                    (s) => s.levelNumber === level,
+                                  )
+                                : filteredSpaces;
+                              if (spaces.length === 0) return null;
+                              return (
+                                <div key={level ?? "flat"}>
+                                  {selectedListing.isMultiLevel && (
+                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 mt-3 first:mt-0">
+                                      Level {level}
+                                    </p>
+                                  )}
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {spaces.map((space) => {
+                                      const effectiveStatus = !space.isActive
+                                        ? "DISABLED"
+                                        : (space.reservations?.length ?? 0) > 0
+                                          ? "OCCUPIED"
+                                          : "AVAILABLE";
+                                      return (
+                                        <button
+                                          key={space.id}
+                                          onClick={() =>
+                                            setSelectedSpace(space)
+                                          }
+                                          className={`rounded-lg border p-3 text-sm text-left w-full transition-shadow hover:shadow-md hover:ring-2 hover:ring-offset-1 hover:ring-[#C94B1E]/40 ${
                                             effectiveStatus === "DISABLED"
-                                              ? "bg-gray-200 text-gray-500"
+                                              ? "bg-gray-50 border-gray-200 opacity-60"
                                               : effectiveStatus === "AVAILABLE"
-                                              ? "bg-green-100 text-green-700"
-                                              : effectiveStatus === "OCCUPIED"
-                                              ? "bg-blue-100 text-blue-700"
-                                              : "bg-gray-200 text-gray-600"
-                                          }`}>
-                                            {effectiveStatus === "DISABLED" ? "Disabled" : effectiveStatus.charAt(0) + effectiveStatus.slice(1).toLowerCase()}
-                                          </span>
-                                        </div>
-                                        <p className="text-xs text-gray-400">#{space.slotNumber}</p>
-                                      </button>
-                                    );
-                                  })}
+                                                ? "bg-green-50 border-green-200"
+                                                : effectiveStatus === "OCCUPIED"
+                                                  ? "bg-blue-50 border-blue-200"
+                                                  : "bg-gray-50 border-gray-300"
+                                          }`}
+                                        >
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="font-semibold text-gray-900">
+                                              {space.name ||
+                                                `Slot ${space.slotNumber}`}
+                                            </span>
+                                            <span
+                                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                                effectiveStatus === "DISABLED"
+                                                  ? "bg-gray-200 text-gray-500"
+                                                  : effectiveStatus ===
+                                                      "AVAILABLE"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : effectiveStatus ===
+                                                        "OCCUPIED"
+                                                      ? "bg-blue-100 text-blue-700"
+                                                      : "bg-gray-200 text-gray-600"
+                                              }`}
+                                            >
+                                              {effectiveStatus === "DISABLED"
+                                                ? "Disabled"
+                                                : effectiveStatus.charAt(0) +
+                                                  effectiveStatus
+                                                    .slice(1)
+                                                    .toLowerCase()}
+                                            </span>
+                                          </div>
+                                          <p className="text-xs text-gray-400">
+                                            #{space.slotNumber}
+                                          </p>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })
-                        )}
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1110,7 +1368,9 @@ export default function PendingListings() {
             {/* Property Images */}
             <Card className="shadow-sm border-gray-100">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Property Images ({selectedListing.images.length})</CardTitle>
+                <CardTitle>
+                  Property Images ({selectedListing.images.length})
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-4">
@@ -1171,20 +1431,36 @@ export default function PendingListings() {
                   {/* Slot stats */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Total Slots</p>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">{selectedListing.totalSlots ?? 0}</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                        Total Slots
+                      </p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">
+                        {selectedListing.totalSlots ?? 0}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Available</p>
-                      <p className="text-lg font-semibold text-green-700 mt-1">{selectedListing.availableSlots ?? 0}</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                        Available
+                      </p>
+                      <p className="text-lg font-semibold text-green-700 mt-1">
+                        {selectedListing.availableSlots ?? 0}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Parked</p>
-                      <p className="text-lg font-semibold text-orange-700 mt-1">{listingActiveSessions.length}</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                        Parked
+                      </p>
+                      <p className="text-lg font-semibold text-orange-700 mt-1">
+                        {listingActiveSessions.length}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-gray-200 p-3 bg-white">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Arriving</p>
-                      <p className="text-lg font-semibold text-yellow-600 mt-1">{listingConfirmedSessions.length}</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                        Arriving
+                      </p>
+                      <p className="text-lg font-semibold text-yellow-600 mt-1">
+                        {listingConfirmedSessions.length}
+                      </p>
                     </div>
                   </div>
 
@@ -1192,27 +1468,48 @@ export default function PendingListings() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <p className="text-sm font-semibold text-gray-700">Currently Parked ({listingActiveSessions.length})</p>
+                      <p className="text-sm font-semibold text-gray-700">
+                        Currently Parked ({listingActiveSessions.length})
+                      </p>
                     </div>
                     {listingActiveSessions.length === 0 ? (
-                      <p className="text-sm text-gray-400 pl-4">No active sessions right now.</p>
+                      <p className="text-sm text-gray-400 pl-4">
+                        No active sessions right now.
+                      </p>
                     ) : (
                       <div className="space-y-2">
                         {listingActiveSessions.map((session) => (
-                          <div key={session.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-100">
+                          <div
+                            key={session.id}
+                            className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-green-50 border border-green-100"
+                          >
                             <div className="flex items-center gap-3 min-w-0">
                               {session.guestProfilePicture ? (
-                                <Image src={session.guestProfilePicture} alt={session.guestName} width={32} height={32} className="rounded-full object-cover shrink-0" />
+                                <Image
+                                  src={session.guestProfilePicture}
+                                  alt={session.guestName}
+                                  width={32}
+                                  height={32}
+                                  className="rounded-full object-cover shrink-0"
+                                />
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-sm shrink-0">
                                   {session.guestName.charAt(0)}
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{session.guestName}</p>
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {session.guestName}
+                                </p>
                                 <div className="flex items-center gap-1 text-xs text-green-700">
                                   <Timer size={12} />
-                                  {session.sessionStartedAt ? <ElapsedTimer startedAt={session.sessionStartedAt} /> : "—"}
+                                  {session.sessionStartedAt ? (
+                                    <ElapsedTimer
+                                      startedAt={session.sessionStartedAt}
+                                    />
+                                  ) : (
+                                    "—"
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1222,10 +1519,16 @@ export default function PendingListings() {
                                   setListingDetailsLoading(true);
                                   setListingSelectedSession(null);
                                   try {
-                                    const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
+                                    const res =
+                                      await api.get<ListingSessionDetails>(
+                                        `/dashboard/reservations/${session.id}`,
+                                      );
                                     setListingSelectedSession(res.data);
-                                  } catch { alert("Failed to load session details."); }
-                                  finally { setListingDetailsLoading(false); }
+                                  } catch {
+                                    alert("Failed to load session details.");
+                                  } finally {
+                                    setListingDetailsLoading(false);
+                                  }
                                 }}
                                 className="text-xs text-green-700 underline hover:text-green-900"
                               >
@@ -1248,27 +1551,51 @@ export default function PendingListings() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                      <p className="text-sm font-semibold text-gray-700">Awaiting Arrival ({listingConfirmedSessions.length})</p>
+                      <p className="text-sm font-semibold text-gray-700">
+                        Awaiting Arrival ({listingConfirmedSessions.length})
+                      </p>
                     </div>
                     {listingConfirmedSessions.length === 0 ? (
-                      <p className="text-sm text-gray-400 pl-4">No drivers currently en route.</p>
+                      <p className="text-sm text-gray-400 pl-4">
+                        No drivers currently en route.
+                      </p>
                     ) : (
                       <div className="space-y-2">
                         {listingConfirmedSessions.map((session) => (
-                          <div key={session.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-100">
+                          <div
+                            key={session.id}
+                            className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-100"
+                          >
                             <div className="flex items-center gap-3 min-w-0">
                               {session.guestProfilePicture ? (
-                                <Image src={session.guestProfilePicture} alt={session.guestName} width={32} height={32} className="rounded-full object-cover shrink-0" />
+                                <Image
+                                  src={session.guestProfilePicture}
+                                  alt={session.guestName}
+                                  width={32}
+                                  height={32}
+                                  className="rounded-full object-cover shrink-0"
+                                />
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-semibold text-sm shrink-0">
                                   {session.guestName.charAt(0)}
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{session.guestName}</p>
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {session.guestName}
+                                </p>
                                 <div className="flex items-center gap-1 text-xs">
-                                  <Clock size={12} className="text-yellow-600" />
-                                  {session.arrivalDeadline ? <ArrivalCountdown deadline={session.arrivalDeadline} /> : "—"}
+                                  <Clock
+                                    size={12}
+                                    className="text-yellow-600"
+                                  />
+                                  {session.arrivalDeadline ? (
+                                    <ArrivalCountdown
+                                      deadline={session.arrivalDeadline}
+                                    />
+                                  ) : (
+                                    "—"
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1278,10 +1605,16 @@ export default function PendingListings() {
                                   setListingDetailsLoading(true);
                                   setListingSelectedSession(null);
                                   try {
-                                    const res = await api.get<ListingSessionDetails>(`/dashboard/reservations/${session.id}`);
+                                    const res =
+                                      await api.get<ListingSessionDetails>(
+                                        `/dashboard/reservations/${session.id}`,
+                                      );
                                     setListingSelectedSession(res.data);
-                                  } catch { alert("Failed to load session details."); }
-                                  finally { setListingDetailsLoading(false); }
+                                  } catch {
+                                    alert("Failed to load session details.");
+                                  } finally {
+                                    setListingDetailsLoading(false);
+                                  }
                                 }}
                                 className="text-xs text-yellow-700 underline hover:text-yellow-900"
                               >
@@ -1369,10 +1702,13 @@ export default function PendingListings() {
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">
-                          {selectedListing.status === "APPROVED" ? "Listing Approved" : "Listing Rejected"}
+                          {selectedListing.status === "APPROVED"
+                            ? "Listing Approved"
+                            : "Listing Rejected"}
                         </p>
                         <p className="text-sm text-gray-600">
-                          This listing has been {selectedListing.status.toLowerCase()} by an admin.
+                          This listing has been{" "}
+                          {selectedListing.status.toLowerCase()} by an admin.
                         </p>
                       </div>
                     </div>
@@ -1382,16 +1718,41 @@ export default function PendingListings() {
                         <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
                           Parking Type
                         </p>
-                        <p className="text-sm font-semibold text-gray-900">{parkingTypeLabel}</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {parkingTypeLabel}
+                        </p>
                       </div>
 
                       <div className="rounded-lg border border-gray-200 p-4 bg-white">
                         <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
                           Operating Hours
                         </p>
-                        <p className="text-sm font-semibold text-gray-900">{operatingHoursLabel}</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {operatingHoursLabel}
+                        </p>
                       </div>
 
+                      <div className="rounded-lg border border-gray-200 p-4 bg-white md:col-span-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">
+                          Booking Mode
+                        </p>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            selectedListing.allowParkAnywhere
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {selectedListing.allowParkAnywhere ? (
+                            <MapPin className="h-3 w-3" />
+                          ) : (
+                            <Car className="h-3 w-3" />
+                          )}
+                          {selectedListing.allowParkAnywhere
+                            ? "Park Anywhere"
+                            : "Slot Selection"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -1430,26 +1791,53 @@ export default function PendingListings() {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {listingTransactions.map((txn) => (
-                          <tr key={txn.id} className="hover:bg-gray-50/50 transition-colors">
+                          <tr
+                            key={txn.id}
+                            className="hover:bg-gray-50/50 transition-colors"
+                          >
                             <td className="px-4 py-3 font-medium text-gray-900 font-mono text-xs">
                               {txn.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="px-4 py-3 text-gray-700">{txn.guestName}</td>
+                            <td className="px-4 py-3 text-gray-700">
+                              {txn.guestName}
+                            </td>
                             <td className="px-4 py-3 text-gray-500">
                               {txn.sessionEndedAt
-                                ? new Date(txn.sessionEndedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
-                                : new Date(txn.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+                                ? new Date(
+                                    txn.sessionEndedAt,
+                                  ).toLocaleDateString("en-PH", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })
+                                : new Date(txn.createdAt).toLocaleDateString(
+                                    "en-PH",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    },
+                                  )}
                             </td>
                             <td className="px-4 py-3 font-semibold text-gray-900">
-                              ₱{txn.totalAmount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ₱
+                              {txn.totalAmount.toLocaleString("en-PH", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                txn.status === "COMPLETED" ? "bg-green-100 text-green-700" :
-                                txn.status === "CANCELLED" ? "bg-red-100 text-red-700" :
-                                "bg-gray-100 text-gray-700"
-                              }`}>
-                                {txn.status.charAt(0) + txn.status.slice(1).toLowerCase()}
+                              <span
+                                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                  txn.status === "COMPLETED"
+                                    ? "bg-green-100 text-green-700"
+                                    : txn.status === "CANCELLED"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {txn.status.charAt(0) +
+                                  txn.status.slice(1).toLowerCase()}
                               </span>
                             </td>
                           </tr>
@@ -1463,235 +1851,372 @@ export default function PendingListings() {
           </div>
         </div>
 
-      {/* Listing Cancel Session Modal */}
-      {listingCancelTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => !listingCancelLoading && setListingCancelTarget(null)}>
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-4 mb-5">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                <XCircle size={20} className="text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Cancel Session</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  This will permanently cancel the session for <span className="font-semibold text-gray-700">{listingCancelTarget.guestName}</span>. This action cannot be undone.
-                </p>
-              </div>
-            </div>
-            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-5 text-sm text-red-700">
-              <strong>Warning:</strong> Only cancel sessions in case of a genuine error or emergency. The driver will be notified.
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setListingCancelTarget(null)}
-                disabled={listingCancelLoading}
-                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Keep Session
-              </button>
-              <button
-                onClick={handleListingCancelSession}
-                disabled={listingCancelLoading}
-                className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-              >
-                {listingCancelLoading ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
-                {listingCancelLoading ? "Cancelling..." : "Cancel Session"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Space Details Modal */}
-      {selectedSpace && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedSpace(null)}>
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-gray-900">Slot Details</h3>
-              <button
-                onClick={() => setSelectedSpace(null)}
-                className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Slot Number</p>
-                  <p className="text-sm font-semibold text-gray-900">#{selectedSpace.slotNumber}</p>
+        {/* Listing Cancel Session Modal */}
+        {listingCancelTarget && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() =>
+              !listingCancelLoading && setListingCancelTarget(null)
+            }
+          >
+            <div
+              className="bg-white rounded-xl shadow-lg w-full max-w-md p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <XCircle size={20} className="text-red-600" />
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Name</p>
-                  <p className="text-sm font-semibold text-gray-900">{selectedSpace.name || "—"}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Status</p>
-                  {(() => {
-                    const eff = !selectedSpace.isActive ? "DISABLED" : (selectedSpace.reservations?.length ?? 0) > 0 ? "OCCUPIED" : "AVAILABLE";
-                    return (
-                      <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
-                        eff === "DISABLED"
-                          ? "bg-gray-200 text-gray-600"
-                          : eff === "AVAILABLE"
-                          ? "bg-green-100 text-green-700"
-                          : eff === "OCCUPIED"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-200 text-gray-600"
-                      }`}>
-                        {eff === "DISABLED" ? "Disabled" : eff.charAt(0) + eff.slice(1).toLowerCase()}
-                      </span>
-                    );
-                  })()}
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Active</p>
-                  <p className={`text-sm font-semibold ${selectedSpace.isActive ? "text-green-700" : "text-red-500"}`}>
-                    {selectedSpace.isActive ? "Yes" : "No"}
-                  </p>
-                </div>
-                {selectedSpace.levelNumber !== null && (
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Level</p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedSpace.levelNumber}</p>
-                  </div>
-                )}
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Date Added</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {selectedSpace.createdAt
-                      ? new Date(selectedSpace.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-              {selectedSpace.description && (
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">Description</p>
-                  <p className="text-sm text-gray-700">{selectedSpace.description}</p>
-                </div>
-              )}
-              {selectedSpace.reservations && selectedSpace.reservations.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-2">Active Reservations</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedSpace.reservations.map((r) => (
-                      <span key={r.id} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        r.status === "ACTIVE" ? "bg-green-100 text-green-700" :
-                        r.status === "CONFIRMED" ? "bg-blue-100 text-blue-700" :
-                        "bg-gray-100 text-gray-600"
-                      }`}>
-                        {r.status.charAt(0) + r.status.slice(1).toLowerCase()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Session Details Modal */}
-      {(listingDetailsLoading || listingSelectedSession) && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">Session Details</h3>
-              <button
-                onClick={() => setListingSelectedSession(null)}
-                className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-            {listingDetailsLoading ? (
-              <div className="py-10 flex items-center justify-center gap-2 text-gray-500">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Loading session details...</span>
-              </div>
-            ) : listingSelectedSession ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs uppercase text-gray-500 mb-2">Booking</p>
-                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.id}</p>
-                  <p className="text-gray-600">
-                    Status:{" "}
-                    <span className={`font-medium ${listingSelectedSession.status === "ACTIVE" ? "text-green-600" : "text-yellow-600"}`}>
-                      {listingSelectedSession.status}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Cancel Session
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    This will permanently cancel the session for{" "}
+                    <span className="font-semibold text-gray-700">
+                      {listingCancelTarget.guestName}
                     </span>
-                  </p>
-                  <p className="text-gray-600">
-                    Created:{" "}
-                    {new Date(listingSelectedSession.createdAt).toLocaleString("en-PH", {
-                      month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
-                    })}
+                    . This action cannot be undone.
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs uppercase text-gray-500 mb-2">Guest</p>
-                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.guest.name}</p>
-                  <p className="text-gray-600">{listingSelectedSession.guest.email}</p>
-                  <p className="text-gray-600">{listingSelectedSession.guest.phone || "No phone number"}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs uppercase text-gray-500 mb-2">Host</p>
-                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.host.name}</p>
-                  <p className="text-gray-600">{listingSelectedSession.host.email}</p>
-                  <p className="text-gray-600">{listingSelectedSession.host.phone || "No phone number"}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs uppercase text-gray-500 mb-2">Slot</p>
-                  <p className="font-semibold text-gray-900 mb-1">{listingSelectedSession.property.title}</p>
-                  <p className="text-gray-600">{listingSelectedSession.property.address}</p>
-                  <p className="text-gray-600">Slot #{listingSelectedSession.property.slotNumber}</p>
-                </div>
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 md:col-span-2">
-                  <p className="text-xs uppercase text-gray-500 mb-2">Session Timeline</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                    <div>
-                      <p className="text-xs text-gray-400">Arrival Deadline</p>
-                      <p className="text-gray-700 font-medium">
-                        {listingSelectedSession.arrivalDeadline
-                          ? new Date(listingSelectedSession.arrivalDeadline).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-                          : "N/A"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Session Started</p>
-                      <p className="text-gray-700 font-medium">
-                        {listingSelectedSession.sessionStartedAt
-                          ? new Date(listingSelectedSession.sessionStartedAt).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-                          : "Not started"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Session Ended</p>
-                      <p className="text-gray-700 font-medium">
-                        {listingSelectedSession.sessionEndedAt
-                          ? new Date(listingSelectedSession.sessionEndedAt).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-                          : "Ongoing"}
-                      </p>
-                    </div>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 mb-5 text-sm text-red-700">
+                <strong>Warning:</strong> Only cancel sessions in case of a
+                genuine error or emergency. The driver will be notified.
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setListingCancelTarget(null)}
+                  disabled={listingCancelLoading}
+                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Keep Session
+                </button>
+                <button
+                  onClick={handleListingCancelSession}
+                  disabled={listingCancelLoading}
+                  className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {listingCancelLoading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <XCircle size={15} />
+                  )}
+                  {listingCancelLoading ? "Cancelling..." : "Cancel Session"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Space Details Modal */}
+        {selectedSpace && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedSpace(null)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-lg w-full max-w-md p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Slot Details
+                </h3>
+                <button
+                  onClick={() => setSelectedSpace(null)}
+                  className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                      Slot Number
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      #{selectedSpace.slotNumber}
+                    </p>
                   </div>
-                  {listingSelectedSession.sessionStartedAt && !listingSelectedSession.sessionEndedAt && (
-                    <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-green-50 rounded-lg text-green-700 text-sm">
-                      <Timer size={14} />
-                      <span>Live duration:</span>
-                      <ElapsedTimer startedAt={listingSelectedSession.sessionStartedAt} />
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                      Name
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {selectedSpace.name || "—"}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                      Status
+                    </p>
+                    {(() => {
+                      const eff = !selectedSpace.isActive
+                        ? "DISABLED"
+                        : (selectedSpace.reservations?.length ?? 0) > 0
+                          ? "OCCUPIED"
+                          : "AVAILABLE";
+                      return (
+                        <span
+                          className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            eff === "DISABLED"
+                              ? "bg-gray-200 text-gray-600"
+                              : eff === "AVAILABLE"
+                                ? "bg-green-100 text-green-700"
+                                : eff === "OCCUPIED"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          {eff === "DISABLED"
+                            ? "Disabled"
+                            : eff.charAt(0) + eff.slice(1).toLowerCase()}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                      Active
+                    </p>
+                    <p
+                      className={`text-sm font-semibold ${selectedSpace.isActive ? "text-green-700" : "text-red-500"}`}
+                    >
+                      {selectedSpace.isActive ? "Yes" : "No"}
+                    </p>
+                  </div>
+                  {selectedSpace.levelNumber !== null && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                        Level
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {selectedSpace.levelNumber}
+                      </p>
                     </div>
                   )}
-                  <p className="text-gray-900 font-semibold">
-                    Amount Paid:{" "}
-                    {new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2 }).format(listingSelectedSession.totalAmount)}
-                  </p>
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                      Date Added
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {selectedSpace.createdAt
+                        ? new Date(selectedSpace.createdAt).toLocaleDateString(
+                            "en-PH",
+                            { month: "short", day: "numeric", year: "numeric" },
+                          )
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
+                {selectedSpace.description && (
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-1">
+                      Description
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      {selectedSpace.description}
+                    </p>
+                  </div>
+                )}
+                {selectedSpace.reservations &&
+                  selectedSpace.reservations.length > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-2">
+                        Active Reservations
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedSpace.reservations.map((r) => (
+                          <span
+                            key={r.id}
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              r.status === "ACTIVE"
+                                ? "bg-green-100 text-green-700"
+                                : r.status === "CONFIRMED"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {r.status.charAt(0) +
+                              r.status.slice(1).toLowerCase()}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
-            ) : null}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Session Details Modal */}
+        {(listingDetailsLoading || listingSelectedSession) && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Session Details
+                </h3>
+                <button
+                  onClick={() => setListingSelectedSession(null)}
+                  className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+              {listingDetailsLoading ? (
+                <div className="py-10 flex items-center justify-center gap-2 text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading session details...</span>
+                </div>
+              ) : listingSelectedSession ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs uppercase text-gray-500 mb-2">
+                      Booking
+                    </p>
+                    <p className="font-semibold text-gray-900 mb-1">
+                      {listingSelectedSession.id}
+                    </p>
+                    <p className="text-gray-600">
+                      Status:{" "}
+                      <span
+                        className={`font-medium ${listingSelectedSession.status === "ACTIVE" ? "text-green-600" : "text-yellow-600"}`}
+                      >
+                        {listingSelectedSession.status}
+                      </span>
+                    </p>
+                    <p className="text-gray-600">
+                      Created:{" "}
+                      {new Date(
+                        listingSelectedSession.createdAt,
+                      ).toLocaleString("en-PH", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs uppercase text-gray-500 mb-2">
+                      Guest
+                    </p>
+                    <p className="font-semibold text-gray-900 mb-1">
+                      {listingSelectedSession.guest.name}
+                    </p>
+                    <p className="text-gray-600">
+                      {listingSelectedSession.guest.email}
+                    </p>
+                    <p className="text-gray-600">
+                      {listingSelectedSession.guest.phone || "No phone number"}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs uppercase text-gray-500 mb-2">Host</p>
+                    <p className="font-semibold text-gray-900 mb-1">
+                      {listingSelectedSession.host.name}
+                    </p>
+                    <p className="text-gray-600">
+                      {listingSelectedSession.host.email}
+                    </p>
+                    <p className="text-gray-600">
+                      {listingSelectedSession.host.phone || "No phone number"}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                    <p className="text-xs uppercase text-gray-500 mb-2">Slot</p>
+                    <p className="font-semibold text-gray-900 mb-1">
+                      {listingSelectedSession.property.title}
+                    </p>
+                    <p className="text-gray-600">
+                      {listingSelectedSession.property.address}
+                    </p>
+                    <p className="text-gray-600">
+                      Slot #{listingSelectedSession.property.slotNumber}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 md:col-span-2">
+                    <p className="text-xs uppercase text-gray-500 mb-2">
+                      Session Timeline
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                      <div>
+                        <p className="text-xs text-gray-400">
+                          Arrival Deadline
+                        </p>
+                        <p className="text-gray-700 font-medium">
+                          {listingSelectedSession.arrivalDeadline
+                            ? new Date(
+                                listingSelectedSession.arrivalDeadline,
+                              ).toLocaleString("en-PH", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Session Started</p>
+                        <p className="text-gray-700 font-medium">
+                          {listingSelectedSession.sessionStartedAt
+                            ? new Date(
+                                listingSelectedSession.sessionStartedAt,
+                              ).toLocaleString("en-PH", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })
+                            : "Not started"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Session Ended</p>
+                        <p className="text-gray-700 font-medium">
+                          {listingSelectedSession.sessionEndedAt
+                            ? new Date(
+                                listingSelectedSession.sessionEndedAt,
+                              ).toLocaleString("en-PH", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })
+                            : "Ongoing"}
+                        </p>
+                      </div>
+                    </div>
+                    {listingSelectedSession.sessionStartedAt &&
+                      !listingSelectedSession.sessionEndedAt && (
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-green-50 rounded-lg text-green-700 text-sm">
+                          <Timer size={14} />
+                          <span>Live duration:</span>
+                          <ElapsedTimer
+                            startedAt={listingSelectedSession.sessionStartedAt}
+                          />
+                        </div>
+                      )}
+                    <p className="text-gray-900 font-semibold">
+                      Amount Paid:{" "}
+                      {new Intl.NumberFormat("en-PH", {
+                        style: "currency",
+                        currency: "PHP",
+                        minimumFractionDigits: 2,
+                      }).format(listingSelectedSession.totalAmount)}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -1699,17 +2224,34 @@ export default function PendingListings() {
   if (selectedDriver) {
     const driverStatusConfig = {
       PENDING: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
-      VERIFIED: { bg: "bg-green-100", text: "text-green-800", icon: CheckCircle },
+      VERIFIED: {
+        bg: "bg-green-100",
+        text: "text-green-800",
+        icon: CheckCircle,
+      },
       REJECTED: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
-      SUSPENDED: { bg: "bg-orange-100", text: "text-orange-800", icon: AlertCircle },
+      SUSPENDED: {
+        bg: "bg-orange-100",
+        text: "text-orange-800",
+        icon: AlertCircle,
+      },
     };
-    const driverStatusStyle = driverStatusConfig[selectedDriver.verificationStatus];
+    const driverStatusStyle =
+      driverStatusConfig[selectedDriver.verificationStatus];
     const DriverStatusIcon = driverStatusStyle.icon;
 
     return (
       <div className="bg-[#F8F9FA] min-h-screen p-6 font-sans">
         {/* Breadcrumb */}
-        <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals", href: "/listings" }, { label: `${selectedDriver.user.firstName} ${selectedDriver.user.lastName}` }]} />
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Approvals", href: "/listings" },
+            {
+              label: `${selectedDriver.user.firstName} ${selectedDriver.user.lastName}`,
+            },
+          ]}
+        />
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -1722,11 +2264,14 @@ export default function PendingListings() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <h1 className="text-2xl font-bold text-gray-900">
-              Driver Application Details: {selectedDriver.user.firstName} {selectedDriver.user.lastName}
+              Driver Application Details: {selectedDriver.user.firstName}{" "}
+              {selectedDriver.user.lastName}
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${driverStatusStyle.bg} ${driverStatusStyle.text}`}>
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${driverStatusStyle.bg} ${driverStatusStyle.text}`}
+            >
               <DriverStatusIcon className="w-3 h-3" />
               {selectedDriver.verificationStatus}
             </span>
@@ -1765,33 +2310,55 @@ export default function PendingListings() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">
-                      {selectedDriver.user.firstName} {selectedDriver.user.lastName}
+                      {selectedDriver.user.firstName}{" "}
+                      {selectedDriver.user.lastName}
                     </h3>
-                    <p className="text-sm text-gray-600">{selectedDriver.user.phoneNumber || "No Phone"}</p>
-                    <p className="text-sm text-gray-600">{selectedDriver.user.email}</p>
+                    <p className="text-sm text-gray-600">
+                      {selectedDriver.user.phoneNumber || "No Phone"}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {selectedDriver.user.email}
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">License Number:</span>
-                    <span className="text-sm text-gray-900">{selectedDriver.licenseNumber || "Not provided"}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">Total Vehicles:</span>
-                    <span className="text-sm text-gray-900">{selectedDriver._count?.vehicles || 0}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">Total Reservations:</span>
-                    <span className="text-sm text-gray-900">{selectedDriver._count?.reservations || 0}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">Applied At:</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      License Number:
+                    </span>
                     <span className="text-sm text-gray-900">
-                      {new Date(selectedDriver.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {selectedDriver.licenseNumber || "Not provided"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Total Vehicles:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {selectedDriver._count?.vehicles || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Total Reservations:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {selectedDriver._count?.reservations || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Applied At:
+                    </span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(selectedDriver.createdAt).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )}
                     </span>
                   </div>
                 </div>
@@ -1801,7 +2368,9 @@ export default function PendingListings() {
             {/* Vehicles */}
             <Card className="shadow-sm border-gray-100">
               <CardHeader>
-                <CardTitle>Registered Vehicles ({selectedDriver.vehicles.length})</CardTitle>
+                <CardTitle>
+                  Registered Vehicles ({selectedDriver.vehicles.length})
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {selectedDriver.vehicles.length > 0 ? (
@@ -1833,7 +2402,9 @@ export default function PendingListings() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">No vehicles registered</p>
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No vehicles registered
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -1860,7 +2431,9 @@ export default function PendingListings() {
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center">
                       <CreditCard className="w-16 h-16 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">No license image uploaded</p>
+                      <p className="text-sm text-gray-500">
+                        No license image uploaded
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1875,20 +2448,23 @@ export default function PendingListings() {
               <CardContent>
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-gray-50">
                   <div className={`p-3 rounded-full ${driverStatusStyle.bg}`}>
-                    <DriverStatusIcon className={`w-6 h-6 ${driverStatusStyle.text}`} />
+                    <DriverStatusIcon
+                      className={`w-6 h-6 ${driverStatusStyle.text}`}
+                    />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900">
                       {selectedDriver.verificationStatus === "VERIFIED"
                         ? "Application Verified"
                         : selectedDriver.verificationStatus === "REJECTED"
-                        ? "Application Rejected"
-                        : selectedDriver.verificationStatus === "SUSPENDED"
-                        ? "Application Suspended"
-                        : "Application Pending"}
+                          ? "Application Rejected"
+                          : selectedDriver.verificationStatus === "SUSPENDED"
+                            ? "Application Suspended"
+                            : "Application Pending"}
                     </p>
                     <p className="text-sm text-gray-600">
-                      This driver application has been {selectedDriver.verificationStatus.toLowerCase()}.
+                      This driver application has been{" "}
+                      {selectedDriver.verificationStatus.toLowerCase()}.
                     </p>
                   </div>
                 </div>
@@ -1903,12 +2479,15 @@ export default function PendingListings() {
   // --- 2. MAIN LIST VIEW RENDER ---
   return (
     <div className="bg-[#F8F9FA] min-h-screen p-8 font-sans">
-      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Approvals" }]} />
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Approvals" },
+        ]}
+      />
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[#1a202c]">
-          Approvals
-        </h1>
+        <h1 className="text-2xl font-bold text-[#1a202c]">Approvals</h1>
       </div>
 
       {/* Tabs */}
@@ -1979,7 +2558,11 @@ export default function PendingListings() {
               size="sm"
               disabled={loading}
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Refresh"
+              )}
             </Button>
           </div>
 
@@ -1996,7 +2579,11 @@ export default function PendingListings() {
             <div className="flex flex-col items-center justify-center py-16 text-red-500">
               <AlertCircle className="w-8 h-8 mb-4" />
               <p>{error}</p>
-              <Button onClick={fetchListings} variant="outline" className="mt-4">
+              <Button
+                onClick={fetchListings}
+                variant="outline"
+                className="mt-4"
+              >
                 Retry
               </Button>
             </div>
@@ -2006,8 +2593,12 @@ export default function PendingListings() {
           {listings.length === 0 && !loading && !error && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">All Caught Up!</h2>
-              <p className="text-gray-600">No pending listings to review at this time.</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                All Caught Up!
+              </h2>
+              <p className="text-gray-600">
+                No pending listings to review at this time.
+              </p>
             </div>
           )}
 
@@ -2019,7 +2610,10 @@ export default function PendingListings() {
               return (
                 <div
                   key={listing.id}
-                  onClick={() => { setSelectedListing(listing); setSlotFilter("ALL"); }}
+                  onClick={() => {
+                    setSelectedListing(listing);
+                    setSlotFilter("ALL");
+                  }}
                   className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
                   {/* Host Profile Picture */}
@@ -2046,9 +2640,31 @@ export default function PendingListings() {
                       {listing.host.user.firstName} {listing.host.user.lastName}
                     </h2>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-700 truncate">{listing.title}</p>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`} />
+                      <p className="text-sm font-medium text-gray-700 truncate">
+                        {listing.title}
+                      </p>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${
+                          listing.allowParkAnywhere
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {listing.allowParkAnywhere ? (
+                          <MapPin className="h-3 w-3" />
+                        ) : (
+                          <Car className="h-3 w-3" />
+                        )}
+                        {listing.allowParkAnywhere
+                          ? "Park Anywhere"
+                          : "Slot Selection"}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`}
+                        />
                         {isListingOpenNow(listing) ? "Open" : "Closed"}
                       </span>
                     </div>
@@ -2056,8 +2672,12 @@ export default function PendingListings() {
                       {listing.address}
                     </p>
                     <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                      <span className="truncate">{listing.host.user.phoneNumber || "No Phone Number"}</span>
-                      <span className="truncate">{listing.host.user.email}</span>
+                      <span className="truncate">
+                        {listing.host.user.phoneNumber || "No Phone Number"}
+                      </span>
+                      <span className="truncate">
+                        {listing.host.user.email}
+                      </span>
                     </div>
                   </div>
 
@@ -2119,7 +2739,11 @@ export default function PendingListings() {
           <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4 mb-4">
             <select
               value={listingStatusFilter}
-              onChange={(e) => setListingStatusFilter(e.target.value as "ALL" | "APPROVED" | "REJECTED")}
+              onChange={(e) =>
+                setListingStatusFilter(
+                  e.target.value as "ALL" | "APPROVED" | "REJECTED",
+                )
+              }
               className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
             >
               <option value="ALL">Any Status</option>
@@ -2132,7 +2756,11 @@ export default function PendingListings() {
               size="sm"
               disabled={recentLoading}
             >
-              {recentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
+              {recentLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Refresh"
+              )}
             </Button>
           </div>
 
@@ -2149,7 +2777,11 @@ export default function PendingListings() {
             <div className="flex flex-col items-center justify-center py-16 text-red-500">
               <AlertCircle className="w-8 h-8 mb-4" />
               <p>{recentError}</p>
-              <Button onClick={fetchRecentListings} variant="outline" className="mt-4">
+              <Button
+                onClick={fetchRecentListings}
+                variant="outline"
+                className="mt-4"
+              >
                 Retry
               </Button>
             </div>
@@ -2159,101 +2791,141 @@ export default function PendingListings() {
           {recentListings.length === 0 && !recentLoading && !recentError && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <History className="w-16 h-16 text-gray-400 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No Recent Activity</h2>
-              <p className="text-gray-600">No recently verified or rejected listings found.</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                No Recent Activity
+              </h2>
+              <p className="text-gray-600">
+                No recently verified or rejected listings found.
+              </p>
             </div>
           )}
 
           {/* Recent Listing Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {recentListings.filter((l) => listingStatusFilter === "ALL" || l.status === listingStatusFilter).map((listing) => {
-              const primaryImage = getPrimaryImage(listing.images);
+            {recentListings
+              .filter(
+                (l) =>
+                  listingStatusFilter === "ALL" ||
+                  l.status === listingStatusFilter,
+              )
+              .map((listing) => {
+                const primaryImage = getPrimaryImage(listing.images);
 
-              return (
-                <div
-                  key={listing.id}
-                  onClick={() => { setSelectedListing(listing); setSlotFilter("ALL"); }}
-                  className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                >
-                  {/* Host Profile Picture */}
-                  <div className="flex flex-col items-center mr-6">
-                    <div className="w-14 h-14 bg-slate-50 border border-gray-100 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-                      {listing.host.user.profilePicture ? (
+                return (
+                  <div
+                    key={listing.id}
+                    onClick={() => {
+                      setSelectedListing(listing);
+                      setSlotFilter("ALL");
+                    }}
+                    className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  >
+                    {/* Host Profile Picture */}
+                    <div className="flex flex-col items-center mr-6">
+                      <div className="w-14 h-14 bg-slate-50 border border-gray-100 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                        {listing.host.user.profilePicture ? (
+                          <Image
+                            src={listing.host.user.profilePicture}
+                            alt="Host"
+                            width={56}
+                            height={56}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <Users className="w-6 h-6 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Host & Location Details */}
+                    <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-900 truncate">
+                          {listing.host.user.firstName}{" "}
+                          {listing.host.user.lastName}
+                        </h2>
+                        {/* Status Badge */}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            listing.status === "APPROVED"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {listing.status === "APPROVED" ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <XCircle className="w-3 h-3" />
+                          )}
+                          {listing.status}
+                        </span>
+                        {listing.status === "APPROVED" && (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`}
+                            />
+                            {isListingOpenNow(listing) ? "Open" : "Closed"}
+                          </span>
+                        )}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${
+                            listing.allowParkAnywhere
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {listing.allowParkAnywhere ? (
+                            <MapPin className="h-3 w-3" />
+                          ) : (
+                            <Car className="h-3 w-3" />
+                          )}
+                          {listing.allowParkAnywhere
+                            ? "Park Anywhere"
+                            : "Slot Selection"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-700 truncate">
+                        {listing.title}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate max-w-[500px]">
+                        {listing.address}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                        <span className="truncate">
+                          {listing.host.user.phoneNumber || "No Phone Number"}
+                        </span>
+                        <span className="truncate">
+                          {listing.host.user.email}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Picture of the Property */}
+                    <div className="w-[120px] h-[75px] bg-slate-50 rounded-lg flex items-center justify-center flex-col shrink-0 ml-4 border border-gray-100 overflow-hidden">
+                      {primaryImage ? (
                         <Image
-                          src={listing.host.user.profilePicture}
-                          alt="Host"
-                          width={56}
-                          height={56}
+                          src={primaryImage}
+                          alt={listing.title}
+                          width={120}
+                          height={75}
                           className="w-full h-full object-cover"
                           unoptimized
                         />
                       ) : (
-                        <Users className="w-6 h-6 text-gray-400" />
+                        <>
+                          <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
+                          <span className="text-[10px] text-gray-500 text-center px-2">
+                            Property Image
+                          </span>
+                        </>
                       )}
                     </div>
                   </div>
-
-                  {/* Host & Location Details */}
-                  <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-bold text-gray-900 truncate">
-                        {listing.host.user.firstName} {listing.host.user.lastName}
-                      </h2>
-                      {/* Status Badge */}
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                          listing.status === "APPROVED"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {listing.status === "APPROVED" ? (
-                          <CheckCircle className="w-3 h-3" />
-                        ) : (
-                          <XCircle className="w-3 h-3" />
-                        )}
-                        {listing.status}
-                      </span>
-                      {listing.status === "APPROVED" && (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`} />
-                          {isListingOpenNow(listing) ? "Open" : "Closed"}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-gray-700 truncate">{listing.title}</p>
-                    <p className="text-sm text-gray-500 truncate max-w-[500px]">
-                      {listing.address}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                      <span className="truncate">{listing.host.user.phoneNumber || "No Phone Number"}</span>
-                      <span className="truncate">{listing.host.user.email}</span>
-                    </div>
-                  </div>
-
-                  {/* Picture of the Property */}
-                  <div className="w-[120px] h-[75px] bg-slate-50 rounded-lg flex items-center justify-center flex-col shrink-0 ml-4 border border-gray-100 overflow-hidden">
-                    {primaryImage ? (
-                      <Image
-                        src={primaryImage}
-                        alt={listing.title}
-                        width={120}
-                        height={75}
-                        className="w-full h-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <>
-                        <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
-                        <span className="text-[10px] text-gray-500 text-center px-2">
-                          Property Image
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
 
           {/* Recent Pagination */}
@@ -2273,7 +2945,9 @@ export default function PendingListings() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setRecentPage((p) => Math.min(recentTotalPages, p + 1))}
+                onClick={() =>
+                  setRecentPage((p) => Math.min(recentTotalPages, p + 1))
+                }
                 disabled={recentPage >= recentTotalPages || recentLoading}
               >
                 Next
@@ -2289,7 +2963,11 @@ export default function PendingListings() {
           <div className="p-4 border-b border-gray-100 flex justify-between items-center gap-4 mb-4">
             <select
               value={driverStatusFilter}
-              onChange={(e) => setDriverStatusFilter(e.target.value as "ALL" | "APPROVED" | "REJECTED")}
+              onChange={(e) =>
+                setDriverStatusFilter(
+                  e.target.value as "ALL" | "APPROVED" | "REJECTED",
+                )
+              }
               className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
             >
               <option value="ALL">Any Status</option>
@@ -2302,7 +2980,11 @@ export default function PendingListings() {
               size="sm"
               disabled={driversLoading}
             >
-              {driversLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
+              {driversLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Refresh"
+              )}
             </Button>
           </div>
 
@@ -2310,7 +2992,9 @@ export default function PendingListings() {
           {driversLoading && recentDrivers.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-              <p className="text-gray-600">Loading recent driver applications...</p>
+              <p className="text-gray-600">
+                Loading recent driver applications...
+              </p>
             </div>
           )}
 
@@ -2319,7 +3003,11 @@ export default function PendingListings() {
             <div className="flex flex-col items-center justify-center py-16 text-red-500">
               <AlertCircle className="w-8 h-8 mb-4" />
               <p>{driversError}</p>
-              <Button onClick={fetchRecentDrivers} variant="outline" className="mt-4">
+              <Button
+                onClick={fetchRecentDrivers}
+                variant="outline"
+                className="mt-4"
+              >
                 Retry
               </Button>
             </div>
@@ -2329,104 +3017,115 @@ export default function PendingListings() {
           {recentDrivers.length === 0 && !driversLoading && !driversError && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <UserCheck className="w-16 h-16 text-gray-400 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No Recent Activity</h2>
-              <p className="text-gray-600">No recently verified or rejected driver applications found.</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                No Recent Activity
+              </h2>
+              <p className="text-gray-600">
+                No recently verified or rejected driver applications found.
+              </p>
             </div>
           )}
 
           {/* Recent Drivers Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {recentDrivers.filter((d) => {
-              if (driverStatusFilter === "ALL") return true;
-              if (driverStatusFilter === "APPROVED") return d.verificationStatus === "VERIFIED";
-              return d.verificationStatus === "REJECTED";
-            }).map((driver) => (
-              <div
-                key={driver.id}
-                onClick={() => setSelectedDriver(driver)}
-                className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              >
-                {/* Driver Profile Picture */}
-                <div className="flex flex-col items-center mr-6">
-                  <div className="w-14 h-14 bg-slate-50 border border-gray-100 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-                    {driver.user.profilePicture ? (
+            {recentDrivers
+              .filter((d) => {
+                if (driverStatusFilter === "ALL") return true;
+                if (driverStatusFilter === "APPROVED")
+                  return d.verificationStatus === "VERIFIED";
+                return d.verificationStatus === "REJECTED";
+              })
+              .map((driver) => (
+                <div
+                  key={driver.id}
+                  onClick={() => setSelectedDriver(driver)}
+                  className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  {/* Driver Profile Picture */}
+                  <div className="flex flex-col items-center mr-6">
+                    <div className="w-14 h-14 bg-slate-50 border border-gray-100 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                      {driver.user.profilePicture ? (
+                        <Image
+                          src={driver.user.profilePicture}
+                          alt="Driver"
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <User className="w-6 h-6 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Driver Details */}
+                  <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-gray-900 truncate">
+                        {driver.user.firstName} {driver.user.lastName}
+                      </h2>
+                      {/* Status Badge */}
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                          driver.verificationStatus === "VERIFIED"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {driver.verificationStatus === "VERIFIED" ? (
+                          <CheckCircle className="w-3 h-3" />
+                        ) : (
+                          <XCircle className="w-3 h-3" />
+                        )}
+                        {driver.verificationStatus}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700 truncate">
+                      License: {driver.licenseNumber || "Not provided"}
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                      <span className="truncate">
+                        {driver.user.phoneNumber || "No Phone Number"}
+                      </span>
+                      <span className="truncate">{driver.user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Car className="w-3 h-3" />
+                        {driver._count?.vehicles || 0} vehicle
+                        {(driver._count?.vehicles || 0) !== 1 ? "s" : ""}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CreditCard className="w-3 h-3" />
+                        {driver._count?.reservations || 0} reservation
+                        {(driver._count?.reservations || 0) !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* License Image */}
+                  <div className="w-[120px] h-[75px] bg-slate-50 rounded-lg flex items-center justify-center flex-col shrink-0 ml-4 border border-gray-100 overflow-hidden">
+                    {driver.licenseImageUrl ? (
                       <Image
-                        src={driver.user.profilePicture}
-                        alt="Driver"
-                        width={56}
-                        height={56}
+                        src={driver.licenseImageUrl}
+                        alt="License"
+                        width={120}
+                        height={75}
                         className="w-full h-full object-cover"
                         unoptimized
                       />
                     ) : (
-                      <User className="w-6 h-6 text-gray-400" />
+                      <>
+                        <CreditCard className="w-6 h-6 text-gray-400 mb-1" />
+                        <span className="text-[10px] text-gray-500 text-center px-2">
+                          No License Image
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>
-
-                {/* Driver Details */}
-                <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-gray-900 truncate">
-                      {driver.user.firstName} {driver.user.lastName}
-                    </h2>
-                    {/* Status Badge */}
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        driver.verificationStatus === "VERIFIED"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {driver.verificationStatus === "VERIFIED" ? (
-                        <CheckCircle className="w-3 h-3" />
-                      ) : (
-                        <XCircle className="w-3 h-3" />
-                      )}
-                      {driver.verificationStatus}
-                    </span>
-                  </div>
-                  <p className="text-sm font-medium text-gray-700 truncate">
-                    License: {driver.licenseNumber || "Not provided"}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                    <span className="truncate">{driver.user.phoneNumber || "No Phone Number"}</span>
-                    <span className="truncate">{driver.user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Car className="w-3 h-3" />
-                      {driver._count?.vehicles || 0} vehicle{(driver._count?.vehicles || 0) !== 1 ? "s" : ""}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <CreditCard className="w-3 h-3" />
-                      {driver._count?.reservations || 0} reservation{(driver._count?.reservations || 0) !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                </div>
-
-                {/* License Image */}
-                <div className="w-[120px] h-[75px] bg-slate-50 rounded-lg flex items-center justify-center flex-col shrink-0 ml-4 border border-gray-100 overflow-hidden">
-                  {driver.licenseImageUrl ? (
-                    <Image
-                      src={driver.licenseImageUrl}
-                      alt="License"
-                      width={120}
-                      height={75}
-                      className="w-full h-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <>
-                      <CreditCard className="w-6 h-6 text-gray-400 mb-1" />
-                      <span className="text-[10px] text-gray-500 text-center px-2">
-                        No License Image
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
 
           {/* Drivers Pagination */}
@@ -2446,7 +3145,9 @@ export default function PendingListings() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDriversPage((p) => Math.min(driversTotalPages, p + 1))}
+                onClick={() =>
+                  setDriversPage((p) => Math.min(driversTotalPages, p + 1))
+                }
                 disabled={driversPage >= driversTotalPages || driversLoading}
               >
                 Next
