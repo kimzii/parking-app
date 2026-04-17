@@ -27,6 +27,7 @@ interface ParkingSpot {
   basePricePerHour: string;
   totalSlots: number | null;
   availableSlots: number | null;
+  allowParkAnywhere?: boolean;
   acceptedVehicles?: string[];
   images: { imageUrl: string }[];
 }
@@ -41,7 +42,9 @@ export default function HomeScreen() {
   >([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const userLocation = useRef<{ latitude: number; longitude: number } | null>(null);
+  const userLocation = useRef<{ latitude: number; longitude: number } | null>(
+    null,
+  );
 
   // Real-time: bump unread badge when a new notification arrives
   useSocketEvent("notification", () => {
@@ -49,20 +52,30 @@ export default function HomeScreen() {
   });
 
   // Real-time: update available slot count for any visible spot
-  useSocketEvent("slot-update", (data: { locationId: string; availableSlots: number }) => {
-    setSpots((prev) =>
-      prev.map((s) =>
-        s.id === data.locationId ? { ...s, availableSlots: data.availableSlots } : s
-      )
-    );
-  });
+  useSocketEvent(
+    "slot-update",
+    (data: { locationId: string; availableSlots: number }) => {
+      setSpots((prev) =>
+        prev.map((s) =>
+          s.id === data.locationId
+            ? { ...s, availableSlots: data.availableSlots }
+            : s,
+        ),
+      );
+    },
+  );
 
   const getUserLocation = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      userLocation.current = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      userLocation.current = {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      };
     } catch {
       // Location unavailable — will fetch without sorting by distance
     }
@@ -146,9 +159,21 @@ export default function HomeScreen() {
   })();
 
   const quickActions = [
-    { label: "Bookings", icon: "confirmation-number" as const, route: "/(modals)/my-reservations" as const },
-    { label: "Vehicles", icon: "directions-car" as const, route: "/(modals)/my-vehicles" as const },
-    { label: "Top Up", icon: "account-balance-wallet" as const, route: "/(modals)/top-up" as const },
+    {
+      label: "Bookings",
+      icon: "confirmation-number" as const,
+      route: "/(modals)/my-reservations" as const,
+    },
+    {
+      label: "Vehicles",
+      icon: "directions-car" as const,
+      route: "/(modals)/my-vehicles" as const,
+    },
+    {
+      label: "Top Up",
+      icon: "account-balance-wallet" as const,
+      route: "/(modals)/top-up" as const,
+    },
   ];
 
   const renderSpot = ({ item }: { item: ParkingSpot }) => {
@@ -196,20 +221,38 @@ export default function HomeScreen() {
                 ₱{Number(item.basePricePerHour).toFixed(0)}/hr
               </Text>
             </View>
-            <View
-              style={[styles.slotsChip, !hasSlots && styles.slotsChipFull]}
-            >
+            <View style={[styles.slotsChip, !hasSlots && styles.slotsChipFull]}>
               <Text
                 style={[styles.slotsText, !hasSlots && styles.slotsTextFull]}
               >
                 {hasSlots ? `${slots} slot${slots !== 1 ? "s" : ""}` : "Full"}
               </Text>
             </View>
+            <View
+              style={[
+                styles.modeChip,
+                item.allowParkAnywhere
+                  ? styles.modeChipParkAnywhere
+                  : styles.modeChipSlotSelection,
+              ]}
+            >
+              <MaterialIcons
+                name={item.allowParkAnywhere ? "local-parking" : "touch-app"}
+                size={13}
+                color={item.allowParkAnywhere ? "#2E7D6C" : "#51616C"}
+              />
+            </View>
             <View style={styles.vehicleChip}>
-              {(!item.acceptedVehicles || item.acceptedVehicles.includes("CAR")) && (
-                <MaterialIcons name="directions-car" size={13} color="#A09A94" />
+              {(!item.acceptedVehicles ||
+                item.acceptedVehicles.includes("CAR")) && (
+                <MaterialIcons
+                  name="directions-car"
+                  size={13}
+                  color="#A09A94"
+                />
               )}
-              {(!item.acceptedVehicles || item.acceptedVehicles.includes("MOTORCYCLE")) && (
+              {(!item.acceptedVehicles ||
+                item.acceptedVehicles.includes("MOTORCYCLE")) && (
                 <MaterialIcons name="two-wheeler" size={13} color="#A09A94" />
               )}
             </View>
@@ -265,7 +308,9 @@ export default function HomeScreen() {
                           isPending ? styles.dotPending : styles.dotActive,
                         ]}
                       />
-                      <Text style={styles.bookingStatusText}>{statusLabel}</Text>
+                      <Text style={styles.bookingStatusText}>
+                        {statusLabel}
+                      </Text>
                     </View>
                     <MaterialIcons name="qr-code-2" size={20} color="#D4501E" />
                   </View>
@@ -300,7 +345,6 @@ export default function HomeScreen() {
             })}
           </View>
         )}
-
       </>
     ),
     [activeBookings],
@@ -369,7 +413,9 @@ export default function HomeScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Parking Spaces Near You</Text>
         <Text style={styles.sectionCount}>
-          {loading ? "..." : `${spots.length} spot${spots.length !== 1 ? "s" : ""}`}
+          {loading
+            ? "..."
+            : `${spots.length} spot${spots.length !== 1 ? "s" : ""}`}
         </Text>
       </View>
 
@@ -578,6 +624,21 @@ const styles = StyleSheet.create({
   slotsTextFull: {
     color: "#A09A94",
   },
+  modeChip: {
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 26,
+    minHeight: 24,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  modeChipParkAnywhere: {
+    backgroundColor: "#EAF7F3",
+  },
+  modeChipSlotSelection: {
+    backgroundColor: "#EEF2F4",
+  },
   vehicleChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -618,17 +679,17 @@ const styles = StyleSheet.create({
 
   // Booking card
   bookingCard: {
-  backgroundColor: "#F5F4F2", // soft gray like other surfaces
-  borderRadius: 16,
-  padding: 16,
-  marginTop: 4,
-  shadowColor: "#232230",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.06,
-  shadowRadius: 10,
-  elevation: 3,
-  borderWidth: 1,
-  borderColor: "#D4501E", // orange border to stand out
+    backgroundColor: "#F5F4F2", // soft gray like other surfaces
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 4,
+    shadowColor: "#232230",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#D4501E", // orange border to stand out
   },
   bookingCardTop: {
     flexDirection: "row",
@@ -683,7 +744,7 @@ const styles = StyleSheet.create({
   bookingMetaText: {
     fontSize: 13,
     fontWeight: "600",
-  color: "#D4501E",
+    color: "#D4501E",
   },
   bookingMetaDot: {
     fontSize: 13,

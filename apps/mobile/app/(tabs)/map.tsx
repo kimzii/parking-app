@@ -24,6 +24,7 @@ interface ParkingSpot {
   basePricePerHour: string;
   totalSlots: number | null;
   availableSlots: number | null;
+  allowParkAnywhere?: boolean;
   acceptedVehicles?: string[];
   images: { imageUrl: string }[];
 }
@@ -408,6 +409,37 @@ export default function MapScreen() {
                 <Text style={styles.spotAddress} numberOfLines={1}>
                   {selectedSpot.address}
                 </Text>
+                <View
+                  style={[
+                    styles.modeBadge,
+                    selectedSpot.allowParkAnywhere
+                      ? styles.modeBadgeParkAnywhere
+                      : styles.modeBadgeSlotSelection,
+                  ]}
+                >
+                  <MaterialIcons
+                    name={
+                      selectedSpot.allowParkAnywhere
+                        ? "local-parking"
+                        : "touch-app"
+                    }
+                    size={12}
+                    color={
+                      selectedSpot.allowParkAnywhere ? "#2E7D6C" : "#D4501E"
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.modeBadgeText,
+                      !selectedSpot.allowParkAnywhere &&
+                        styles.modeBadgeTextMuted,
+                    ]}
+                  >
+                    {selectedSpot.allowParkAnywhere
+                      ? "Park Anywhere"
+                      : "Slot Selection"}
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity onPress={() => setSelectedSpot(null)}>
                 <MaterialIcons name="close" size={20} color="#A09A94" />
@@ -636,6 +668,30 @@ const styles = StyleSheet.create({
   },
   spotTitle: { fontSize: 16, fontWeight: "700", color: "#232230" },
   spotAddress: { fontSize: 13, color: "#A09A94", marginTop: 2 },
+  modeBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  modeBadgeParkAnywhere: {
+    backgroundColor: "#EAF7F3",
+  },
+  modeBadgeSlotSelection: {
+    backgroundColor: "#FFF0EC",
+  },
+  modeBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2E7D6C",
+  },
+  modeBadgeTextMuted: {
+    color: "#D4501E",
+  },
   spotCardDetails: {
     flexDirection: "row",
     gap: 20,

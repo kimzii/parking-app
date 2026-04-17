@@ -50,6 +50,7 @@ type BrowseLocationRow = {
   basePricePerHour: Prisma.Decimal;
   totalSlots: number | null;
   availableSlots: number | null;
+  allowParkAnywhere: boolean;
   acceptedVehicles: VehicleType[];
   openTime: string | null;
   closeTime: string | null;
@@ -1045,6 +1046,7 @@ export class HostsService {
         basePricePerHour: true,
         totalSlots: true,
         availableSlots: true,
+        allowParkAnywhere: true,
         acceptedVehicles: true,
         openTime: true,
         closeTime: true,
