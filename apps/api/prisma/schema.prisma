@@ -160,6 +160,7 @@ model ParkingLocation {
   openTime            String?                @map("open_time")
   closeTime           String?                @map("close_time")
   is24Hours           Boolean                @default(false) @map("is_24_hours")
+  allowParkAnywhere   Boolean                @default(false) @map("allow_park_anywhere")
   acceptedVehicles    VehicleType[]          @default([CAR, MOTORCYCLE]) @map("accepted_vehicles")
   createdAt           DateTime               @default(now()) @map("created_at")
   deletedAt           DateTime?              @map("deleted_at")
