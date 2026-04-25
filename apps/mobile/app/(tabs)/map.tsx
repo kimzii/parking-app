@@ -91,9 +91,11 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.03,
 };
 
-const RADIUS_KM = 20;
 const MAP_FETCH_LIMIT = 50;
 const MAP_MOVE_DEBOUNCE_MS = 450;
+const RADIUS_OPTIONS = [5, 10, 20] as const;
+type RadiusKm = (typeof RADIUS_OPTIONS)[number];
+type VehicleFilter = "ALL" | "CAR" | "MOTORCYCLE";
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -112,6 +114,8 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDriverVerified, setIsDriverVerified] = useState(true);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [vehicleFilter, setVehicleFilter] = useState<VehicleFilter>("ALL");
+  const [radiusKm, setRadiusKm] = useState<RadiusKm>(20);
 
   const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -129,6 +133,18 @@ export default function MapScreen() {
     mapRef.current?.animateToRegion(nextRegion, 500);
   }, []);
 
+  const radiusKmRef = useRef<RadiusKm>(20);
+
+  useEffect(() => {
+    radiusKmRef.current = radiusKm;
+  }, [radiusKm]);
+
+  const filteredSpots = spots.filter((spot) => {
+    if (vehicleFilter === "ALL") return true;
+    if (!spot.acceptedVehicles || spot.acceptedVehicles.length === 0) return true;
+    return spot.acceptedVehicles.includes(vehicleFilter);
+  });
+
   const fetchNearbySpots = useCallback(
     async (options?: {
       center?: Coordinates | null;
@@ -136,7 +152,7 @@ export default function MapScreen() {
       limit?: number;
     }) => {
       const center = options?.center ?? userLocationRef.current;
-      const radiusKm = options?.radiusKm ?? RADIUS_KM;
+      const radiusKm = options?.radiusKm ?? radiusKmRef.current;
       const limit = options?.limit ?? MAP_FETCH_LIMIT;
 
       try {
@@ -198,7 +214,7 @@ export default function MapScreen() {
 
     await fetchNearbySpots({
       center: loc,
-      radiusKm: RADIUS_KM,
+      radiusKm: radiusKmRef.current,
       limit: MAP_FETCH_LIMIT,
     });
     hasInitializedRef.current = true;
@@ -229,11 +245,24 @@ export default function MapScreen() {
           latitude: focusRegion.latitude,
           longitude: focusRegion.longitude,
         },
-        radiusKm: RADIUS_KM,
+        radiusKm: radiusKmRef.current,
         limit: MAP_FETCH_LIMIT,
       });
     }, [fetchNearbySpots]),
   );
+
+  useEffect(() => {
+    if (!hasInitializedRef.current) return;
+    const focusRegion = regionRef.current;
+    void fetchNearbySpots({
+      center: {
+        latitude: focusRegion.latitude,
+        longitude: focusRegion.longitude,
+      },
+      radiusKm: radiusKm,
+      limit: MAP_FETCH_LIMIT,
+    });
+  }, [radiusKm, fetchNearbySpots]);
 
   const getCurrentLocation = async () => {
     setLocating(true);
@@ -257,7 +286,7 @@ export default function MapScreen() {
       moveMapToRegion(newRegion);
       await fetchNearbySpots({
         center: loc,
-        radiusKm: RADIUS_KM,
+        radiusKm: radiusKmRef.current,
         limit: MAP_FETCH_LIMIT,
       });
     } catch {
@@ -285,7 +314,7 @@ export default function MapScreen() {
         moveMapToRegion(newRegion);
         await fetchNearbySpots({
           center: { latitude: lat, longitude: lng },
-          radiusKm: RADIUS_KM,
+          radiusKm: radiusKmRef.current,
           limit: MAP_FETCH_LIMIT,
         });
       }
@@ -314,6 +343,44 @@ export default function MapScreen() {
               <MaterialIcons name="arrow-forward" size={20} color="#F5470D" />
             </TouchableOpacity>
           ) : null}
+        </View>
+
+        {/* Filter chips */}
+        <View style={styles.filterRow}>
+          {(["ALL", "CAR", "MOTORCYCLE"] as VehicleFilter[]).map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[styles.filterChip, vehicleFilter === type && styles.filterChipActive]}
+              onPress={() => setVehicleFilter(type)}
+              activeOpacity={0.8}
+            >
+              {type !== "ALL" && (
+                <MaterialIcons
+                  name={type === "CAR" ? "directions-car" : "two-wheeler"}
+                  size={13}
+                  color={vehicleFilter === type ? "#fff" : "#A09A94"}
+                />
+              )}
+              <Text style={[styles.filterChipText, vehicleFilter === type && styles.filterChipTextActive]}>
+                {type === "ALL" ? "All" : type === "CAR" ? "Car" : "Moto"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+
+          <View style={styles.filterDivider} />
+
+          {RADIUS_OPTIONS.map((r) => (
+            <TouchableOpacity
+              key={r}
+              style={[styles.filterChip, radiusKm === r && styles.filterChipActive]}
+              onPress={() => setRadiusKm(r)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.filterChipText, radiusKm === r && styles.filterChipTextActive]}>
+                {r}km
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Map */}
@@ -355,13 +422,13 @@ export default function MapScreen() {
                       latitude: nextRegion.latitude,
                       longitude: nextRegion.longitude,
                     },
-                    radiusKm: RADIUS_KM,
+                    radiusKm: radiusKmRef.current,
                     limit: MAP_FETCH_LIMIT,
                   });
                 }, MAP_MOVE_DEBOUNCE_MS);
               }}
             >
-              {spots.map((spot) => (
+              {filteredSpots.map((spot) => (
                 <ParkingMarker
                   key={spot.id}
                   spot={spot}
@@ -389,8 +456,7 @@ export default function MapScreen() {
           <View style={styles.spotCountBadge}>
             <MaterialIcons name="local-parking" size={14} color="#D4501E" />
             <Text style={styles.spotCountText}>
-              {spots.length} spot{spots.length !== 1 ? "s" : ""} within{" "}
-              {RADIUS_KM} km
+              {filteredSpots.length} spot{filteredSpots.length !== 1 ? "s" : ""} within {radiusKm} km
             </Text>
           </View>
         </View>
@@ -518,7 +584,7 @@ export default function MapScreen() {
         )}
 
         {/* Empty state */}
-        {!loading && spots.length === 0 && !selectedSpot && (
+        {!loading && filteredSpots.length === 0 && !selectedSpot && (
           <View style={styles.emptyOverlay}>
             <View style={styles.emptyCard}>
               <MaterialIcons name="location-off" size={32} color="#D4501E" />
@@ -765,5 +831,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: "#D4501E",
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#F2F2F2",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  filterChipActive: {
+    backgroundColor: "#D4501E",
+    borderColor: "#D4501E",
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#A09A94",
+  },
+  filterChipTextActive: {
+    color: "#fff",
+  },
+  filterDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "#E0E0E0",
+    marginHorizontal: 2,
   },
 });
