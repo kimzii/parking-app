@@ -1,0 +1,1 @@
+ALTER TYPE "TransactionSource" ADD VALUE 'PENDING_PAYOUT';
