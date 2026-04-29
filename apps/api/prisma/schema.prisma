@@ -387,6 +387,7 @@ enum TransactionSource {
   ADMIN_ADJUSTMENT
   HOST_PAYOUT
   BOOKING_PAYOUT
+  PENDING_PAYOUT
 }
 
 enum VerificationStatus {

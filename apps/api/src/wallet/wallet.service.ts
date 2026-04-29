@@ -430,15 +430,41 @@ export class WalletService {
       );
     }
 
-    const request = await this.prisma.withdrawRequest.create({
-      data: {
-        userId,
-        amount,
-      },
+    const balanceBefore = wallet.balance;
+    const balanceAfter = currentBalance.sub(amount);
+
+    const request = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.withdrawRequest.create({
+        data: {
+          userId,
+          amount,
+        },
+      });
+
+      await tx.wallet.update({
+        where: { userId },
+        data: { balance: { decrement: amount } },
+      });
+
+      await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'DEBIT',
+          source: 'PENDING_PAYOUT',
+          amount,
+          balanceBefore,
+          balanceAfter,
+          referenceId: created.id,
+        },
+      });
+
+      return created;
     });
 
     // Notify admins
     await this.notifyAdminsNewWithdraw(request.id, amount, userId);
+
+    this.gateway.sendBalanceUpdate(userId, balanceAfter.toFixed(2));
 
     return {
       id: request.id,
@@ -485,35 +511,55 @@ export class WalletService {
     }
 
     const wallet = await this.getOrCreateWallet(request.userId);
-    const currentBalance = new Decimal(wallet.balance);
     const amount = new Decimal(request.amount);
 
-    if (currentBalance.lt(amount)) {
-      throw new BadRequestException('User no longer has sufficient balance');
-    }
-
-    const balanceBefore = wallet.balance;
-    const balanceAfter = currentBalance.sub(amount);
+    const pendingTxn = await this.prisma.walletTransaction.findFirst({
+      where: {
+        walletId: wallet.id,
+        referenceId: request.id,
+        source: 'PENDING_PAYOUT',
+      },
+    });
 
     const user = await this.prisma.user.findUnique({
       where: { id: request.userId },
       select: { phoneNumber: true },
     });
 
-    await this.prisma.$transaction([
-      this.prisma.withdrawRequest.update({
+    let balanceToSend = wallet.balance.toFixed(2);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.withdrawRequest.update({
         where: { id: requestId },
         data: {
           status: 'APPROVED',
           reviewedBy: adminUserId,
           reviewedAt: new Date(),
         },
-      }),
-      this.prisma.wallet.update({
+      });
+
+      if (pendingTxn) {
+        await tx.walletTransaction.update({
+          where: { id: pendingTxn.id },
+          data: { source: 'HOST_PAYOUT' },
+        });
+        return;
+      }
+
+      const currentBalance = new Decimal(wallet.balance);
+      if (currentBalance.lt(amount)) {
+        throw new BadRequestException('User no longer has sufficient balance');
+      }
+
+      const balanceBefore = wallet.balance;
+      const balanceAfter = currentBalance.sub(amount);
+
+      await tx.wallet.update({
         where: { userId: request.userId },
         data: { balance: { decrement: amount.toNumber() } },
-      }),
-      this.prisma.walletTransaction.create({
+      });
+
+      await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
           type: 'DEBIT',
@@ -521,9 +567,12 @@ export class WalletService {
           amount: amount.toNumber(),
           balanceBefore,
           balanceAfter,
+          referenceId: request.id,
         },
-      }),
-    ]);
+      });
+
+      balanceToSend = balanceAfter.toFixed(2);
+    });
 
     const gcashNumber = user?.phoneNumber || 'your GCash';
     await this.notificationsService.send({
@@ -534,7 +583,7 @@ export class WalletService {
       data: { withdrawRequestId: requestId },
     });
 
-    this.gateway.sendBalanceUpdate(request.userId, balanceAfter.toFixed(2));
+    this.gateway.sendBalanceUpdate(request.userId, balanceToSend);
 
     return { success: true };
   }
@@ -549,13 +598,48 @@ export class WalletService {
       throw new BadRequestException('This request has already been processed');
     }
 
-    await this.prisma.withdrawRequest.update({
-      where: { id: requestId },
-      data: {
-        status: 'REJECTED',
-        reviewedBy: adminUserId,
-        reviewedAt: new Date(),
+    const wallet = await this.getOrCreateWallet(request.userId);
+    const amount = new Decimal(request.amount);
+
+    const pendingTxn = await this.prisma.walletTransaction.findFirst({
+      where: {
+        walletId: wallet.id,
+        referenceId: request.id,
+        source: 'PENDING_PAYOUT',
       },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.withdrawRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'REJECTED',
+          reviewedBy: adminUserId,
+          reviewedAt: new Date(),
+        },
+      });
+
+      if (pendingTxn) {
+        const balanceBefore = wallet.balance;
+        const balanceAfter = new Decimal(wallet.balance).add(amount);
+
+        await tx.wallet.update({
+          where: { userId: request.userId },
+          data: { balance: { increment: amount.toNumber() } },
+        });
+
+        await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            type: 'CREDIT',
+            source: 'REFUND',
+            amount: amount.toNumber(),
+            balanceBefore,
+            balanceAfter,
+            referenceId: request.id,
+          },
+        });
+      }
     });
 
     await this.notificationsService.send({
@@ -565,6 +649,14 @@ export class WalletService {
       type: 'WITHDRAW_REJECTED',
       data: { withdrawRequestId: requestId },
     });
+
+    if (pendingTxn) {
+      const updatedWallet = await this.getOrCreateWallet(request.userId);
+      this.gateway.sendBalanceUpdate(
+        request.userId,
+        updatedWallet.balance.toFixed(2),
+      );
+    }
 
     return { success: true };
   }
