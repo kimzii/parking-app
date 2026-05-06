@@ -77,6 +77,7 @@ type TopUpResult = {
 type WithdrawResult = {
   id: string;
   amount: string;
+  referenceNumber: string;
   status: string;
   createdAt: string;
   user: {
@@ -90,9 +91,18 @@ type WithdrawResult = {
 // --- API response shapes ---
 
 type UsersResponse = { data: UserResult[]; meta: { total: number } };
-type ListingsResponse = { data: ListingResult[]; pagination: { total: number } };
-type DriversResponse = { drivers: DriverResult[]; pagination: { total: number } };
-type ReservationsResponse = { reservations: ReservationResult[]; total: number };
+type ListingsResponse = {
+  data: ListingResult[];
+  pagination: { total: number };
+};
+type DriversResponse = {
+  drivers: DriverResult[];
+  pagination: { total: number };
+};
+type ReservationsResponse = {
+  reservations: ReservationResult[];
+  total: number;
+};
 type SessionsResponse = { reservations: SessionResult[]; total: number };
 
 // --- Helpers ---
@@ -103,11 +113,16 @@ function getUserName(user: UserResult) {
 }
 
 function getDriverName(driver: DriverResult) {
-  const fullName = `${driver.user.firstName || ""} ${driver.user.lastName || ""}`.trim();
+  const fullName =
+    `${driver.user.firstName || ""} ${driver.user.lastName || ""}`.trim();
   return fullName || driver.user.email;
 }
 
-function getTxUserName(user: { firstName: string | null; lastName: string | null; email: string }) {
+function getTxUserName(user: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}) {
   const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
   return fullName || user.email;
 }
@@ -153,11 +168,16 @@ export default function GlobalSearchPage() {
   useEffect(() => {
     const fetchSearchResults = async () => {
       if (!query) {
-        setUsers([]); setUsersTotal(0);
-        setListings([]); setListingsTotal(0);
-        setDrivers([]); setDriversTotal(0);
-        setReservations([]); setReservationsTotal(0);
-        setSessions([]); setSessionsTotal(0);
+        setUsers([]);
+        setUsersTotal(0);
+        setListings([]);
+        setListingsTotal(0);
+        setDrivers([]);
+        setDriversTotal(0);
+        setReservations([]);
+        setReservationsTotal(0);
+        setSessions([]);
+        setSessionsTotal(0);
         setTopUps([]);
         setWithdraws([]);
         setError(null);
@@ -180,10 +200,18 @@ export default function GlobalSearchPage() {
           withdrawsRes,
         ] = await Promise.all([
           api.get<UsersResponse>(`/users?page=1&limit=5&search=${encoded}`),
-          api.get<ListingsResponse>(`/hosts/admin/locations?page=1&limit=5&search=${encoded}`),
-          api.get<DriversResponse>(`/drivers/admin/all?page=1&limit=5&search=${encoded}`),
-          api.get<ReservationsResponse>(`/dashboard/reservations?page=1&limit=5&search=${encoded}`),
-          api.get<SessionsResponse>(`/dashboard/reservations?page=1&limit=5&search=${encoded}&status=ACTIVE`),
+          api.get<ListingsResponse>(
+            `/hosts/admin/locations?page=1&limit=5&search=${encoded}`,
+          ),
+          api.get<DriversResponse>(
+            `/drivers/admin/all?page=1&limit=5&search=${encoded}`,
+          ),
+          api.get<ReservationsResponse>(
+            `/dashboard/reservations?page=1&limit=5&search=${encoded}`,
+          ),
+          api.get<SessionsResponse>(
+            `/dashboard/reservations?page=1&limit=5&search=${encoded}&status=ACTIVE`,
+          ),
           api.get<TopUpResult[]>(`/wallet/top-up/all`),
           api.get<WithdrawResult[]>(`/wallet/withdraw/all`),
         ]);
@@ -204,16 +232,34 @@ export default function GlobalSearchPage() {
         setSessionsTotal(sessionsRes.data.total || 0);
 
         // Client-side filter for transactions since the endpoints don't support search
-        const filteredTopUps = (topUpsRes.data || []).filter((t) =>
-          matchesQuery(query, t.referenceCode, t.amount, t.user.email, t.user.firstName, t.user.lastName, t.id)
-        ).slice(0, 5);
+        const filteredTopUps = (topUpsRes.data || [])
+          .filter((t) =>
+            matchesQuery(
+              query,
+              t.referenceCode,
+              t.amount,
+              t.user.email,
+              t.user.firstName,
+              t.user.lastName,
+              t.id,
+            ),
+          )
+          .slice(0, 5);
         setTopUps(filteredTopUps);
 
-        const filteredWithdraws = (withdrawsRes.data || []).filter((w) =>
-          matchesQuery(query, w.amount, w.user.email, w.user.firstName, w.user.lastName, w.id)
-        ).slice(0, 5);
+        const filteredWithdraws = (withdrawsRes.data || [])
+          .filter((w) =>
+            matchesQuery(
+              query,
+              w.amount,
+              w.user.email,
+              w.user.firstName,
+              w.user.lastName,
+              w.id,
+            ),
+          )
+          .slice(0, 5);
         setWithdraws(filteredWithdraws);
-
       } catch (err) {
         console.error("Global search failed:", err);
         setError("Failed to fetch search results");
@@ -226,25 +272,48 @@ export default function GlobalSearchPage() {
   }, [query]);
 
   const totalResults = useMemo(
-    () => usersTotal + listingsTotal + driversTotal + reservationsTotal + sessionsTotal + topUps.length + withdraws.length,
-    [usersTotal, listingsTotal, driversTotal, reservationsTotal, sessionsTotal, topUps.length, withdraws.length]
+    () =>
+      usersTotal +
+      listingsTotal +
+      driversTotal +
+      reservationsTotal +
+      sessionsTotal +
+      topUps.length +
+      withdraws.length,
+    [
+      usersTotal,
+      listingsTotal,
+      driversTotal,
+      reservationsTotal,
+      sessionsTotal,
+      topUps.length,
+      withdraws.length,
+    ],
   );
 
   return (
     <div className="bg-[#F9FAFB] min-h-full font-sans">
-      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Search Results" }]} />
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Search Results" },
+        ]}
+      />
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Search Results</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {query ? `Results for "${query}"` : "Type a keyword in the header search"}
+          {query
+            ? `Results for "${query}"`
+            : "Type a keyword in the header search"}
         </p>
       </div>
 
       {!query ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-500">
           <Search className="mx-auto mb-2 text-gray-300" size={28} />
-          Start searching users, listings, drivers, reservations, sessions, transactions, and more.
+          Start searching users, listings, drivers, reservations, sessions,
+          transactions, and more.
         </div>
       ) : loading ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-500">
@@ -258,7 +327,8 @@ export default function GlobalSearchPage() {
       ) : (
         <div className="space-y-6">
           <div className="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
-            Total matches: <span className="font-semibold text-gray-900">{totalResults}</span>
+            Total matches:{" "}
+            <span className="font-semibold text-gray-900">{totalResults}</span>
           </div>
 
           {/* Users */}
@@ -268,7 +338,9 @@ export default function GlobalSearchPage() {
                 <Users size={16} /> Users
               </div>
               <button
-                onClick={() => router.push(`/users?search=${encodeURIComponent(query)}`)}
+                onClick={() =>
+                  router.push(`/users?search=${encodeURIComponent(query)}`)
+                }
                 className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({usersTotal})
@@ -284,7 +356,9 @@ export default function GlobalSearchPage() {
                     onClick={() => router.push(`/users/${user.id}`)}
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
-                    <p className="text-sm font-semibold text-gray-900">{getUserName(user)}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {getUserName(user)}
+                    </p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                     <p className="text-xs text-gray-400">ID: {user.id}</p>
                   </button>
@@ -303,7 +377,9 @@ export default function GlobalSearchPage() {
                 onClick={() =>
                   listingsTotal === 1 && listings[0]
                     ? router.push(getListingRoute(listings[0]))
-                    : router.push(`/listings?search=${encodeURIComponent(query)}`)
+                    : router.push(
+                        `/listings?search=${encodeURIComponent(query)}`,
+                      )
                 }
                 className="text-sm text-[#C94B1E] hover:underline"
               >
@@ -320,7 +396,9 @@ export default function GlobalSearchPage() {
                     onClick={() => router.push(getListingRoute(listing))}
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
-                    <p className="text-sm font-semibold text-gray-900">{listing.title}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {listing.title}
+                    </p>
                     <p className="text-xs text-gray-500">{listing.address}</p>
                     <p className="text-xs text-gray-400">ID: {listing.id}</p>
                   </button>
@@ -336,7 +414,9 @@ export default function GlobalSearchPage() {
                 <Car size={16} /> Drivers
               </div>
               <button
-                onClick={() => router.push(`/users?search=${encodeURIComponent(query)}`)}
+                onClick={() =>
+                  router.push(`/users?search=${encodeURIComponent(query)}`)
+                }
                 className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({driversTotal})
@@ -349,14 +429,20 @@ export default function GlobalSearchPage() {
                 drivers.map((driver) => (
                   <button
                     key={driver.id}
-                    onClick={() => router.push(`/users?search=${encodeURIComponent(query)}`)}
+                    onClick={() =>
+                      router.push(`/users?search=${encodeURIComponent(query)}`)
+                    }
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
-                    <p className="text-sm font-semibold text-gray-900">{getDriverName(driver)}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {getDriverName(driver)}
+                    </p>
                     <p className="text-xs text-gray-500">{driver.user.email}</p>
                     <p className="text-xs text-gray-400">
                       ID: {driver.id}
-                      {driver.licenseNumber ? ` | License: ${driver.licenseNumber}` : ""}
+                      {driver.licenseNumber
+                        ? ` | License: ${driver.licenseNumber}`
+                        : ""}
                     </p>
                   </button>
                 ))
@@ -371,7 +457,11 @@ export default function GlobalSearchPage() {
                 <CalendarClock size={16} /> Reservations
               </div>
               <button
-                onClick={() => router.push(`/reservations?search=${encodeURIComponent(query)}`)}
+                onClick={() =>
+                  router.push(
+                    `/reservations?search=${encodeURIComponent(query)}`,
+                  )
+                }
                 className="text-sm text-[#C94B1E] hover:underline"
               >
                 View all ({reservationsTotal})
@@ -384,14 +474,23 @@ export default function GlobalSearchPage() {
                 reservations.map((reservation) => (
                   <button
                     key={reservation.id}
-                    onClick={() => router.push(`/reservations?reservationId=${reservation.id}`)}
+                    onClick={() =>
+                      router.push(
+                        `/reservations?reservationId=${reservation.id}`,
+                      )
+                    }
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
-                    <p className="text-sm font-semibold text-gray-900">{reservation.propertyTitle}</p>
-                    <p className="text-xs text-gray-500">
-                      Guest: {reservation.guestName} | Host: {reservation.hostName}
+                    <p className="text-sm font-semibold text-gray-900">
+                      {reservation.propertyTitle}
                     </p>
-                    <p className="text-xs text-gray-400">ID: {reservation.id}</p>
+                    <p className="text-xs text-gray-500">
+                      Guest: {reservation.guestName} | Host:{" "}
+                      {reservation.hostName}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      ID: {reservation.id}
+                    </p>
                   </button>
                 ))
               )}
@@ -413,7 +512,9 @@ export default function GlobalSearchPage() {
             </div>
             <div className="p-4 space-y-3">
               {sessions.length === 0 ? (
-                <p className="text-sm text-gray-500">No active sessions found.</p>
+                <p className="text-sm text-gray-500">
+                  No active sessions found.
+                </p>
               ) : (
                 sessions.map((session) => (
                   <button
@@ -421,7 +522,9 @@ export default function GlobalSearchPage() {
                     onClick={() => router.push(`/sessions`)}
                     className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                   >
-                    <p className="text-sm font-semibold text-gray-900">{session.propertyTitle}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {session.propertyTitle}
+                    </p>
                     <p className="text-xs text-gray-500">
                       Guest: {session.guestName} | Host: {session.hostName}
                     </p>
@@ -453,17 +556,21 @@ export default function GlobalSearchPage() {
                   {topUps.map((t) => (
                     <button
                       key={`topup-${t.id}`}
-                      onClick={() => router.push(`/transactions?tab=topup&requestId=${t.id}`)}
+                      onClick={() =>
+                        router.push(`/transactions?tab=topup&requestId=${t.id}`)
+                      }
                       className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-gray-900">{getTxUserName(t.user)}</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {getTxUserName(t.user)}
+                        </p>
                         <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
                           Top-Up
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">
-                        ₱{t.amount} · Ref: {t.referenceCode}
+                        ₱{t.amount} · Reference No.: {t.referenceCode}
                       </p>
                       <p className="text-xs text-gray-400">ID: {t.id}</p>
                     </button>
@@ -471,16 +578,24 @@ export default function GlobalSearchPage() {
                   {withdraws.map((w) => (
                     <button
                       key={`withdraw-${w.id}`}
-                      onClick={() => router.push(`/transactions?tab=withdraw&requestId=${w.id}`)}
+                      onClick={() =>
+                        router.push(
+                          `/transactions?tab=withdraw&requestId=${w.id}`,
+                        )
+                      }
                       className="w-full text-left border border-gray-100 rounded-lg px-3 py-2 hover:bg-gray-50"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-gray-900">{getTxUserName(w.user)}</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {getTxUserName(w.user)}
+                        </p>
                         <span className="text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full">
                           Withdraw
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">₱{w.amount}</p>
+                      <p className="text-xs text-gray-500">
+                        ₱{w.amount} · Reference No.: {w.referenceNumber}
+                      </p>
                       <p className="text-xs text-gray-400">ID: {w.id}</p>
                     </button>
                   ))}

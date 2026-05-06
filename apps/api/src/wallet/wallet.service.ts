@@ -4,16 +4,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import type { WithdrawRequest } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 const TOP_UP_EXPIRY_MINUTES = 5;
 
-function generateReferenceCode(): string {
+function generateReferenceNumber(prefix: string, length = 6): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'TOPUP-';
-  for (let i = 0; i < 6; i++) {
+  const normalizedPrefix = (prefix || 'REF').toUpperCase();
+  let code = `${normalizedPrefix}-`;
+  for (let i = 0; i < length; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
@@ -65,7 +68,7 @@ export class WalletService {
       throw new BadRequestException('Wallet is suspended');
     }
 
-    const referenceCode = generateReferenceCode();
+    const referenceCode = generateReferenceNumber('TOPUP', 6);
     const expiresAt = new Date(Date.now() + TOP_UP_EXPIRY_MINUTES * 60 * 1000);
 
     const request = await this.prisma.topUpRequest.create({
@@ -433,33 +436,53 @@ export class WalletService {
     const balanceBefore = wallet.balance;
     const balanceAfter = currentBalance.sub(amount);
 
-    const request = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.withdrawRequest.create({
-        data: {
-          userId,
-          amount,
-        },
-      });
+    let request: WithdrawRequest | null = null;
 
-      await tx.wallet.update({
-        where: { userId },
-        data: { balance: { decrement: amount } },
-      });
+    let attempts = 0;
+    while (!request) {
+      const referenceNumber = generateReferenceNumber('WD', 8);
 
-      await tx.walletTransaction.create({
-        data: {
-          walletId: wallet.id,
-          type: 'DEBIT',
-          source: 'PENDING_PAYOUT',
-          amount,
-          balanceBefore,
-          balanceAfter,
-          referenceId: created.id,
-        },
-      });
+      try {
+        request = await this.prisma.$transaction(async (tx) => {
+          const created = await tx.withdrawRequest.create({
+            data: {
+              userId,
+              amount,
+              referenceNumber,
+            },
+          });
 
-      return created;
-    });
+          await tx.wallet.update({
+            where: { userId },
+            data: { balance: { decrement: amount } },
+          });
+
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              type: 'DEBIT',
+              source: 'PENDING_PAYOUT',
+              amount,
+              balanceBefore,
+              balanceAfter,
+              referenceId: created.id,
+            },
+          });
+
+          return created;
+        });
+      } catch (err: unknown) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002' &&
+          attempts < 5
+        ) {
+          attempts += 1;
+          continue;
+        }
+        throw err;
+      }
+    }
 
     // Notify admins
     await this.notifyAdminsNewWithdraw(request.id, amount, userId);
@@ -469,6 +492,7 @@ export class WalletService {
     return {
       id: request.id,
       amount: request.amount,
+      referenceNumber: request.referenceNumber,
       status: request.status,
       createdAt: request.createdAt,
     };

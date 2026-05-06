@@ -352,6 +352,7 @@ model WithdrawRequest {
   id         String        @id @default(uuid()) @db.Uuid
   userId     String        @map("user_id") @db.Uuid
   amount     Decimal       @db.Decimal(10, 2)
+  referenceNumber String   @unique @map("reference_number")
   status     RequestStatus @default(PENDING)
   reviewedBy String?       @map("reviewed_by") @db.Uuid
   reviewedAt DateTime?     @map("reviewed_at")

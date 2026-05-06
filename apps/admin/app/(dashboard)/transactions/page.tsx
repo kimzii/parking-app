@@ -53,6 +53,7 @@ interface WithdrawRequest {
   id: string;
   userId: string;
   amount: string;
+  referenceNumber: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   reviewedBy: string | null;
   reviewedAt: string | null;
@@ -83,15 +84,35 @@ function getTimeRemaining(expiresAt: string | null): string {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
-    PENDING: { label: "Pending", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-    ACCEPTED: { label: "Accepted", className: "bg-blue-100 text-blue-700 border-blue-200" },
-    APPROVED: { label: "Approved", className: "bg-green-100 text-green-700 border-green-200" },
-    REJECTED: { label: "Rejected", className: "bg-red-100 text-red-700 border-red-200" },
-    EXPIRED: { label: "Expired", className: "bg-gray-100 text-gray-500 border-gray-200" },
+    PENDING: {
+      label: "Pending",
+      className: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    },
+    ACCEPTED: {
+      label: "Accepted",
+      className: "bg-blue-100 text-blue-700 border-blue-200",
+    },
+    APPROVED: {
+      label: "Approved",
+      className: "bg-green-100 text-green-700 border-green-200",
+    },
+    REJECTED: {
+      label: "Rejected",
+      className: "bg-red-100 text-red-700 border-red-200",
+    },
+    EXPIRED: {
+      label: "Expired",
+      className: "bg-gray-100 text-gray-500 border-gray-200",
+    },
   };
-  const s = map[status] || { label: status, className: "bg-gray-100 text-gray-600" };
+  const s = map[status] || {
+    label: status,
+    className: "bg-gray-100 text-gray-600",
+  };
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${s.className}`}>
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${s.className}`}
+    >
       {s.label}
     </span>
   );
@@ -106,9 +127,11 @@ export default function TransactionsPage() {
   const highlightRef = useRef<HTMLDivElement>(null);
 
   const defaultTab =
-    tabParam === "withdraw" ? "withdrawals" :
-    tabParam === "topup" ? "topups" :
-    "topups";
+    tabParam === "withdraw"
+      ? "withdrawals"
+      : tabParam === "topup"
+        ? "topups"
+        : "topups";
 
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [topUps, setTopUps] = useState<TopUpRequest[]>([]);
@@ -204,7 +227,12 @@ export default function TransactionsPage() {
   };
 
   const handleReleaseCredits = async (id: string) => {
-    if (!confirm("Are you sure you want to release credits for this top-up? This will add funds to the user's wallet.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to release credits for this top-up? This will add funds to the user's wallet.",
+      )
+    )
+      return;
     setActionLoading(id);
     try {
       await api.patch(`/wallet/top-up/${id}/release`);
@@ -227,7 +255,9 @@ export default function TransactionsPage() {
     setRejectDialog(null);
     setActionLoading(id);
     try {
-      await api.patch(`/wallet/top-up/${id}/reject`, { reason: rejectReason.trim() || undefined });
+      await api.patch(`/wallet/top-up/${id}/reject`, {
+        reason: rejectReason.trim() || undefined,
+      });
       await fetchTopUps();
       await fetchAllTransactions();
     } catch (err: any) {
@@ -241,7 +271,12 @@ export default function TransactionsPage() {
   // ─── Withdraw Actions ──────────────────────────
 
   const handleApproveWithdraw = async (id: string) => {
-    if (!confirm("Are you sure? This will deduct from the user's wallet and mark as sent.")) return;
+    if (
+      !confirm(
+        "Are you sure? This will deduct from the user's wallet and mark as sent.",
+      )
+    )
+      return;
     setActionLoading(id);
     try {
       await api.patch(`/wallet/withdraw/${id}/approve`);
@@ -254,7 +289,8 @@ export default function TransactionsPage() {
   };
 
   const handleRejectWithdraw = async (id: string) => {
-    if (!confirm("Are you sure you want to reject this withdrawal request?")) return;
+    if (!confirm("Are you sure you want to reject this withdrawal request?"))
+      return;
     setActionLoading(id);
     try {
       await api.patch(`/wallet/withdraw/${id}/reject`);
@@ -274,7 +310,12 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <Breadcrumb items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Transactions" }]} />
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Transactions" },
+        ]}
+      />
 
       {/* Header */}
       <div>
@@ -287,18 +328,55 @@ export default function TransactionsPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Pending Top-Ups", value: pendingTopUps.length, icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-          { label: "Awaiting Payment", value: acceptedTopUps.length, icon: ArrowUpCircle, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-          { label: "Pending Withdrawals", value: withdrawals.length, icon: ArrowDownCircle, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
-          { label: "Total Pending Value", value: `₱${[...topUps, ...withdrawals].reduce((s, r) => s + parseFloat(r.amount), 0).toFixed(2)}`, icon: DollarSign, color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
+          {
+            label: "Pending Top-Ups",
+            value: pendingTopUps.length,
+            icon: Clock,
+            color: "text-amber-600",
+            bg: "bg-amber-50",
+            border: "border-amber-100",
+          },
+          {
+            label: "Awaiting Payment",
+            value: acceptedTopUps.length,
+            icon: ArrowUpCircle,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+            border: "border-blue-100",
+          },
+          {
+            label: "Pending Withdrawals",
+            value: withdrawals.length,
+            icon: ArrowDownCircle,
+            color: "text-orange-600",
+            bg: "bg-orange-50",
+            border: "border-orange-100",
+          },
+          {
+            label: "Total Pending Value",
+            value: `₱${[...topUps, ...withdrawals].reduce((s, r) => s + parseFloat(r.amount), 0).toFixed(2)}`,
+            icon: DollarSign,
+            color: "text-green-600",
+            bg: "bg-green-50",
+            border: "border-green-100",
+          },
         ].map(({ label, value, icon: Icon, color, bg, border }) => (
-          <div key={label} className={`rounded-2xl border ${border} ${bg} p-5 flex items-center gap-4`}>
-            <div className={`w-11 h-11 rounded-xl ${bg} border ${border} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+          <div
+            key={label}
+            className={`rounded-2xl border ${border} ${bg} p-5 flex items-center gap-4`}
+          >
+            <div
+              className={`w-11 h-11 rounded-xl ${bg} border ${border} flex items-center justify-center flex-shrink-0 shadow-sm`}
+            >
               <Icon className={`h-5 w-5 ${color}`} />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-              <p className={`text-2xl font-extrabold mt-0.5 ${color}`}>{value}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                {label}
+              </p>
+              <p className={`text-2xl font-extrabold mt-0.5 ${color}`}>
+                {value}
+              </p>
             </div>
           </div>
         ))}
@@ -332,38 +410,70 @@ export default function TransactionsPage() {
               <CardContent className="py-12 text-center text-gray-500">
                 <ArrowUpCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">No pending top-up requests</p>
-                <p className="text-sm">New requests will appear here automatically</p>
+                <p className="text-sm">
+                  New requests will appear here automatically
+                </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
               {topUps.map((req) => {
                 const isLoading = actionLoading === req.id;
-                const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.email;
-                const initials = [req.user.firstName, req.user.lastName].filter(Boolean).map(n => n![0]).join("").toUpperCase() || "?";
-                const remaining = req.status === "PENDING" ? getTimeRemaining(req.expiresAt) : null;
+                const userName =
+                  `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
+                  req.user.email;
+                const initials =
+                  [req.user.firstName, req.user.lastName]
+                    .filter(Boolean)
+                    .map((n) => n![0])
+                    .join("")
+                    .toUpperCase() || "?";
+                const remaining =
+                  req.status === "PENDING"
+                    ? getTimeRemaining(req.expiresAt)
+                    : null;
                 const isExpired = remaining === "Expired";
 
                 return (
-                  <div id={`request-${req.id}`} key={req.id} className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-all ${
-                    req.status === "PENDING" ? "border-amber-200" :
-                    req.status === "ACCEPTED" ? "border-blue-200" : "border-gray-200"
-                  } ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}>
-
+                  <div
+                    id={`request-${req.id}`}
+                    key={req.id}
+                    className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-all ${
+                      req.status === "PENDING"
+                        ? "border-amber-200"
+                        : req.status === "ACCEPTED"
+                          ? "border-blue-200"
+                          : "border-gray-200"
+                    } ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}
+                  >
                     {/* Status strip */}
-                    <div className={`px-5 py-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
-                      req.status === "PENDING" ? "bg-amber-50 text-amber-700 border-b border-amber-100" :
-                      req.status === "ACCEPTED" ? "bg-blue-50 text-blue-700 border-b border-blue-100" :
-                      "bg-gray-50 text-gray-500 border-b border-gray-100"
-                    }`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${req.status === "PENDING" ? "bg-amber-400" : req.status === "ACCEPTED" ? "bg-blue-500" : "bg-gray-400"}`} />
-                      {req.status === "PENDING" ? "Pending Review" : req.status === "ACCEPTED" ? "Awaiting Payment Proof" : req.status}
+                    <div
+                      className={`px-5 py-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
+                        req.status === "PENDING"
+                          ? "bg-amber-50 text-amber-700 border-b border-amber-100"
+                          : req.status === "ACCEPTED"
+                            ? "bg-blue-50 text-blue-700 border-b border-blue-100"
+                            : "bg-gray-50 text-gray-500 border-b border-gray-100"
+                      }`}
+                    >
+                      <div
+                        className={`w-1.5 h-1.5 rounded-full ${req.status === "PENDING" ? "bg-amber-400" : req.status === "ACCEPTED" ? "bg-blue-500" : "bg-gray-400"}`}
+                      />
+                      {req.status === "PENDING"
+                        ? "Pending Review"
+                        : req.status === "ACCEPTED"
+                          ? "Awaiting Payment Proof"
+                          : req.status}
                       {remaining && !isExpired && (
                         <span className="ml-auto font-mono text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full normal-case text-[11px]">
                           ⏱ {remaining}
                         </span>
                       )}
-                      {isExpired && <span className="ml-auto text-gray-400 normal-case">Expired</span>}
+                      {isExpired && (
+                        <span className="ml-auto text-gray-400 normal-case">
+                          Expired
+                        </span>
+                      )}
                     </div>
 
                     <div className="p-5 flex flex-col lg:flex-row gap-5">
@@ -374,8 +484,12 @@ export default function TransactionsPage() {
                         </div>
                         <div className="flex-1 space-y-3">
                           <div>
-                            <p className="font-bold text-gray-900 text-base leading-tight">{userName}</p>
-                            <p className="text-sm text-gray-500 mt-0.5">{req.user.email}</p>
+                            <p className="font-bold text-gray-900 text-base leading-tight">
+                              {userName}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              {req.user.email}
+                            </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <span className="inline-flex items-center gap-1.5 text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
@@ -387,23 +501,36 @@ export default function TransactionsPage() {
                               {formatDate(req.createdAt)}
                             </span>
                             <span className="inline-flex items-center gap-1.5 text-xs font-mono text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 tracking-wider">
-                              {req.referenceCode}
+                              Ref No: {req.referenceCode}
                             </span>
                           </div>
 
                           {/* Proof image */}
                           {req.proofImageUrl ? (
                             <div className="flex items-center gap-3">
-                              <a href={req.proofImageUrl} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-2">
+                              <a
+                                href={req.proofImageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-2"
+                              >
                                 <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
-                                  <img src={req.proofImageUrl} alt="Proof" className="w-full h-full object-cover" />
+                                  <img
+                                    src={req.proofImageUrl}
+                                    alt="Proof"
+                                    className="w-full h-full object-cover"
+                                  />
                                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
                                     <ExternalLink className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition" />
                                   </div>
                                 </div>
                                 <div>
-                                  <p className="text-xs font-semibold text-green-700">Payment Proof Uploaded</p>
-                                  <p className="text-xs text-gray-400 mt-0.5">Click image to view full size</p>
+                                  <p className="text-xs font-semibold text-green-700">
+                                    Payment Proof Uploaded
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    Click image to view full size
+                                  </p>
                                 </div>
                               </a>
                             </div>
@@ -416,8 +543,17 @@ export default function TransactionsPage() {
 
                           {req.status === "ACCEPTED" && (
                             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
-                              <p className="font-semibold mb-0.5">Verify before releasing credits:</p>
-                              <p>GCash number <strong>{req.user.phoneNumber || "N/A"}</strong> sent <strong>₱{parseFloat(req.amount).toFixed(2)}</strong></p>
+                              <p className="font-semibold mb-0.5">
+                                Verify before releasing credits:
+                              </p>
+                              <p>
+                                GCash number{" "}
+                                <strong>{req.user.phoneNumber || "N/A"}</strong>{" "}
+                                sent{" "}
+                                <strong>
+                                  ₱{parseFloat(req.amount).toFixed(2)}
+                                </strong>
+                              </p>
                             </div>
                           )}
                         </div>
@@ -426,28 +562,58 @@ export default function TransactionsPage() {
                       {/* Amount + Actions */}
                       <div className="flex flex-col items-end gap-3 lg:min-w-[180px]">
                         <div className="text-right">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Amount</p>
-                          <p className="text-3xl font-extrabold text-gray-900 leading-tight">₱{parseFloat(req.amount).toFixed(2)}</p>
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                            Amount
+                          </p>
+                          <p className="text-3xl font-extrabold text-gray-900 leading-tight">
+                            ₱{parseFloat(req.amount).toFixed(2)}
+                          </p>
                         </div>
                         <div className="flex flex-col gap-2 w-full">
                           {req.status === "PENDING" && (
                             <>
-                              <Button onClick={() => handleAcceptTopUp(req.id)} disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl">
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle className="h-4 w-4 mr-1" />}
+                              <Button
+                                onClick={() => handleAcceptTopUp(req.id)}
+                                disabled={isLoading}
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                )}
                                 Accept Request
                               </Button>
-                              <Button variant="outline" onClick={() => handleRejectTopUp(req.id)} disabled={isLoading} className="w-full text-red-600 border-red-200 hover:bg-red-50 rounded-xl">
+                              <Button
+                                variant="outline"
+                                onClick={() => handleRejectTopUp(req.id)}
+                                disabled={isLoading}
+                                className="w-full text-red-600 border-red-200 hover:bg-red-50 rounded-xl"
+                              >
                                 <XCircle className="h-4 w-4 mr-1" /> Reject
                               </Button>
                             </>
                           )}
                           {req.status === "ACCEPTED" && (
                             <>
-                              <Button onClick={() => handleReleaseCredits(req.id)} disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl">
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <DollarSign className="h-4 w-4 mr-1" />}
+                              <Button
+                                onClick={() => handleReleaseCredits(req.id)}
+                                disabled={isLoading}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl"
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                                ) : (
+                                  <DollarSign className="h-4 w-4 mr-1" />
+                                )}
                                 Release Credits
                               </Button>
-                              <Button variant="outline" onClick={() => handleRejectTopUp(req.id)} disabled={isLoading} className="w-full text-red-600 border-red-200 hover:bg-red-50 rounded-xl">
+                              <Button
+                                variant="outline"
+                                onClick={() => handleRejectTopUp(req.id)}
+                                disabled={isLoading}
+                                className="w-full text-red-600 border-red-200 hover:bg-red-50 rounded-xl"
+                              >
                                 <XCircle className="h-4 w-4 mr-1" /> Reject
                               </Button>
                             </>
@@ -473,24 +639,38 @@ export default function TransactionsPage() {
               <CardContent className="py-12 text-center text-gray-500">
                 <ArrowDownCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">No pending withdrawal requests</p>
-                <p className="text-sm">New requests will appear here automatically</p>
+                <p className="text-sm">
+                  New requests will appear here automatically
+                </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
               {withdrawals.map((req) => {
                 const isLoading = actionLoading === req.id;
-                const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.email;
-                const initials = [req.user.firstName, req.user.lastName].filter(Boolean).map(n => n![0]).join("").toUpperCase() || "?";
+                const userName =
+                  `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
+                  req.user.email;
+                const initials =
+                  [req.user.firstName, req.user.lastName]
+                    .filter(Boolean)
+                    .map((n) => n![0])
+                    .join("")
+                    .toUpperCase() || "?";
 
                 return (
-                  <div id={`request-${req.id}`} key={req.id} className={`bg-white rounded-2xl border border-orange-200 overflow-hidden shadow-sm transition-all ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}>
-
+                  <div
+                    id={`request-${req.id}`}
+                    key={req.id}
+                    className={`bg-white rounded-2xl border border-orange-200 overflow-hidden shadow-sm transition-all ${requestId === req.id ? "ring-2 ring-[#C94B1E] ring-offset-2" : ""}`}
+                  >
                     {/* Status strip */}
                     <div className="px-5 py-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider bg-orange-50 text-orange-700 border-b border-orange-100">
                       <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
                       Pending Withdrawal
-                      <span className="ml-auto text-gray-400 normal-case font-normal">{formatDate(req.createdAt)}</span>
+                      <span className="ml-auto text-gray-400 normal-case font-normal">
+                        {formatDate(req.createdAt)}
+                      </span>
                     </div>
 
                     <div className="p-5 flex flex-col lg:flex-row gap-5">
@@ -501,14 +681,21 @@ export default function TransactionsPage() {
                         </div>
                         <div className="flex-1 space-y-3">
                           <div>
-                            <p className="font-bold text-gray-900 text-base leading-tight">{userName}</p>
-                            <p className="text-sm text-gray-500 mt-0.5">{req.user.email}</p>
+                            <p className="font-bold text-gray-900 text-base leading-tight">
+                              {userName}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              {req.user.email}
+                            </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
                             <span className="inline-flex items-center gap-1.5 text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
                               <Phone className="h-3.5 w-3.5 text-gray-400" />
                               {req.user.phoneNumber || "No phone"}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 tracking-wider">
+                              Ref No: {req.referenceNumber}
                             </span>
                           </div>
 
@@ -518,9 +705,15 @@ export default function TransactionsPage() {
                               <ArrowDownCircle className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">Send via GCash</p>
-                              <p className="text-sm font-bold text-blue-900 mt-0.5">{req.user.phoneNumber || "No phone number"}</p>
-                              <p className="text-xs text-blue-600">{userName}</p>
+                              <p className="text-xs font-bold text-blue-700 uppercase tracking-wide">
+                                Send via GCash
+                              </p>
+                              <p className="text-sm font-bold text-blue-900 mt-0.5">
+                                {req.user.phoneNumber || "No phone number"}
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {userName}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -529,15 +722,32 @@ export default function TransactionsPage() {
                       {/* Amount + Actions */}
                       <div className="flex flex-col items-end gap-3 lg:min-w-[180px]">
                         <div className="text-right">
-                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Withdraw Amount</p>
-                          <p className="text-3xl font-extrabold text-orange-600 leading-tight">₱{parseFloat(req.amount).toFixed(2)}</p>
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                            Withdraw Amount
+                          </p>
+                          <p className="text-3xl font-extrabold text-orange-600 leading-tight">
+                            ₱{parseFloat(req.amount).toFixed(2)}
+                          </p>
                         </div>
                         <div className="flex flex-col gap-2 w-full">
-                          <Button onClick={() => handleApproveWithdraw(req.id)} disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl">
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle className="h-4 w-4 mr-1" />}
+                          <Button
+                            onClick={() => handleApproveWithdraw(req.id)}
+                            disabled={isLoading}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white rounded-xl"
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                            )}
                             Approve & Mark Sent
                           </Button>
-                          <Button variant="outline" onClick={() => handleRejectWithdraw(req.id)} disabled={isLoading} className="w-full text-red-600 border-red-200 hover:bg-red-50 rounded-xl">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleRejectWithdraw(req.id)}
+                            disabled={isLoading}
+                            className="w-full text-red-600 border-red-200 hover:bg-red-50 rounded-xl"
+                          >
                             <XCircle className="h-4 w-4 mr-1" /> Reject
                           </Button>
                         </div>
@@ -561,68 +771,118 @@ export default function TransactionsPage() {
               <CardContent className="py-12 text-center text-gray-500">
                 <History className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">No transactions yet</p>
-                <p className="text-sm">All top-up and withdrawal requests will appear here</p>
+                <p className="text-sm">
+                  All top-up and withdrawal requests will appear here
+                </p>
               </CardContent>
             </Card>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm divide-y divide-gray-100">
               {[
                 ...allTopUps.map((t) => ({ ...t, _type: "topup" as const })),
-                ...allWithdraws.map((w) => ({ ...w, _type: "withdraw" as const })),
+                ...allWithdraws.map((w) => ({
+                  ...w,
+                  _type: "withdraw" as const,
+                })),
               ]
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(b.createdAt).getTime() -
+                    new Date(a.createdAt).getTime(),
+                )
                 .map((req) => {
-                  const userName = `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() || req.user.email;
-                  const initials = [req.user.firstName, req.user.lastName].filter(Boolean).map(n => n![0]).join("").toUpperCase() || "?";
+                  const userName =
+                    `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
+                    req.user.email;
+                  const initials =
+                    [req.user.firstName, req.user.lastName]
+                      .filter(Boolean)
+                      .map((n) => n![0])
+                      .join("")
+                      .toUpperCase() || "?";
                   const isTopUp = req._type === "topup";
 
                   return (
-                    <div id={`request-${req.id}`} key={req.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50/60 transition-colors ${requestId === req.id ? "bg-orange-50/40" : ""}`}>
-
+                    <div
+                      id={`request-${req.id}`}
+                      key={req.id}
+                      className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50/60 transition-colors ${requestId === req.id ? "bg-orange-50/40" : ""}`}
+                    >
                       {/* Type icon */}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isTopUp ? "bg-blue-50" : "bg-orange-50"}`}>
-                        {isTopUp
-                          ? <ArrowUpCircle className="h-5 w-5 text-blue-500" />
-                          : <ArrowDownCircle className="h-5 w-5 text-orange-500" />
-                        }
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isTopUp ? "bg-blue-50" : "bg-orange-50"}`}
+                      >
+                        {isTopUp ? (
+                          <ArrowUpCircle className="h-5 w-5 text-blue-500" />
+                        ) : (
+                          <ArrowDownCircle className="h-5 w-5 text-orange-500" />
+                        )}
                       </div>
 
                       {/* User avatar */}
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${isTopUp ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${isTopUp ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}
+                      >
                         {initials}
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-gray-900 text-sm truncate">{userName}</span>
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isTopUp ? "bg-blue-50 text-blue-700" : "bg-orange-50 text-orange-700"}`}>
+                          <span className="font-semibold text-gray-900 text-sm truncate">
+                            {userName}
+                          </span>
+                          <span
+                            className={`text-xs font-bold px-2 py-0.5 rounded-full ${isTopUp ? "bg-blue-50 text-blue-700" : "bg-orange-50 text-orange-700"}`}
+                          >
                             {isTopUp ? "Top-Up" : "Withdrawal"}
                           </span>
                           <StatusBadge status={req.status} />
                         </div>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          <span className="text-xs text-gray-400 flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(req.createdAt)}</span>
+                          <span className="text-xs text-gray-400 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(req.createdAt)}
+                          </span>
                           {isTopUp && "referenceCode" in req && (
-                            <span className="font-mono text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{(req as TopUpRequest).referenceCode}</span>
+                            <span className="font-mono text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                              {(req as TopUpRequest).referenceCode}
+                            </span>
+                          )}
+                          {!isTopUp && "referenceNumber" in req && (
+                            <span className="font-mono text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                              {(req as WithdrawRequest).referenceNumber}
+                            </span>
                           )}
                           {isTopUp && (req as TopUpRequest).proofImageUrl ? (
-                            <a href={(req as TopUpRequest).proofImageUrl!} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 hover:text-green-800">
-                              <ImageIcon className="h-3 w-3" /> View Proof <ExternalLink className="h-3 w-3" />
+                            <a
+                              href={(req as TopUpRequest).proofImageUrl!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 hover:text-green-800"
+                            >
+                              <ImageIcon className="h-3 w-3" /> View Proof{" "}
+                              <ExternalLink className="h-3 w-3" />
                             </a>
                           ) : isTopUp ? (
-                            <span className="text-xs text-amber-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> No proof</span>
+                            <span className="text-xs text-amber-600 flex items-center gap-1">
+                              <AlertCircle className="h-3 w-3" /> No proof
+                            </span>
                           ) : null}
                         </div>
                       </div>
 
                       {/* Amount */}
                       <div className="text-right flex-shrink-0">
-                        <p className={`text-base font-extrabold ${isTopUp ? "text-blue-700" : "text-orange-600"}`}>
-                          {isTopUp ? "+" : "−"}₱{parseFloat(req.amount).toFixed(2)}
+                        <p
+                          className={`text-base font-extrabold ${isTopUp ? "text-blue-700" : "text-orange-600"}`}
+                        >
+                          {isTopUp ? "+" : "−"}₱
+                          {parseFloat(req.amount).toFixed(2)}
                         </p>
-                        <p className="text-xs text-gray-400">{req.user.phoneNumber || "—"}</p>
+                        <p className="text-xs text-gray-400">
+                          {req.user.phoneNumber || "—"}
+                        </p>
                       </div>
                     </div>
                   );
@@ -641,14 +901,19 @@ export default function TransactionsPage() {
                 <XCircle className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Reject Top-Up Request</h2>
-                <p className="text-sm text-gray-500">The user will be notified with this reason.</p>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Reject Top-Up Request
+                </h2>
+                <p className="text-sm text-gray-500">
+                  The user will be notified with this reason.
+                </p>
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">
-                Reason <span className="text-gray-400 font-normal">(optional)</span>
+                Reason{" "}
+                <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <Textarea
                 placeholder="e.g. Incorrect amount sent, GCash number did not match..."
@@ -663,7 +928,10 @@ export default function TransactionsPage() {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setRejectDialog(null); setRejectReason(""); }}
+                onClick={() => {
+                  setRejectDialog(null);
+                  setRejectReason("");
+                }}
               >
                 Cancel
               </Button>
