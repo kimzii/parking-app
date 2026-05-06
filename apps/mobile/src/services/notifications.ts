@@ -78,6 +78,14 @@ export async function getNotifications(): Promise<AppNotification[]> {
   return res.data;
 }
 
+/** Get a single notification by id */
+export async function getNotificationById(
+  notificationId: string,
+): Promise<AppNotification> {
+  const res = await api.get(`/notifications/${notificationId}`);
+  return res.data;
+}
+
 /** Get unread notification count */
 export async function getUnreadCount(): Promise<number> {
   const res = await api.get("/notifications/unread-count");
@@ -105,6 +113,8 @@ export async function notifyDriverNearby(reservationId: string): Promise<void> {
 }
 
 /** Notify API that driver has arrived at the parking location */
-export async function notifyDriverArrived(reservationId: string): Promise<void> {
+export async function notifyDriverArrived(
+  reservationId: string,
+): Promise<void> {
   await api.post("/notifications/driver-arrived", { reservationId });
 }

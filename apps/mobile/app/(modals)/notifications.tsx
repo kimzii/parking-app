@@ -115,15 +115,21 @@ export default function NotificationsScreen() {
       screen ||
       {
         BOOKING_COMPLETED: reservationId
-          ? isHost ? "host-reservation-detail" : "reservation-qr"
+          ? isHost
+            ? "host-reservation-detail"
+            : "reservation-qr"
           : null,
         BOOKING_CANCELLED: reservationId
-          ? isHost ? "host-reservation-detail" : "reservation-qr"
+          ? isHost
+            ? "host-reservation-detail"
+            : "reservation-qr"
           : null,
         BOOKING_APPROVED: reservationId ? "reservation-qr" : null,
         BOOKING_PENDING: reservationId ? "host-reservation-detail" : null,
         DRIVER_NEARBY: reservationId
-          ? isHost ? "host-reservation-detail" : "reservation-qr"
+          ? isHost
+            ? "host-reservation-detail"
+            : "reservation-qr"
           : null,
         DRIVER_VERIFIED: "my-reservations",
         LOCATION_APPROVED: "location-detail",
@@ -158,6 +164,12 @@ export default function NotificationsScreen() {
           // Old notifications without locationId — go to spaces list
           router.replace("/(host-tabs)/spaces" as any);
         }
+        break;
+      default:
+        router.push({
+          pathname: "/(modals)/notification-detail",
+          params: { id: item.id },
+        });
         break;
     }
   };
@@ -233,7 +245,14 @@ export default function NotificationsScreen() {
           title: "Notifications",
           headerRight: () =>
             notifications.length > 0 ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginRight: 8 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 14,
+                  marginRight: 8,
+                }}
+              >
                 {unreadCount > 0 && (
                   <TouchableOpacity
                     onPress={handleMarkAllAsRead}
@@ -246,7 +265,11 @@ export default function NotificationsScreen() {
                   onPress={handleClearAll}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <MaterialIcons name="delete-sweep" size={22} color="#A09A94" />
+                  <MaterialIcons
+                    name="delete-sweep"
+                    size={22}
+                    color="#A09A94"
+                  />
                 </TouchableOpacity>
               </View>
             ) : null,
