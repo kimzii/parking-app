@@ -134,28 +134,6 @@ export default function UpdateProfileScreen() {
     }
   };
 
-  const openGallery = async () => {
-    await closeSourcePickerBeforeNativeUi();
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission needed",
-        "Please allow access to your photo library.",
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const croppedUri = await cropToSquare(result.assets[0]);
-      setSelectedImage(croppedUri);
-    }
-  };
-
   const handleBirthdayChange = (
     event: DateTimePickerEvent,
     selectedDate?: Date,
@@ -427,22 +405,6 @@ export default function UpdateProfileScreen() {
               <View>
                 <Text style={styles.sheetOptionTitle}>Take a Photo</Text>
                 <Text style={styles.sheetOptionSub}>Use your camera</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={openGallery}
-              activeOpacity={0.7}
-            >
-              <View style={styles.sheetIconBg}>
-                <Ionicons name="images" size={22} color="#D4501E" />
-              </View>
-              <View>
-                <Text style={styles.sheetOptionTitle}>Choose from Gallery</Text>
-                <Text style={styles.sheetOptionSub}>
-                  Pick from your photo library
-                </Text>
               </View>
             </TouchableOpacity>
 

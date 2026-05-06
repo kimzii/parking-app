@@ -717,11 +717,9 @@ export default function BookSpotScreen() {
           ) : spot.allowParkAnywhere ? (
             <View style={styles.parkAnywhereCard}>
               <MaterialIcons name="local-parking" size={28} color="#D4501E" />
-              <Text style={styles.parkAnywhereTitle}>
-                Park Anywhere Enabled
-              </Text>
+              <Text style={styles.parkAnywhereTitle}>Park Anywhere</Text>
               <Text style={styles.parkAnywhereText}>
-                You can park in any currently available slot after host
+                No slot selection needed. Park in any available space after host
                 approval.
               </Text>
             </View>
