@@ -27,7 +27,9 @@ export default function WithdrawScreen() {
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [fetchingBalance, setFetchingBalance] = useState(true);
-  const [currentRequest, setCurrentRequest] = useState<WithdrawRequest | null>(null);
+  const [currentRequest, setCurrentRequest] = useState<WithdrawRequest | null>(
+    null,
+  );
   const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -93,7 +95,10 @@ export default function WithdrawScreen() {
       return;
     }
     if (numAmount > balance) {
-      Alert.alert("Insufficient Balance", `You only have ₱${balance.toFixed(2)} available.`);
+      Alert.alert(
+        "Insufficient Balance",
+        `You only have ₱${balance.toFixed(2)} available.`,
+      );
       return;
     }
     setStep("confirm");
@@ -106,7 +111,8 @@ export default function WithdrawScreen() {
       setCurrentRequest(request);
       setStep("done");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to create withdrawal request.";
+      const msg =
+        err?.response?.data?.message || "Failed to create withdrawal request.";
       Alert.alert("Error", msg);
     } finally {
       setLoading(false);
@@ -119,12 +125,20 @@ export default function WithdrawScreen() {
       <View style={styles.balanceCard}>
         <View style={styles.balanceIconRow}>
           <View style={styles.walletIconBg}>
-            <MaterialIcons name="account-balance-wallet" size={24} color="#fff" />
+            <MaterialIcons
+              name="account-balance-wallet"
+              size={24}
+              color="#fff"
+            />
           </View>
           <Text style={styles.balanceLabel}>Available Balance</Text>
         </View>
         {fetchingBalance ? (
-          <ActivityIndicator size="small" color="#fff" style={{ marginTop: 8 }} />
+          <ActivityIndicator
+            size="small"
+            color="#fff"
+            style={{ marginTop: 8 }}
+          />
         ) : (
           <Text style={styles.balanceAmount}>₱ {balance.toFixed(2)}</Text>
         )}
@@ -138,7 +152,9 @@ export default function WithdrawScreen() {
           color={phoneNumber ? "#005f56" : "#D4501E"}
         />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.gcashLabel, !phoneNumber && { color: "#D4501E" }]}>
+          <Text
+            style={[styles.gcashLabel, !phoneNumber && { color: "#D4501E" }]}
+          >
             GCash Number
           </Text>
           {loadingProfile ? (
@@ -147,7 +163,8 @@ export default function WithdrawScreen() {
             <Text style={styles.gcashNumber}>{phoneNumber}</Text>
           ) : (
             <Text style={styles.gcashMissing}>
-              No phone number on file. Please update your profile with your verified GCash number.
+              No phone number on file. Please update your profile with your
+              verified GCash number.
             </Text>
           )}
         </View>
@@ -208,7 +225,9 @@ export default function WithdrawScreen() {
       <View style={styles.noticeCard}>
         <MaterialIcons name="schedule" size={18} color="#D4501E" />
         <Text style={styles.noticeText}>
-          Withdrawals are processed within 3 business days. The amount will be sent to your GCash number on file. Ensure your account number is a verified GCash account.
+          Withdrawals are processed within 3-5 business days. The amount will be
+          sent to your GCash number on file. Ensure your account number is a
+          verified GCash account.
         </Text>
       </View>
     </>
@@ -239,19 +258,24 @@ export default function WithdrawScreen() {
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Remaining Balance</Text>
-            <Text style={styles.summaryValue}>₱{(balance - numAmount).toFixed(2)}</Text>
+            <Text style={styles.summaryValue}>
+              ₱{(balance - numAmount).toFixed(2)}
+            </Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Processing Time</Text>
-            <Text style={[styles.summaryValue, { color: "#D4501E" }]}>Up to 3 business days</Text>
+            <Text style={[styles.summaryValue, { color: "#D4501E" }]}>
+              Up to 3-5 business days
+            </Text>
           </View>
         </View>
 
         <View style={styles.noticeCard}>
           <MaterialIcons name="verified-user" size={18} color="#D4501E" />
           <Text style={styles.noticeText}>
-            Make sure your GCash number ({phoneNumber}) is correct and verified. The withdrawal cannot be reversed once processed.
+            Make sure your GCash number ({phoneNumber}) is correct and verified.
+            The withdrawal cannot be reversed once processed.
           </Text>
         </View>
       </>
@@ -265,14 +289,17 @@ export default function WithdrawScreen() {
       </View>
       <Text style={styles.doneTitle}>Request Submitted!</Text>
       <Text style={styles.doneText}>
-        Your withdrawal of ₱{parseFloat(currentRequest?.amount || "0").toFixed(2)} has been received and is now being processed.
+        Your withdrawal of ₱
+        {parseFloat(currentRequest?.amount || "0").toFixed(2)} has been received
+        and is now being processed.
       </Text>
       <View style={styles.processingCard}>
         <MaterialIcons name="schedule" size={22} color="#D4501E" />
         <View style={{ flex: 1 }}>
           <Text style={styles.processingTitle}>3–5 Business Days</Text>
           <Text style={styles.processingText}>
-            Please wait 3–5 business days for the amount to be sent to your GCash number{phoneNumber ? ` (${phoneNumber})` : ""}.
+            Please wait 3–5 business days for the amount to be sent to your
+            GCash number{phoneNumber ? ` (${phoneNumber})` : ""}.
           </Text>
         </View>
       </View>
@@ -290,14 +317,18 @@ export default function WithdrawScreen() {
       case "amount":
         return (
           <TouchableOpacity
-            style={[styles.primaryBtn, (!amount || loading || !phoneNumber) && styles.primaryBtnDisabled]}
+            style={[
+              styles.primaryBtn,
+              (!amount || loading || !phoneNumber) && styles.primaryBtnDisabled,
+            ]}
             onPress={handleContinue}
             disabled={!amount || loading || !phoneNumber}
             activeOpacity={0.8}
           >
             <MaterialIcons name="arrow-forward" size={22} color="#fff" />
             <Text style={styles.primaryBtnText}>
-              Continue{amount ? ` — ₱${parseFloat(amount).toLocaleString()}` : ""}
+              Continue
+              {amount ? ` — ₱${parseFloat(amount).toLocaleString()}` : ""}
             </Text>
           </TouchableOpacity>
         );
@@ -319,7 +350,10 @@ export default function WithdrawScreen() {
                 </>
               )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setStep("amount")} style={styles.backBtn}>
+            <TouchableOpacity
+              onPress={() => setStep("amount")}
+              style={styles.backBtn}
+            >
               <Text style={styles.backBtnText}>Go Back</Text>
             </TouchableOpacity>
           </View>
@@ -366,53 +400,106 @@ const styles = StyleSheet.create({
 
   // Balance card
   balanceCard: {
-    backgroundColor: "#D4501E", borderRadius: 20, padding: 24,
-    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25, shadowRadius: 12, elevation: 6,
+    backgroundColor: "#D4501E",
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: "#D4501E",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
   balanceIconRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   walletIconBg: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  balanceLabel: { fontSize: 15, color: "rgba(255,255,255,0.7)", fontWeight: "600" },
-  balanceAmount: { fontSize: 36, fontWeight: "800", color: "#fff", marginTop: 8, letterSpacing: -0.5 },
+  balanceLabel: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600",
+  },
+  balanceAmount: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: 8,
+    letterSpacing: -0.5,
+  },
 
   // GCash card
   gcashCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#E6F4F1", borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: "#005f56",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#E6F4F1",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#005f56",
   },
   gcashCardWarning: {
-    backgroundColor: "#FFF0EC", borderColor: "#D4501E",
+    backgroundColor: "#FFF0EC",
+    borderColor: "#D4501E",
   },
-  gcashLabel: { fontSize: 12, fontWeight: "600", color: "#005f56", marginBottom: 2 },
+  gcashLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#005f56",
+    marginBottom: 2,
+  },
   gcashNumber: { fontSize: 18, fontWeight: "800", color: "#232230" },
-  gcashMissing: { fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
+  gcashMissing: {
+    fontSize: 13,
+    color: "#D4501E",
+    fontWeight: "500",
+    lineHeight: 18,
+  },
 
   // Sections
   section: { gap: 10 },
   sectionTitle: {
-    fontSize: 13, fontWeight: "700", color: "#A09A94",
-    textTransform: "uppercase", letterSpacing: 0.5, marginLeft: 4,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#A09A94",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginLeft: 4,
   },
   inputCard: {
-    backgroundColor: "#fff", borderRadius: 16, padding: 20,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   currencySymbol: { fontSize: 28, fontWeight: "800", color: "#D4501E" },
-  amountInput: { flex: 1, fontSize: 28, fontWeight: "800", color: "#232230", padding: 0 },
+  amountInput: {
+    flex: 1,
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#232230",
+    padding: 0,
+  },
 
   // Presets
   presetGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   presetButton: {
-    width: "31%", backgroundColor: "#fff", borderRadius: 12,
-    paddingVertical: 14, alignItems: "center",
-    borderWidth: 1.5, borderColor: "#E8ECF0",
+    width: "31%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8ECF0",
   },
   presetButtonSelected: { backgroundColor: "#FFF0EC", borderColor: "#D4501E" },
   presetButtonDisabled: { backgroundColor: "#F5F4F2", borderColor: "#E8ECF0" },
@@ -422,30 +509,66 @@ const styles = StyleSheet.create({
 
   // Notice
   processingCard: {
-    flexDirection: "row", alignItems: "flex-start", gap: 12,
-    backgroundColor: "#FFF0EC", borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: "#D4501E",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    backgroundColor: "#FFF0EC",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#D4501E",
   },
-  processingTitle: { fontSize: 14, fontWeight: "700", color: "#D4501E", marginBottom: 4 },
-  processingText: { fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
+  processingTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#D4501E",
+    marginBottom: 4,
+  },
+  processingText: {
+    fontSize: 13,
+    color: "#D4501E",
+    fontWeight: "500",
+    lineHeight: 18,
+  },
   noticeCard: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: "#FFF8E1", borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: "#FFE0B2",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
   },
-  noticeText: { flex: 1, fontSize: 13, color: "#D4501E", fontWeight: "500", lineHeight: 18 },
+  noticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#D4501E",
+    fontWeight: "500",
+    lineHeight: 18,
+  },
 
   // Step header
   stepHeader: { alignItems: "center", gap: 8, paddingTop: 20 },
   stepTitle: { fontSize: 22, fontWeight: "800", color: "#232230" },
-  stepSubtitle: { fontSize: 14, color: "#A09A94", textAlign: "center", lineHeight: 20 },
+  stepSubtitle: {
+    fontSize: 14,
+    color: "#A09A94",
+    textAlign: "center",
+    lineHeight: 20,
+  },
 
   // Summary
   summaryCard: {
-    backgroundColor: "#F5F4F2", borderRadius: 16, padding: 20, gap: 12,
+    backgroundColor: "#F5F4F2",
+    borderRadius: 16,
+    padding: 20,
+    gap: 12,
   },
   summaryRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   summaryLabel: { fontSize: 14, color: "#A09A94", fontWeight: "500" },
   summaryValue: { fontSize: 16, fontWeight: "700", color: "#232230" },
@@ -456,21 +579,40 @@ const styles = StyleSheet.create({
   doneIconBg: { marginBottom: 8 },
   doneTitle: { fontSize: 24, fontWeight: "800", color: "#232230" },
   doneText: {
-    fontSize: 15, color: "#A09A94", textAlign: "center", lineHeight: 22, paddingHorizontal: 20,
+    fontSize: 15,
+    color: "#A09A94",
+    textAlign: "center",
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
 
   // Bottom
   bottomBar: {
-    padding: 20, paddingTop: 12, backgroundColor: "#FFFFFF",
-    borderTopWidth: 1, borderTopColor: "#F0F0F0",
+    padding: 20,
+    paddingTop: 12,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
   },
   primaryBtn: {
-    backgroundColor: "#D4501E", borderRadius: 14, paddingVertical: 16,
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    shadowColor: "#D4501E", shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+    backgroundColor: "#D4501E",
+    borderRadius: 14,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#D4501E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  primaryBtnDisabled: { backgroundColor: "#B0BEC5", shadowOpacity: 0, elevation: 0 },
+  primaryBtnDisabled: {
+    backgroundColor: "#B0BEC5",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   primaryBtnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
   backBtn: { alignItems: "center", paddingVertical: 8 },
   backBtnText: { fontSize: 15, color: "#A09A94", fontWeight: "600" },
