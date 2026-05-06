@@ -57,6 +57,14 @@ export function useNotificationSetup() {
                 }
               | undefined;
 
+            if (data?.notificationId) {
+              router.push({
+                pathname: "/(modals)/notification-detail",
+                params: { id: data.notificationId },
+              });
+              return;
+            }
+
             const screen = data?.screen;
 
             // Map notification data.screen to actual routes
@@ -80,11 +88,6 @@ export function useNotificationSetup() {
                 pathname: "/(modals)/location-detail",
                 params: { id: data.locationId },
               });
-            } else if (data?.notificationId) {
-              router.push({
-                pathname: "/(modals)/notification-detail",
-                params: { id: data.notificationId },
-              });
             }
           });
 
@@ -102,6 +105,14 @@ export function useNotificationSetup() {
               }
             | undefined;
 
+          if (data?.notificationId) {
+            router.push({
+              pathname: "/(modals)/notification-detail",
+              params: { id: data.notificationId },
+            });
+            return;
+          }
+
           if (data?.screen === "reservation-qr" && data.reservationId) {
             router.push({
               pathname: "/(modals)/reservation-qr",
@@ -114,11 +125,6 @@ export function useNotificationSetup() {
             router.push({
               pathname: "/(modals)/host-reservation-detail",
               params: { id: data.reservationId },
-            });
-          } else if (data?.notificationId) {
-            router.push({
-              pathname: "/(modals)/notification-detail",
-              params: { id: data.notificationId },
             });
           }
         }

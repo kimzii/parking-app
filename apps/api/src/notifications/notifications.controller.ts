@@ -36,6 +36,13 @@ export class NotificationsController {
     return this.notificationsService.getUserNotifications(req.user.id);
   }
 
+  /** Get unread count */
+  @Get('unread-count')
+  async getUnreadCount(@Req() req: any) {
+    const count = await this.notificationsService.getUnreadCount(req.user.id);
+    return { count };
+  }
+
   /** Get a single notification by id */
   @Get(':id')
   async getNotificationById(@Param('id') id: string, @Req() req: any) {
@@ -47,13 +54,6 @@ export class NotificationsController {
       throw new NotFoundException('Notification not found');
     }
     return notif;
-  }
-
-  /** Get unread count */
-  @Get('unread-count')
-  async getUnreadCount(@Req() req: any) {
-    const count = await this.notificationsService.getUnreadCount(req.user.id);
-    return { count };
   }
 
   /** Mark single notification as read */
