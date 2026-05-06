@@ -119,7 +119,11 @@ export class NotificationsService {
     this.gateway.sendToUser(userId, notification);
 
     // Send push notification
-    await this.sendPush(userId, title, message, data);
+    await this.sendPush(userId, title, message, {
+      ...(data ?? {}),
+      notificationId: notification.id,
+      notificationType: type,
+    });
 
     this.markRecentFingerprint(fingerprint);
 
@@ -276,6 +280,12 @@ export class NotificationsService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
+    });
+  }
+
+  async getUserNotificationById(userId: string, notificationId: string) {
+    return this.prisma.notification.findFirst({
+      where: { id: notificationId, userId },
     });
   }
 

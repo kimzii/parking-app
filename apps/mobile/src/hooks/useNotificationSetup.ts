@@ -39,37 +39,51 @@ export function useNotificationSetup() {
         receivedListenerRef.current =
           Notifications.addNotificationReceivedListener((notification) => {
             // You can add foreground refresh logic here if needed
-            console.log("Notification received:", notification.request.content.title);
+            console.log(
+              "Notification received:",
+              notification.request.content.title,
+            );
           });
 
         // Listener: user tapped a notification (foreground, background, or killed)
         responseListenerRef.current =
           Notifications.addNotificationResponseReceivedListener((response) => {
             const data = response.notification.request.content.data as
-              | { screen?: string; reservationId?: string; locationId?: string }
+              | {
+                  screen?: string;
+                  reservationId?: string;
+                  locationId?: string;
+                  notificationId?: string;
+                }
               | undefined;
 
-            if (!data?.screen) return;
-
-            const screen = data.screen;
+            const screen = data?.screen;
 
             // Map notification data.screen to actual routes
-            if (screen === "reservation-qr" && data.reservationId) {
+            if (screen === "reservation-qr" && data?.reservationId) {
               router.push({
                 pathname: "/(modals)/reservation-qr",
                 params: { id: data.reservationId },
               });
-            } else if (screen === "host-reservation-detail" && data.reservationId) {
+            } else if (
+              screen === "host-reservation-detail" &&
+              data?.reservationId
+            ) {
               router.push({
                 pathname: "/(modals)/host-reservation-detail",
                 params: { id: data.reservationId },
               });
             } else if (screen === "my-reservations") {
               router.push("/(modals)/my-reservations");
-            } else if (screen === "location-detail" && data.locationId) {
+            } else if (screen === "location-detail" && data?.locationId) {
               router.push({
                 pathname: "/(modals)/location-detail",
                 params: { id: data.locationId },
+              });
+            } else if (data?.notificationId) {
+              router.push({
+                pathname: "/(modals)/notification-detail",
+                params: { id: data.notificationId },
               });
             }
           });
@@ -80,7 +94,12 @@ export function useNotificationSetup() {
           await Notifications.getLastNotificationResponseAsync();
         if (lastResponse && !cancelled) {
           const data = lastResponse.notification.request.content.data as
-            | { screen?: string; reservationId?: string; locationId?: string }
+            | {
+                screen?: string;
+                reservationId?: string;
+                locationId?: string;
+                notificationId?: string;
+              }
             | undefined;
 
           if (data?.screen === "reservation-qr" && data.reservationId) {
@@ -88,10 +107,18 @@ export function useNotificationSetup() {
               pathname: "/(modals)/reservation-qr",
               params: { id: data.reservationId },
             });
-          } else if (data?.screen === "host-reservation-detail" && data.reservationId) {
+          } else if (
+            data?.screen === "host-reservation-detail" &&
+            data.reservationId
+          ) {
             router.push({
               pathname: "/(modals)/host-reservation-detail",
               params: { id: data.reservationId },
+            });
+          } else if (data?.notificationId) {
+            router.push({
+              pathname: "/(modals)/notification-detail",
+              params: { id: data.notificationId },
             });
           }
         }

@@ -36,6 +36,19 @@ export class NotificationsController {
     return this.notificationsService.getUserNotifications(req.user.id);
   }
 
+  /** Get a single notification by id */
+  @Get(':id')
+  async getNotificationById(@Param('id') id: string, @Req() req: any) {
+    const notif = await this.notificationsService.getUserNotificationById(
+      req.user.id,
+      id,
+    );
+    if (!notif) {
+      throw new NotFoundException('Notification not found');
+    }
+    return notif;
+  }
+
   /** Get unread count */
   @Get('unread-count')
   async getUnreadCount(@Req() req: any) {
@@ -115,7 +128,10 @@ export class NotificationsController {
 
   /** Driver arrived — called from mobile proximity detection */
   @Post('driver-arrived')
-  async driverArrived(@Req() req: any, @Body() body: { reservationId: string }) {
+  async driverArrived(
+    @Req() req: any,
+    @Body() body: { reservationId: string },
+  ) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: body.reservationId },
       include: {
