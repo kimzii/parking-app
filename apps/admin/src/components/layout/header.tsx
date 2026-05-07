@@ -63,7 +63,13 @@ interface ApiNotification {
 
 interface UiNotification {
   id: string;
-  type: NotificationType | "PENDING_LISTING" | "PENDING_DRIVER" | "PENDING_VEHICLE" | "TOPUP_REQUEST" | "WITHDRAW_REQUEST";
+  type:
+    | NotificationType
+    | "PENDING_LISTING"
+    | "PENDING_DRIVER"
+    | "PENDING_VEHICLE"
+    | "TOPUP_REQUEST"
+    | "WITHDRAW_REQUEST";
   title: string;
   message: string;
   time: string;
@@ -71,6 +77,12 @@ interface UiNotification {
   link: string;
   persisted: boolean;
 }
+
+type PendingCountResponse = {
+  pagination?: {
+    total?: number;
+  };
+};
 
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
@@ -94,10 +106,12 @@ const formatTimeAgo = (dateString: string) => {
 };
 
 const mapNotificationLink = (notification: ApiNotification): string => {
-  const data = notification.data && typeof notification.data === "object" ? notification.data : {};
+  const data =
+    notification.data && typeof notification.data === "object"
+      ? notification.data
+      : {};
 
-  const getString = (key: string) =>
-    key in data ? String(data[key]) : null;
+  const getString = (key: string) => (key in data ? String(data[key]) : null);
 
   const reservationId = getString("reservationId");
   const locationId = getString("locationId");
@@ -119,7 +133,9 @@ const mapNotificationLink = (notification: ApiNotification): string => {
     case "BOOKING_COMPLETED":
     case "DRIVER_NEARBY":
     case "DRIVER_ARRIVED":
-      return reservationId ? `/reservations?reservationId=${reservationId}` : "/reservations";
+      return reservationId
+        ? `/reservations?reservationId=${reservationId}`
+        : "/reservations";
 
     case "TOPUP_APPROVED":
     case "TOPUP_REJECTED":
@@ -139,7 +155,7 @@ const mapNotificationLink = (notification: ApiNotification): string => {
         return locationId ? `/listings?listingId=${locationId}` : "/listings";
       }
       if (kind === "PENDING_DRIVER") {
-        return driverId ? `/users?driverId=${driverId}` : "/users";
+        return "/listings?tab=pending";
       }
       if (kind === "PENDING_VEHICLE") {
         const driverUserId = getString("driverUserId");
@@ -190,7 +206,9 @@ export default function Header({ user, onLogout }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<UiNotification[]>([]);
   const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
-  const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const [notificationsError, setNotificationsError] = useState<string | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   const quickActionsRef = useRef<HTMLDivElement>(null);
@@ -199,10 +217,16 @@ export default function Header({ user, onLogout }: HeaderProps) {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target as Node)) {
+      if (
+        quickActionsRef.current &&
+        !quickActionsRef.current.contains(event.target as Node)
+      ) {
         setShowQuickActions(false);
       }
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target as Node)
+      ) {
         setShowNotifications(false);
       }
     };
@@ -215,15 +239,28 @@ export default function Header({ user, onLogout }: HeaderProps) {
     const fetchNotifications = async () => {
       try {
         setIsNotificationsLoading(true);
-        const [notificationsRes, unreadCountRes] = await Promise.all([
+        const [
+          notificationsRes,
+          unreadCountRes,
+          pendingDriversRes,
+          pendingListingsRes,
+        ] = await Promise.all([
           api.get<ApiNotification[]>("/notifications"),
           api.get<{ count: number }>("/notifications/unread-count"),
+          api
+            .get<PendingCountResponse>(
+              "/drivers/admin/all?status=PENDING&page=1&limit=1",
+            )
+            .catch(() => ({ data: { pagination: { total: 0 } } }) as any),
+          api
+            .get<PendingCountResponse>(
+              "/hosts/admin/locations?status=PENDING&page=1&limit=1",
+            )
+            .catch(() => ({ data: { pagination: { total: 0 } } }) as any),
         ]);
 
         const unreadIds = new Set(
-          notificationsRes.data
-            .filter((n) => !n.isRead)
-            .map((n) => n.id)
+          notificationsRes.data.filter((n) => !n.isRead).map((n) => n.id),
         );
 
         if (unreadCountRes.data.count > unreadIds.size) {
@@ -239,7 +276,40 @@ export default function Header({ user, onLogout }: HeaderProps) {
           read: !unreadIds.has(n.id),
         }));
 
-        setNotifications(apiNotifications);
+        const pendingDriverCount =
+          Number(pendingDriversRes.data?.pagination?.total ?? 0) || 0;
+        const pendingListingCount =
+          Number(pendingListingsRes.data?.pagination?.total ?? 0) || 0;
+
+        const summaryNotifications: UiNotification[] = [];
+
+        if (pendingDriverCount > 0) {
+          summaryNotifications.push({
+            id: "pending-driver-approvals",
+            type: "PENDING_DRIVER",
+            title: "Pending Driver Approvals",
+            message: `You have ${pendingDriverCount} driver application${pendingDriverCount === 1 ? "" : "s"} awaiting review.`,
+            time: "Just now",
+            read: true,
+            link: "/listings?tab=pending",
+            persisted: false,
+          });
+        }
+
+        if (pendingListingCount > 0) {
+          summaryNotifications.push({
+            id: "pending-listing-approvals",
+            type: "PENDING_LISTING",
+            title: "Pending Listing Approvals",
+            message: `You have ${pendingListingCount} listing${pendingListingCount === 1 ? "" : "s"} awaiting review.`,
+            time: "Just now",
+            read: true,
+            link: "/listings?tab=pending",
+            persisted: false,
+          });
+        }
+
+        setNotifications([...summaryNotifications, ...apiNotifications]);
         setNotificationsError(null);
       } catch (error) {
         console.error("Failed to fetch notifications:", error);
@@ -260,18 +330,23 @@ export default function Header({ user, onLogout }: HeaderProps) {
   // Helper to format name from email
   const formatName = (email: string) => {
     if (!email) return "User";
-    return email.split('@')[0]
-      .replace(/[._]/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
+    return email
+      .split("@")[0]
+      .replace(/[._]/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const getInitials = (email: string) => {
     if (!email) return "U";
     const name = formatName(email);
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2);
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2);
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAsRead = async (notificationId: string) => {
     const target = notifications.find((n) => n.id === notificationId);
@@ -280,22 +355,24 @@ export default function Header({ user, onLogout }: HeaderProps) {
       return;
     }
 
-    setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
     );
 
     try {
       await api.patch(`/notifications/${notificationId}/read`);
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: false } : n)),
       );
     }
   };
 
   const markAllAsRead = async () => {
-    setNotifications(prev => prev.map(n => (n.persisted ? { ...n, read: true } : n)));
+    setNotifications((prev) =>
+      prev.map((n) => (n.persisted ? { ...n, read: true } : n)),
+    );
 
     try {
       await api.patch("/notifications/read-all");
@@ -342,13 +419,48 @@ export default function Header({ user, onLogout }: HeaderProps) {
   };
 
   const quickActions = [
-    { icon: UserPlus, label: "Users", href: "/users", description: "Review pending verifications" },
-    { icon: MapPin, label: "Listings", href: "/listings", description: "Approve parking locations" },
-    { icon: CalendarCheck, label: "Reservations", href: "/reservations", description: "Manage booking reservations" },
-    { icon: SquareParking, label: "Sessions", href: "/sessions", description: "View active parking sessions" },
-    { icon: Wallet, label: "Transactions", href: "/transactions", description: "Top-ups & withdrawals" },
-    { icon: FileText, label: "Reports", href: "/reports", description: "Analytics & financial reports" },
-    { icon: Settings, label: "Settings", href: "/settings", description: "Configure system settings" },
+    {
+      icon: UserPlus,
+      label: "Users",
+      href: "/users",
+      description: "Review pending verifications",
+    },
+    {
+      icon: MapPin,
+      label: "Listings",
+      href: "/listings",
+      description: "Approve parking locations",
+    },
+    {
+      icon: CalendarCheck,
+      label: "Reservations",
+      href: "/reservations",
+      description: "Manage booking reservations",
+    },
+    {
+      icon: SquareParking,
+      label: "Sessions",
+      href: "/sessions",
+      description: "View active parking sessions",
+    },
+    {
+      icon: Wallet,
+      label: "Transactions",
+      href: "/transactions",
+      description: "Top-ups & withdrawals",
+    },
+    {
+      icon: FileText,
+      label: "Reports",
+      href: "/reports",
+      description: "Analytics & financial reports",
+    },
+    {
+      icon: Settings,
+      label: "Settings",
+      href: "/settings",
+      description: "Configure system settings",
+    },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -362,8 +474,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
   return (
     <header className="bg-white px-8 py-4 sticky top-0 z-10 w-full border-b border-gray-100">
       <div className="flex items-center justify-between gap-8">
-
-       {/* Search Bar */}
+        {/* Search Bar */}
         <form onSubmit={handleSearch} className="relative w-full max-w-[500px]">
           <Search
             size={18}
@@ -429,7 +540,9 @@ export default function Header({ user, onLogout }: HeaderProps) {
                 setShowQuickActions(false);
               }}
               className={`p-2.5 rounded-lg relative transition-colors ${
-                showNotifications ? "bg-[#C94B1E] text-white" : "hover:bg-gray-100 text-gray-500"
+                showNotifications
+                  ? "bg-[#C94B1E] text-white"
+                  : "hover:bg-gray-100 text-gray-500"
               }`}
             >
               <Bell size={20} />
@@ -475,7 +588,9 @@ export default function Header({ user, onLogout }: HeaderProps) {
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        onClick={() => void handleNotificationClick(notification)}
+                        onClick={() =>
+                          void handleNotificationClick(notification)
+                        }
                         className={`group px-4 py-3 flex items-start gap-3 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50 ${
                           !notification.read ? "bg-blue-50/50" : ""
                         }`}
@@ -485,15 +600,21 @@ export default function Header({ user, onLogout }: HeaderProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className={`text-sm ${!notification.read ? "font-semibold text-gray-900" : "text-gray-700"}`}>
+                            <p
+                              className={`text-sm ${!notification.read ? "font-semibold text-gray-900" : "text-gray-700"}`}
+                            >
                               {notification.title}
                             </p>
                             {!notification.read && (
                               <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5"></span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">{notification.message}</p>
-                          <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {notification.time}
+                          </p>
                         </div>
                         <button
                           onClick={(e) => {
