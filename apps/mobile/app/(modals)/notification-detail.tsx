@@ -33,12 +33,27 @@ const NOTIFICATION_ICONS: Record<
   LOCATION_REJECTED: { icon: "cancel", color: "#E53935", bg: "#FFEBEE" },
   TOPUP_APPROVED: { icon: "check-circle", color: "#4CAF50", bg: "#E8F5E9" },
   TOPUP_REJECTED: { icon: "warning", color: "#E53935", bg: "#FFEBEE" },
+  WITHDRAW_APPROVED: { icon: "check-circle", color: "#1976D2", bg: "#E3F2FD" },
+  WITHDRAW_REJECTED: { icon: "warning", color: "#E53935", bg: "#FFEBEE" },
   GENERAL: { icon: "notifications", color: "#D4501E", bg: "#FFF0EC" },
 };
 
 type DetailParams = {
   id?: string;
+  title?: string;
+  message?: string;
+  type?: string;
+  createdAt?: string;
+  screen?: string;
+  reservationId?: string;
+  locationId?: string;
 };
+
+function asString(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (Array.isArray(value)) return value[0];
+  return String(value);
+}
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return "";
@@ -55,7 +70,8 @@ function formatDate(dateStr?: string) {
 }
 
 export default function NotificationDetailScreen() {
-  const { id } = useLocalSearchParams<DetailParams>();
+  const params = useLocalSearchParams<DetailParams>();
+  const id = asString(params.id);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,28 +90,17 @@ export default function NotificationDetailScreen() {
     onPress: () => void;
   }>(null);
 
-  const load = useCallback(async () => {
-    if (!id) {
-      setError("Missing notification id");
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      const data = await getNotificationById(String(id));
-      setNotification(data);
-
-      const extra = (data?.data ?? {}) as Record<string, any>;
+  const buildAction = useCallback(
+    async (n: { type: string; data?: Record<string, any> }) => {
+      const extra = (n.data ?? {}) as Record<string, any>;
       const screen = extra.screen as string | undefined;
       const reservationId = extra.reservationId as string | undefined;
       const locationId = extra.locationId as string | undefined;
+      const topUpAction = extra.action as string | undefined;
 
       const viewMode = await SecureStore.getItemAsync("viewMode");
       const isHost = viewMode === "host";
 
-      // Use explicit screen if available, otherwise fall back to type-based routing
       const route =
         screen ||
         (
@@ -120,8 +125,12 @@ export default function NotificationDetailScreen() {
             DRIVER_VERIFIED: "my-reservations",
             LOCATION_APPROVED: "location-detail",
             LOCATION_REJECTED: "location-detail",
+            TOPUP_APPROVED: topUpAction === "SHOW_QR" ? "top-up" : "payment",
+            TOPUP_REJECTED: "top-up",
+            WITHDRAW_APPROVED: "payment",
+            WITHDRAW_REJECTED: "payment",
           } as Record<string, string | null>
-        )[data.type];
+        )[n.type];
 
       if (route === "reservation-qr" && reservationId) {
         setAction({
@@ -146,6 +155,34 @@ export default function NotificationDetailScreen() {
           label: "View reservations",
           onPress: () => router.push("/(modals)/my-reservations"),
         });
+      } else if (route === "top-up") {
+        setAction({
+          label: "Open top-up",
+          onPress: () => router.push("/(modals)/top-up" as any),
+        });
+      } else if (route === "payment") {
+        setAction({
+          label: "Open wallet",
+          onPress: () => router.replace("/(tabs)/payment" as any),
+        });
+      } else if (route === "profile") {
+        setAction({
+          label: "Open profile",
+          onPress: () =>
+            router.replace(
+              (isHost ? "/(host-tabs)/profile" : "/(tabs)/profile") as any,
+            ),
+        });
+      } else if (route === "host-home") {
+        setAction({
+          label: "Go to home",
+          onPress: () => router.replace("/(host-tabs)" as any),
+        });
+      } else if (route === "my-vehicles") {
+        setAction({
+          label: "View vehicles",
+          onPress: () => router.push("/(modals)/my-vehicles" as any),
+        });
       } else if (route === "location-detail") {
         if (locationId) {
           setAction({
@@ -165,6 +202,53 @@ export default function NotificationDetailScreen() {
       } else {
         setAction(null);
       }
+    },
+    [],
+  );
+
+  const load = useCallback(async () => {
+    // If `id` isn't available (e.g. some push notifications), render from params.
+    if (!id) {
+      const title = asString(params.title);
+      const message = asString(params.message);
+      const type = asString(params.type) || "GENERAL";
+      const createdAt = asString(params.createdAt) || new Date().toISOString();
+
+      if (!title && !message) {
+        setError("Notification not available");
+        setLoading(false);
+        setRefreshing(false);
+        setAction(null);
+        return;
+      }
+
+      const synthetic = {
+        id: "",
+        title: title || "Notification",
+        message: message || "",
+        type,
+        data: {
+          screen: asString(params.screen),
+          reservationId: asString(params.reservationId),
+          locationId: asString(params.locationId),
+        },
+        isRead: true,
+        createdAt,
+      };
+
+      setError(null);
+      setNotification(synthetic);
+      await buildAction(synthetic);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      const data = await getNotificationById(String(id));
+      setNotification(data);
+      await buildAction(data);
     } catch {
       setError("Failed to load notification");
       setAction(null);
@@ -172,7 +256,7 @@ export default function NotificationDetailScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [id]);
+  }, [buildAction, id, params]);
 
   React.useEffect(() => {
     load();

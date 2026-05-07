@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { router } from "expo-router";
+import { useEffect, useMemo, useRef } from "react";
+import { useRootNavigationState, useRouter } from "expo-router";
 
 /**
  * Root-level notification listener hook.
@@ -12,8 +12,46 @@ import { router } from "expo-router";
  * Must be called once in the root _layout.tsx.
  */
 export function useNotificationSetup() {
+  const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const responseListenerRef = useRef<{ remove: () => void } | null>(null);
   const receivedListenerRef = useRef<{ remove: () => void } | null>(null);
+  const pendingNavRef = useRef<{
+    pathname: "/(modals)/notification-detail";
+    params:
+      | { id: string }
+      | {
+          title: string;
+          message: string;
+          type: string;
+          createdAt: string;
+          screen?: string;
+          reservationId?: string;
+          locationId?: string;
+        };
+  } | null>(null);
+
+  const isNavReady = useMemo(
+    () => Boolean(rootNavigationState?.key),
+    [rootNavigationState?.key],
+  );
+
+  const isNavReadyRef = useRef(false);
+
+  useEffect(() => {
+    isNavReadyRef.current = isNavReady;
+  }, [isNavReady]);
+
+  const lastHandledRequestIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isNavReady) return;
+    if (!pendingNavRef.current) return;
+
+    const nav = pendingNavRef.current;
+    pendingNavRef.current = null;
+    router.push(nav);
+  }, [isNavReady, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,50 +83,59 @@ export function useNotificationSetup() {
             );
           });
 
-        // Listener: user tapped a notification (foreground, background, or killed)
+        const navigateToDetail = (input: {
+          requestIdentifier: string;
+          content: { title?: string | null; body?: string | null; data?: any };
+        }) => {
+          if (lastHandledRequestIdRef.current === input.requestIdentifier) {
+            return;
+          }
+          lastHandledRequestIdRef.current = input.requestIdentifier;
+
+          const content = input.content;
+          const data = content.data as
+            | {
+                screen?: string;
+                reservationId?: string;
+                locationId?: string;
+                notificationId?: string;
+                notificationType?: string;
+              }
+            | undefined;
+
+          const nav = {
+            pathname: "/(modals)/notification-detail" as const,
+            params: data?.notificationId
+              ? { id: String(data.notificationId) }
+              : {
+                  title: String(content.title ?? "Notification"),
+                  message: String(content.body ?? ""),
+                  type: data?.notificationType
+                    ? String(data.notificationType)
+                    : "GENERAL",
+                  createdAt: new Date().toISOString(),
+                  screen: data?.screen ? String(data.screen) : "",
+                  reservationId: data?.reservationId
+                    ? String(data.reservationId)
+                    : "",
+                  locationId: data?.locationId ? String(data.locationId) : "",
+                },
+          };
+
+          if (isNavReadyRef.current) {
+            router.push(nav);
+          } else {
+            pendingNavRef.current = nav;
+          }
+        };
+
+        // Listener: user tapped a notification (foreground or background)
         responseListenerRef.current =
           Notifications.addNotificationResponseReceivedListener((response) => {
-            const data = response.notification.request.content.data as
-              | {
-                  screen?: string;
-                  reservationId?: string;
-                  locationId?: string;
-                  notificationId?: string;
-                }
-              | undefined;
-
-            if (data?.notificationId) {
-              router.push({
-                pathname: "/(modals)/notification-detail",
-                params: { id: data.notificationId },
-              });
-              return;
-            }
-
-            const screen = data?.screen;
-
-            // Map notification data.screen to actual routes
-            if (screen === "reservation-qr" && data?.reservationId) {
-              router.push({
-                pathname: "/(modals)/reservation-qr",
-                params: { id: data.reservationId },
-              });
-            } else if (
-              screen === "host-reservation-detail" &&
-              data?.reservationId
-            ) {
-              router.push({
-                pathname: "/(modals)/host-reservation-detail",
-                params: { id: data.reservationId },
-              });
-            } else if (screen === "my-reservations") {
-              router.push("/(modals)/my-reservations");
-            } else if (screen === "location-detail" && data?.locationId) {
-              router.push({
-                pathname: "/(modals)/location-detail",
-                params: { id: data.locationId },
-              });
-            }
+            navigateToDetail({
+              requestIdentifier: response.notification.request.identifier,
+              content: response.notification.request.content,
+            });
           });
 
         // Handle the case where the app was opened from a killed state by a notification tap.
@@ -96,37 +143,10 @@ export function useNotificationSetup() {
         const lastResponse =
           await Notifications.getLastNotificationResponseAsync();
         if (lastResponse && !cancelled) {
-          const data = lastResponse.notification.request.content.data as
-            | {
-                screen?: string;
-                reservationId?: string;
-                locationId?: string;
-                notificationId?: string;
-              }
-            | undefined;
-
-          if (data?.notificationId) {
-            router.push({
-              pathname: "/(modals)/notification-detail",
-              params: { id: data.notificationId },
-            });
-            return;
-          }
-
-          if (data?.screen === "reservation-qr" && data.reservationId) {
-            router.push({
-              pathname: "/(modals)/reservation-qr",
-              params: { id: data.reservationId },
-            });
-          } else if (
-            data?.screen === "host-reservation-detail" &&
-            data.reservationId
-          ) {
-            router.push({
-              pathname: "/(modals)/host-reservation-detail",
-              params: { id: data.reservationId },
-            });
-          }
+          navigateToDetail({
+            requestIdentifier: lastResponse.notification.request.identifier,
+            content: lastResponse.notification.request.content,
+          });
         }
       } catch (err) {
         // Expected to fail in Expo Go — native module not available
