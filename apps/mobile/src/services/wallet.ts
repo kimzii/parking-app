@@ -23,6 +23,7 @@ export interface TopUpRequest {
 export interface WithdrawRequest {
   id: string;
   amount: string;
+  referenceNumber: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
 }

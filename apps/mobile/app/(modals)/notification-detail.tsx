@@ -344,6 +344,44 @@ export default function NotificationDetailScreen() {
                 </Text>
                 <Text style={styles.titleCenter}>{notification.title}</Text>
                 <Text style={styles.messageCenter}>{notification.message}</Text>
+
+                {notification.type === "WITHDRAW_APPROVED" &&
+                  notification.data?.referenceNumber ? (
+                  <View style={styles.withdrawInfoCard}>
+                    <View style={styles.withdrawInfoRow}>
+                      <Text style={styles.withdrawInfoLabel}>Amount</Text>
+                      <Text style={styles.withdrawInfoValue}>
+                        ₱{Number(notification.data.amount ?? 0).toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.withdrawInfoDivider} />
+                    <View style={styles.withdrawInfoRow}>
+                      <Text style={styles.withdrawInfoLabel}>Reference Code</Text>
+                      <Text style={[styles.withdrawInfoValue, styles.withdrawInfoMono]}>
+                        {notification.data.referenceNumber}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {notification.type === "TOPUP_APPROVED" &&
+                  notification.data?.referenceCode ? (
+                  <View style={styles.withdrawInfoCard}>
+                    <View style={styles.withdrawInfoRow}>
+                      <Text style={styles.withdrawInfoLabel}>Amount</Text>
+                      <Text style={styles.withdrawInfoValue}>
+                        ₱{Number(notification.data.amount ?? 0).toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.withdrawInfoDivider} />
+                    <View style={styles.withdrawInfoRow}>
+                      <Text style={styles.withdrawInfoLabel}>Reference Code</Text>
+                      <Text style={[styles.withdrawInfoValue, styles.withdrawInfoMono]}>
+                        {notification.data.referenceCode}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
               </View>
             </ScrollView>
 
@@ -452,5 +490,36 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+  },
+  withdrawInfoCard: {
+    marginTop: 16,
+    backgroundColor: "#F5F4F2",
+    borderRadius: 14,
+    padding: 16,
+    gap: 10,
+    width: "100%",
+  },
+  withdrawInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  withdrawInfoLabel: {
+    fontSize: 13,
+    color: "#A09A94",
+    fontWeight: "600",
+  },
+  withdrawInfoValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#232230",
+  },
+  withdrawInfoMono: {
+    fontFamily: "monospace",
+    letterSpacing: 0.5,
+  },
+  withdrawInfoDivider: {
+    height: 1,
+    backgroundColor: "#E8ECF0",
   },
 });

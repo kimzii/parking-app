@@ -293,6 +293,15 @@ export default function WithdrawScreen() {
         {parseFloat(currentRequest?.amount || "0").toFixed(2)} has been received
         and is now being processed.
       </Text>
+
+      {currentRequest?.referenceNumber ? (
+        <View style={styles.referenceCard}>
+          <Text style={styles.referenceLabel}>Reference Code</Text>
+          <Text style={styles.referenceCode}>{currentRequest.referenceNumber}</Text>
+          <Text style={styles.referenceHint}>Keep this for your records</Text>
+        </View>
+      ) : null}
+
       <View style={styles.processingCard}>
         <MaterialIcons name="schedule" size={22} color="#D4501E" />
         <View style={{ flex: 1 }}>
@@ -578,6 +587,18 @@ const styles = StyleSheet.create({
   doneContainer: { alignItems: "center", paddingTop: 40, gap: 16 },
   doneIconBg: { marginBottom: 8 },
   doneTitle: { fontSize: 24, fontWeight: "800", color: "#232230" },
+  referenceCard: {
+    backgroundColor: "#F5F4F2",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    gap: 4,
+    width: "100%",
+  },
+  referenceLabel: { fontSize: 12, fontWeight: "700", color: "#A09A94", textTransform: "uppercase", letterSpacing: 0.5 },
+  referenceCode: { fontSize: 22, fontWeight: "800", color: "#232230", letterSpacing: 1 },
+  referenceHint: { fontSize: 12, color: "#A09A94", fontWeight: "500" },
   doneText: {
     fontSize: 15,
     color: "#A09A94",
