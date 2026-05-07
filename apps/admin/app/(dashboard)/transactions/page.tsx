@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,8 @@ import {
   ImageIcon,
   ExternalLink,
   History,
+  Search,
+  X,
 } from "lucide-react";
 import api from "../../../src/lib/api";
 import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
@@ -141,10 +143,42 @@ export default function TransactionsPage() {
   const [loadingTopUps, setLoadingTopUps] = useState(true);
   const [loadingWithdraws, setLoadingWithdraws] = useState(true);
   const [loadingAll, setLoadingAll] = useState(true);
+  const [allPage, setAllPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [timerTick, setTimerTick] = useState(0);
   const [rejectDialog, setRejectDialog] = useState<{ id: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [refSearch, setRefSearch] = useState("");
+
+  const allTransactionsPageSize = 20;
+
+  const allTransactionsSorted = useMemo(() => {
+    return [
+      ...allTopUps.map((t) => ({ ...t, _type: "topup" as const })),
+      ...allWithdraws.map((w) => ({ ...w, _type: "withdraw" as const })),
+    ].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [allTopUps, allWithdraws]);
+
+  const allTransactionsTotalPages = Math.max(
+    1,
+    Math.ceil(allTransactionsSorted.length / allTransactionsPageSize),
+  );
+
+  const currentAllPage = Math.min(allPage, allTransactionsTotalPages);
+
+  const allTransactionsPaged = useMemo(() => {
+    const start = (currentAllPage - 1) * allTransactionsPageSize;
+    return allTransactionsSorted.slice(start, start + allTransactionsPageSize);
+  }, [allTransactionsSorted, currentAllPage]);
+
+  useEffect(() => {
+    if (allPage > allTransactionsTotalPages) {
+      setAllPage(allTransactionsTotalPages);
+    }
+  }, [allPage, allTransactionsTotalPages]);
 
   const fetchTopUps = useCallback(async () => {
     try {
@@ -304,8 +338,28 @@ export default function TransactionsPage() {
 
   // ─── Render ────────────────────────────────────
 
-  const pendingTopUps = topUps.filter((t) => t.status === "PENDING");
-  const acceptedTopUps = topUps.filter((t) => t.status === "ACCEPTED");
+  const refQuery = refSearch.trim().toLowerCase();
+
+  const filteredTopUps = refQuery
+    ? topUps.filter((t) => t.referenceCode.toLowerCase().includes(refQuery))
+    : topUps;
+
+  const filteredWithdrawals = refQuery
+    ? withdrawals.filter((w) => w.referenceNumber.toLowerCase().includes(refQuery))
+    : withdrawals;
+
+  const filteredAllTransactions = refQuery
+    ? allTransactionsPaged.filter((r) => {
+        const ref =
+          r._type === "topup"
+            ? (r as TopUpRequest).referenceCode
+            : (r as WithdrawRequest).referenceNumber;
+        return ref?.toLowerCase().includes(refQuery);
+      })
+    : allTransactionsPaged;
+
+  const pendingTopUps = filteredTopUps.filter((t) => t.status === "PENDING");
+  const acceptedTopUps = filteredTopUps.filter((t) => t.status === "ACCEPTED");
 
   return (
     <div className="space-y-6">
@@ -382,6 +436,26 @@ export default function TransactionsPage() {
         ))}
       </div>
 
+      {/* Reference Code Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={refSearch}
+          onChange={(e) => setRefSearch(e.target.value)}
+          placeholder="Search by reference code…"
+          className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#C94B1E]/30 focus:border-[#C94B1E]"
+        />
+        {refSearch && (
+          <button
+            onClick={() => setRefSearch("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -405,19 +479,19 @@ export default function TransactionsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
-          ) : topUps.length === 0 ? (
+          ) : filteredTopUps.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
                 <ArrowUpCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p className="font-medium">No pending top-up requests</p>
+                <p className="font-medium">{refQuery ? "No matching top-up requests" : "No pending top-up requests"}</p>
                 <p className="text-sm">
-                  New requests will appear here automatically
+                  {refQuery ? `No reference code matches "${refSearch}"` : "New requests will appear here automatically"}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              {topUps.map((req) => {
+              {filteredTopUps.map((req) => {
                 const isLoading = actionLoading === req.id;
                 const userName =
                   `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
@@ -501,7 +575,7 @@ export default function TransactionsPage() {
                               {formatDate(req.createdAt)}
                             </span>
                             <span className="inline-flex items-center gap-1.5 text-xs font-mono text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 tracking-wider">
-                              Ref No: {req.referenceCode}
+                              Reference Code: {req.referenceCode}
                             </span>
                           </div>
 
@@ -634,19 +708,19 @@ export default function TransactionsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
-          ) : withdrawals.length === 0 ? (
+          ) : filteredWithdrawals.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
                 <ArrowDownCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p className="font-medium">No pending withdrawal requests</p>
+                <p className="font-medium">{refQuery ? "No matching withdrawal requests" : "No pending withdrawal requests"}</p>
                 <p className="text-sm">
-                  New requests will appear here automatically
+                  {refQuery ? `No reference code matches "${refSearch}"` : "New requests will appear here automatically"}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              {withdrawals.map((req) => {
+              {filteredWithdrawals.map((req) => {
                 const isLoading = actionLoading === req.id;
                 const userName =
                   `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
@@ -695,7 +769,7 @@ export default function TransactionsPage() {
                               {req.user.phoneNumber || "No phone"}
                             </span>
                             <span className="inline-flex items-center gap-1.5 text-xs font-mono text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 tracking-wider">
-                              Ref No: {req.referenceNumber}
+                              Reference Code: {req.referenceNumber}
                             </span>
                           </div>
 
@@ -766,7 +840,7 @@ export default function TransactionsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             </div>
-          ) : allTopUps.length === 0 && allWithdraws.length === 0 ? (
+          ) : allTopUps.length === 0 && allWithdraws.length === 0 && !refQuery ? (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
                 <History className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -777,20 +851,16 @@ export default function TransactionsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm divide-y divide-gray-100">
-              {[
-                ...allTopUps.map((t) => ({ ...t, _type: "topup" as const })),
-                ...allWithdraws.map((w) => ({
-                  ...w,
-                  _type: "withdraw" as const,
-                })),
-              ]
-                .sort(
-                  (a, b) =>
-                    new Date(b.createdAt).getTime() -
-                    new Date(a.createdAt).getTime(),
-                )
-                .map((req) => {
+            <>
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm divide-y divide-gray-100">
+                {filteredAllTransactions.length === 0 ? (
+                  <div className="py-12 text-center text-gray-500">
+                    <Search className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+                    <p className="font-medium">No matching transactions</p>
+                    <p className="text-sm">{`No reference code matches "${refSearch}"`}</p>
+                  </div>
+                ) : null}
+                {filteredAllTransactions.map((req) => {
                   const userName =
                     `${req.user.firstName || ""} ${req.user.lastName || ""}`.trim() ||
                     req.user.email;
@@ -805,7 +875,7 @@ export default function TransactionsPage() {
                   return (
                     <div
                       id={`request-${req.id}`}
-                      key={req.id}
+                      key={`${req._type}-${req.id}`}
                       className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50/60 transition-colors ${requestId === req.id ? "bg-orange-50/40" : ""}`}
                     >
                       {/* Type icon */}
@@ -846,12 +916,12 @@ export default function TransactionsPage() {
                           </span>
                           {isTopUp && "referenceCode" in req && (
                             <span className="font-mono text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                              {(req as TopUpRequest).referenceCode}
+                              Reference Code: {(req as TopUpRequest).referenceCode}
                             </span>
                           )}
                           {!isTopUp && "referenceNumber" in req && (
                             <span className="font-mono text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                              {(req as WithdrawRequest).referenceNumber}
+                              Reference Code: {(req as WithdrawRequest).referenceNumber}
                             </span>
                           )}
                           {isTopUp && (req as TopUpRequest).proofImageUrl ? (
@@ -887,7 +957,38 @@ export default function TransactionsPage() {
                     </div>
                   );
                 })}
-            </div>
+              </div>
+
+              {allTransactionsTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 mt-8">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllPage((p) => Math.max(1, p - 1))}
+                    disabled={currentAllPage <= 1 || loadingAll}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentAllPage} of {allTransactionsTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setAllPage((p) =>
+                        Math.min(allTransactionsTotalPages, p + 1),
+                      )
+                    }
+                    disabled={
+                      currentAllPage >= allTransactionsTotalPages || loadingAll
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>

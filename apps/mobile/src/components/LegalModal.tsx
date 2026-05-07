@@ -88,6 +88,13 @@ All transactions within ParkLink are processed through the in-app wallet. Driver
 \u2022 Once payment is confirmed by admin, the wallet balance is credited.
 \u2022 Top-up requests not acted upon within 5 minutes expire automatically.
 
+6.2.1 No-Refund Policy for Incorrect Top-Up Amounts
+\u2022 It is the Driver's sole responsibility to send the exact amount stated in the approved top-up request via GCash.
+\u2022 If the amount sent is less than the approved amount, only the amount received will be credited to the wallet, and no additional credit will be granted for the shortfall.
+\u2022 If the amount sent exceeds the approved amount, only the approved amount will be credited. ParkLink is not liable for any overpayment and will not issue a refund for the excess.
+\u2022 Payments sent to the wrong GCash number, in the wrong amount, or after the request has expired are non-refundable.
+\u2022 By submitting a top-up request, the Driver acknowledges and accepts this no-refund policy.
+
 6.3 Session Settlement
 Upon check-out, the system calculates the total fee based on actual parking duration:
 \u2022 Total Fee = Hourly Rate \u00d7 Hours Parked (rounded up)
@@ -114,6 +121,7 @@ If a Driver's wallet has insufficient funds to cover charges exceeding the escro
 \u2022 Host rejects reservation: Escrow is refunded to Driver's wallet.
 \u2022 Reservation expires (Driver doesn't arrive within 60 minutes): Escrow is forfeited (no refund).
 \u2022 Admin cancels reservation: Escrow is refunded to Driver's wallet; Host payout may be settled at admin discretion.
+\u2022 Incorrect top-up amount sent via GCash: No refund will be issued. See Section 6.2.1 for full details.
 
 7. FEES AND COMMISSION
 

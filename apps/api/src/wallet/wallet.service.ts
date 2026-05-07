@@ -127,7 +127,12 @@ export class WalletService {
       title: 'Top-Up Accepted',
       message: `Your top-up request for ₱${new Decimal(request.amount).toFixed(2)} has been accepted. Please pay via GCash now.`,
       type: 'TOPUP_APPROVED',
-      data: { topUpRequestId: requestId, action: 'SHOW_QR' },
+      data: {
+        topUpRequestId: requestId,
+        action: 'SHOW_QR',
+        referenceCode: request.referenceCode,
+        amount: new Decimal(request.amount).toFixed(2),
+      },
     });
 
     // Real-time event so mobile can transition to QR step
@@ -243,7 +248,11 @@ export class WalletService {
       title: 'Top-Up Approved',
       message: `₱${amount.toFixed(2)} has been added to your wallet.`,
       type: 'TOPUP_APPROVED',
-      data: { topUpRequestId: requestId },
+      data: {
+        topUpRequestId: requestId,
+        referenceCode: request.referenceCode,
+        amount: amount.toFixed(2),
+      },
     });
 
     this.gateway.sendBalanceUpdate(request.userId, balanceAfter.toFixed(2));
@@ -601,10 +610,14 @@ export class WalletService {
     const gcashNumber = user?.phoneNumber || 'your GCash';
     await this.notificationsService.send({
       userId: request.userId,
-      title: 'Withdrawal Approved',
-      message: `₱${amount.toFixed(2)} has been sent to ${gcashNumber}.`,
+      title: 'Withdrawal Processing',
+      message: `Your withdrawal of ₱${amount.toFixed(2)} (Reference Code: ${request.referenceNumber}) is being processed. Please wait 3–5 business days. We will send it to ${gcashNumber}.`,
       type: 'WITHDRAW_APPROVED',
-      data: { withdrawRequestId: requestId },
+      data: {
+        withdrawRequestId: requestId,
+        referenceNumber: request.referenceNumber,
+        amount: amount.toFixed(2),
+      },
     });
 
     this.gateway.sendBalanceUpdate(request.userId, balanceToSend);

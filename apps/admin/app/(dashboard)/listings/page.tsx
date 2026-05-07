@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,18 @@ import Image from "next/image";
 import { Breadcrumb } from "../../../src/components/ui/breadcrumb";
 
 type TabType = "pending" | "recent" | "recentDrivers";
+type PendingApprovalFilter = "ALL" | "LISTING" | "DRIVER";
+type PendingApprovalItem =
+  | {
+      kind: "LISTING";
+      createdAt: string;
+      listing: ParkingLocation;
+    }
+  | {
+      kind: "DRIVER";
+      createdAt: string;
+      driver: Driver;
+    };
 
 // --- Types (Aligned with Prisma Schema & API Response) ---
 type ParkingLocationImage = {
@@ -355,26 +367,33 @@ export default function PendingListings() {
   const [driverStatusFilter, setDriverStatusFilter] = useState<
     "ALL" | "APPROVED" | "REJECTED"
   >("ALL");
+  const [pendingApprovalFilter, setPendingApprovalFilter] =
+    useState<PendingApprovalFilter>("ALL");
   const [listings, setListings] = useState<ParkingLocation[]>([]);
   const [recentListings, setRecentListings] = useState<ParkingLocation[]>([]);
+  const [pendingDrivers, setPendingDrivers] = useState<Driver[]>([]);
   const [recentDrivers, setRecentDrivers] = useState<Driver[]>([]);
   const [selectedListing, setSelectedListing] =
     useState<ParkingLocation | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [pendingDriversLoading, setPendingDriversLoading] = useState(false);
   const [driversLoading, setDriversLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentError, setRecentError] = useState<string | null>(null);
+  const [pendingDriversError, setPendingDriversError] = useState<string | null>(
+    null,
+  );
   const [driversError, setDriversError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [recentPage, setRecentPage] = useState(1);
   const [recentTotalPages, setRecentTotalPages] = useState(1);
   const [recentTotal, setRecentTotal] = useState(0);
+  const [pendingDriversTotal, setPendingDriversTotal] = useState(0);
   const [driversPage, setDriversPage] = useState(1);
   const [driversTotalPages, setDriversTotalPages] = useState(1);
   const [driversTotal, setDriversTotal] = useState(0);
@@ -453,11 +472,10 @@ export default function PendingListings() {
       setError(null);
 
       const response = await api.get<ListingsResponse>(
-        `/hosts/admin/locations?status=PENDING&page=${page}&limit=10`,
+        `/hosts/admin/locations?status=PENDING&page=1&limit=1000`,
       );
 
       setListings(response.data.data.map(normalizeLocation));
-      setTotalPages(response.data.pagination.totalPages);
       setTotal(response.data.pagination.total);
     } catch (err) {
       console.error("Error fetching listings:", err);
@@ -465,7 +483,7 @@ export default function PendingListings() {
     } finally {
       setLoading(false);
     }
-  }, [page, normalizeLocation]);
+  }, [normalizeLocation]);
 
   // Fetch recently verified/rejected listings from API
   const fetchRecentListings = useCallback(async () => {
@@ -559,9 +577,92 @@ export default function PendingListings() {
     }
   }, [driversPage]);
 
+  // Fetch pending driver applications from API
+  const fetchPendingDrivers = useCallback(async () => {
+    try {
+      setPendingDriversLoading(true);
+      setPendingDriversError(null);
+
+      const response = await api.get<DriversResponse>(
+        `/drivers/admin/all?status=PENDING&page=1&limit=1000`,
+      );
+
+      setPendingDrivers(response.data.drivers);
+      setPendingDriversTotal(response.data.pagination.total);
+    } catch (err) {
+      console.error("Error fetching pending drivers:", err);
+      setPendingDriversError("Failed to load pending driver applications");
+    } finally {
+      setPendingDriversLoading(false);
+    }
+  }, []);
+
+  const refreshPending = useCallback(() => {
+    void fetchListings();
+    void fetchPendingDrivers();
+  }, [fetchListings, fetchPendingDrivers]);
+
+  const pendingApprovalItems = useMemo<PendingApprovalItem[]>(() => {
+    const listingItems: PendingApprovalItem[] = listings.map((listing) => ({
+      kind: "LISTING",
+      createdAt: listing.createdAt,
+      listing,
+    }));
+
+    const driverItems: PendingApprovalItem[] = pendingDrivers.map((driver) => ({
+      kind: "DRIVER",
+      createdAt: driver.createdAt,
+      driver,
+    }));
+
+    return [...listingItems, ...driverItems].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [listings, pendingDrivers]);
+
+  const filteredPendingApprovalItems = useMemo(() => {
+    if (pendingApprovalFilter === "LISTING") {
+      return pendingApprovalItems.filter((item) => item.kind === "LISTING");
+    }
+    if (pendingApprovalFilter === "DRIVER") {
+      return pendingApprovalItems.filter((item) => item.kind === "DRIVER");
+    }
+    return pendingApprovalItems;
+  }, [pendingApprovalItems, pendingApprovalFilter]);
+
+  const pendingApprovalsPageSize = 10;
+  const pendingApprovalsTotalPages = Math.max(
+    1,
+    Math.ceil(filteredPendingApprovalItems.length / pendingApprovalsPageSize),
+  );
+
+  const currentPendingApprovalsPage = Math.min(
+    page,
+    pendingApprovalsTotalPages,
+  );
+  const pagedPendingApprovalItems = filteredPendingApprovalItems.slice(
+    (currentPendingApprovalsPage - 1) * pendingApprovalsPageSize,
+    currentPendingApprovalsPage * pendingApprovalsPageSize,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [pendingApprovalFilter]);
+
+  useEffect(() => {
+    if (page > pendingApprovalsTotalPages) {
+      setPage(pendingApprovalsTotalPages);
+    }
+  }, [page, pendingApprovalsTotalPages]);
+
   useEffect(() => {
     fetchListings();
   }, [fetchListings]);
+
+  useEffect(() => {
+    fetchPendingDrivers();
+  }, [fetchPendingDrivers]);
 
   useEffect(() => {
     if (
@@ -2503,9 +2604,9 @@ export default function PendingListings() {
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
             Pending Approval
-            {total > 0 && (
+            {total + pendingDriversTotal > 0 && (
               <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                {total}
+                {total + pendingDriversTotal}
               </span>
             )}
           </div>
@@ -2551,14 +2652,27 @@ export default function PendingListings() {
       {/* Pending Tab Content */}
       {activeTab === "pending" && (
         <>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 gap-4">
+            <select
+              value={pendingApprovalFilter}
+              onChange={(e) =>
+                setPendingApprovalFilter(
+                  e.target.value as PendingApprovalFilter,
+                )
+              }
+              className="bg-gray-50 border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium appearance-none cursor-pointer"
+            >
+              <option value="ALL">All pending</option>
+              <option value="LISTING">Listings</option>
+              <option value="DRIVER">Drivers</option>
+            </select>
             <Button
-              onClick={fetchListings}
+              onClick={refreshPending}
               variant="outline"
               size="sm"
-              disabled={loading}
+              disabled={loading || pendingDriversLoading}
             >
-              {loading ? (
+              {loading || pendingDriversLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 "Refresh"
@@ -2567,126 +2681,239 @@ export default function PendingListings() {
           </div>
 
           {/* Loading state */}
-          {loading && listings.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-              <p className="text-gray-600">Loading pending listings...</p>
-            </div>
-          )}
+          {(loading || pendingDriversLoading) &&
+            pendingApprovalItems.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+                <p className="text-gray-600">Loading pending approvals...</p>
+              </div>
+            )}
 
           {/* Error state */}
-          {error && listings.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-red-500">
-              <AlertCircle className="w-8 h-8 mb-4" />
-              <p>{error}</p>
-              <Button
-                onClick={fetchListings}
-                variant="outline"
-                className="mt-4"
-              >
-                Retry
-              </Button>
-            </div>
-          )}
+          {(error || pendingDriversError) &&
+            pendingApprovalItems.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-red-500">
+                <AlertCircle className="w-8 h-8 mb-4" />
+                <p>{error || pendingDriversError}</p>
+                <Button
+                  onClick={refreshPending}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
 
           {/* Empty state */}
-          {listings.length === 0 && !loading && !error && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                All Caught Up!
-              </h2>
-              <p className="text-gray-600">
-                No pending listings to review at this time.
-              </p>
-            </div>
-          )}
+          {filteredPendingApprovalItems.length === 0 &&
+            !loading &&
+            !pendingDriversLoading &&
+            !error &&
+            !pendingDriversError && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  All Caught Up!
+                </h2>
+                <p className="text-gray-600">
+                  {pendingApprovalFilter === "LISTING"
+                    ? "No pending listing approvals to review at this time."
+                    : pendingApprovalFilter === "DRIVER"
+                      ? "No pending driver approvals to review at this time."
+                      : "No pending approvals to review at this time."}
+                </p>
+              </div>
+            )}
 
-          {/* Listing Cards Wrapper */}
+          {/* Combined Pending Cards Wrapper */}
           <div className="flex flex-col gap-4 max-w-5xl">
-            {listings.map((listing) => {
-              const primaryImage = getPrimaryImage(listing.images);
+            {pagedPendingApprovalItems.map((item) => {
+              if (item.kind === "LISTING") {
+                const listing = item.listing;
+                const primaryImage = getPrimaryImage(listing.images);
+
+                return (
+                  <div
+                    key={`listing-${listing.id}`}
+                    onClick={() => {
+                      setSelectedListing(listing);
+                      setSlotFilter("ALL");
+                    }}
+                    className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                  >
+                    {/* Host Profile Picture */}
+                    <div className="flex flex-col items-center mr-6">
+                      <div className="w-14 h-14 bg-slate-50 border border-gray-100 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                        {listing.host.user.profilePicture ? (
+                          <Image
+                            src={listing.host.user.profilePicture}
+                            alt="Host"
+                            width={56}
+                            height={56}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <Users className="w-6 h-6 text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Host & Location Details */}
+                    <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-900 truncate">
+                          {listing.host.user.firstName}{" "}
+                          {listing.host.user.lastName}
+                        </h2>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 shrink-0">
+                          <Home className="w-3 h-3" />
+                          LISTING
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-700 truncate">
+                          {listing.title}
+                        </p>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${
+                            listing.allowParkAnywhere
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {listing.allowParkAnywhere ? (
+                            <MapPin className="h-3 w-3" />
+                          ) : (
+                            <Car className="h-3 w-3" />
+                          )}
+                          {listing.allowParkAnywhere
+                            ? "Park Anywhere"
+                            : "Slot Selection"}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`}
+                          />
+                          {isListingOpenNow(listing) ? "Open" : "Closed"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 truncate max-w-[500px]">
+                        {listing.address}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                        <span className="truncate">
+                          {listing.host.user.phoneNumber || "No Phone Number"}
+                        </span>
+                        <span className="truncate">
+                          {listing.host.user.email}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Submitted {new Date(listing.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    {/* Picture of the Property */}
+                    <div className="w-[120px] h-[75px] bg-slate-50 rounded-lg flex items-center justify-center flex-col shrink-0 ml-4 border border-gray-100 overflow-hidden">
+                      {primaryImage ? (
+                        <Image
+                          src={primaryImage}
+                          alt={listing.title}
+                          width={120}
+                          height={75}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <>
+                          <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
+                          <span className="text-[10px] text-gray-500 text-center px-2">
+                            Property Image
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              const driver = item.driver;
 
               return (
                 <div
-                  key={listing.id}
-                  onClick={() => {
-                    setSelectedListing(listing);
-                    setSlotFilter("ALL");
-                  }}
+                  key={`driver-${driver.id}`}
+                  onClick={() => setSelectedDriver(driver)}
                   className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
-                  {/* Host Profile Picture */}
+                  {/* Driver Profile Picture */}
                   <div className="flex flex-col items-center mr-6">
                     <div className="w-14 h-14 bg-slate-50 border border-gray-100 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-                      {listing.host.user.profilePicture ? (
+                      {driver.user.profilePicture ? (
                         <Image
-                          src={listing.host.user.profilePicture}
-                          alt="Host"
+                          src={driver.user.profilePicture}
+                          alt="Driver"
                           width={56}
                           height={56}
                           className="w-full h-full object-cover"
                           unoptimized
                         />
                       ) : (
-                        <Users className="w-6 h-6 text-gray-400" />
+                        <User className="w-6 h-6 text-gray-400" />
                       )}
                     </div>
                   </div>
 
-                  {/* Host & Location Details */}
+                  {/* Driver Details */}
                   <div className="flex-1 flex flex-col justify-center gap-1 overflow-hidden">
-                    <h2 className="text-lg font-bold text-gray-900 truncate">
-                      {listing.host.user.firstName} {listing.host.user.lastName}
-                    </h2>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-700 truncate">
-                        {listing.title}
-                      </p>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${
-                          listing.allowParkAnywhere
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {listing.allowParkAnywhere ? (
-                          <MapPin className="h-3 w-3" />
-                        ) : (
-                          <Car className="h-3 w-3" />
-                        )}
-                        {listing.allowParkAnywhere
-                          ? "Park Anywhere"
-                          : "Slot Selection"}
+                      <h2 className="text-lg font-bold text-gray-900 truncate">
+                        {driver.user.firstName} {driver.user.lastName}
+                      </h2>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 shrink-0">
+                        <UserCheck className="w-3 h-3" />
+                        DRIVER
                       </span>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${isListingOpenNow(listing) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${isListingOpenNow(listing) ? "bg-green-500" : "bg-red-400"}`}
-                        />
-                        {isListingOpenNow(listing) ? "Open" : "Closed"}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 shrink-0">
+                        <Clock className="w-3 h-3" />
+                        PENDING
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 truncate max-w-[500px]">
-                      {listing.address}
+                    <p className="text-sm font-medium text-gray-700 truncate">
+                      License: {driver.licenseNumber || "Not provided"}
                     </p>
                     <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
                       <span className="truncate">
-                        {listing.host.user.phoneNumber || "No Phone Number"}
+                        {driver.user.phoneNumber || "No Phone Number"}
                       </span>
-                      <span className="truncate">
-                        {listing.host.user.email}
+                      <span className="truncate">{driver.user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Car className="w-3 h-3" />
+                        {driver._count?.vehicles || 0} vehicle
+                        {(driver._count?.vehicles || 0) !== 1 ? "s" : ""}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CreditCard className="w-3 h-3" />
+                        {driver._count?.reservations || 0} reservation
+                        {(driver._count?.reservations || 0) !== 1 ? "s" : ""}
                       </span>
                     </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Submitted {new Date(driver.createdAt).toLocaleString()}
+                    </p>
                   </div>
 
-                  {/* Picture of the Property */}
+                  {/* License Image */}
                   <div className="w-[120px] h-[75px] bg-slate-50 rounded-lg flex items-center justify-center flex-col shrink-0 ml-4 border border-gray-100 overflow-hidden">
-                    {primaryImage ? (
+                    {driver.licenseImageUrl ? (
                       <Image
-                        src={primaryImage}
-                        alt={listing.title}
+                        src={driver.licenseImageUrl}
+                        alt="License"
                         width={120}
                         height={75}
                         className="w-full h-full object-cover"
@@ -2694,9 +2921,9 @@ export default function PendingListings() {
                       />
                     ) : (
                       <>
-                        <ImageIcon className="w-6 h-6 text-gray-400 mb-1" />
+                        <CreditCard className="w-6 h-6 text-gray-400 mb-1" />
                         <span className="text-[10px] text-gray-500 text-center px-2">
-                          Property Image
+                          License Image
                         </span>
                       </>
                     )}
@@ -2706,25 +2933,36 @@ export default function PendingListings() {
             })}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
+          {/* Combined Pagination */}
+          {pendingApprovalsTotalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-8">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1 || loading}
+                disabled={
+                  currentPendingApprovalsPage <= 1 ||
+                  loading ||
+                  pendingDriversLoading
+                }
               >
                 Previous
               </Button>
               <span className="text-sm text-gray-600">
-                Page {page} of {totalPages}
+                Page {currentPendingApprovalsPage} of{" "}
+                {pendingApprovalsTotalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages || loading}
+                onClick={() =>
+                  setPage((p) => Math.min(pendingApprovalsTotalPages, p + 1))
+                }
+                disabled={
+                  currentPendingApprovalsPage >= pendingApprovalsTotalPages ||
+                  loading ||
+                  pendingDriversLoading
+                }
               >
                 Next
               </Button>
