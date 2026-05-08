@@ -184,7 +184,15 @@ These Terms and Conditions are governed by the laws of the Republic of the Phili
 15. CONTACT INFORMATION
 
 For questions or concerns regarding these Terms and Conditions, contact us at:
-Email: support@parklink.ph`;
+Email: support@parklink.ph.
+
+16. LEGAL FRAMEWORK FOR PARKING SPACE RENTAL
+ 
+ParkLink operates within the existing legal framework of the Philippines without requiring dedicated legislation. Parking arrangements on the platform constitute a lease of real property under the Civil Code, creating mutual obligations between Hosts (as lessors) and Drivers (as lessees).
+ 
+Hosts are responsible for ensuring their listed spaces comply with applicable local zoning ordinances and, where relevant, their Homeowners' Association (HOA) Covenants, Conditions, and Restrictions (CC&Rs). ParkLink is not liable for any violations of such rules by Hosts.
+ 
+Income earned from parking rental is taxable under Philippine law. Hosts are solely responsible for registering with the Bureau of Internal Revenue (BIR) and fulfilling all applicable tax obligations. ParkLink does not withhold taxes on behalf of any user.`;
 
 export const PRIVACY_CONTENT = `PARKLINK DATA PRIVACY POLICY
 
