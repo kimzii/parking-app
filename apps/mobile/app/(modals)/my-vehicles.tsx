@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Image,
   Modal,
   StatusBar,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useFocusEffect, router } from "expo-router";
@@ -107,10 +108,10 @@ export default function MyVehiclesScreen() {
     setNewlyAddedVehicle(null);
   };
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     resetForm();
     setView("list");
-  };
+  }, []);
 
   const handleAdd = async () => {
     if (!plateNumber.trim()) {
@@ -448,7 +449,9 @@ export default function MyVehiclesScreen() {
 
   // ─── Add Registration Step ────────────────────────────────────
   const renderAddRegistration = () => {
-    const target = newlyAddedVehicle ?? vehicles[vehicles.length - 1];
+    const base = newlyAddedVehicle ?? vehicles[vehicles.length - 1];
+    // Always use the live copy from vehicles so uploaded URLs are reflected
+    const target = base ? (vehicles.find((v) => v.id === base.id) ?? base) : null;
     if (!target) return null;
     const isUploadingCRNow = uploadingCRId === target.id;
     const isUploadingORNow = uploadingORId === target.id;
@@ -603,6 +606,16 @@ export default function MyVehiclesScreen() {
   );
 
   const isInSubView = view !== "list";
+
+  useEffect(() => {
+    if (!isInSubView) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      handleBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isInSubView, handleBack]);
+
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right", "bottom"]}>
