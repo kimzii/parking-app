@@ -1,4 +1,5 @@
 ﻿import React, { useState, useCallback, useEffect, useRef } from "react";
+import * as Clipboard from "expo-clipboard";
 import {
   View,
   Text,
@@ -321,11 +322,12 @@ export default function ReservationQRScreen() {
       <Stack.Screen
         options={{
           title: "Reservation",
-          headerRight: () => (
-            <TouchableOpacity onPress={handleShare} style={{ marginRight: 8 }}>
-              <MaterialIcons name="share" size={24} color="#D4501E" />
-            </TouchableOpacity>
-          ),
+          headerRight: () =>
+            reservation?.status === "CONFIRMED" ? (
+              <TouchableOpacity onPress={handleShare} style={{ marginRight: 8 }}>
+                <MaterialIcons name="share" size={24} color="#D4501E" />
+              </TouchableOpacity>
+            ) : null,
         }}
       />
       <ScrollView
