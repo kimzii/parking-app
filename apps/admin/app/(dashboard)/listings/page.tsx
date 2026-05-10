@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -358,6 +358,8 @@ export default function PendingListings() {
     id: "parking-admin-google-map-script",
     googleMapsApiKey,
   });
+
+  const router = useRouter();
 
   // State
   const [activeTab, setActiveTab] = useState<TabType>("pending");
@@ -2846,7 +2848,7 @@ export default function PendingListings() {
               return (
                 <div
                   key={`driver-${driver.id}`}
-                  onClick={() => setSelectedDriver(driver)}
+                  onClick={() => router.push(`/users/${driver.user.id}`)}
                   className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
                   {/* Driver Profile Picture */}
@@ -3276,7 +3278,7 @@ export default function PendingListings() {
               .map((driver) => (
                 <div
                   key={driver.id}
-                  onClick={() => setSelectedDriver(driver)}
+                  onClick={() => router.push(`/users/${driver.user.id}`)}
                   className="w-full bg-white rounded-xl border border-gray-100 flex items-center p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 >
                   {/* Driver Profile Picture */}

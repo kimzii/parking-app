@@ -1121,15 +1121,28 @@ export default function UserProfileView() {
                           License Image
                         </p>
                         {user.driver.licenseImageUrl ? (
-                          <div className="relative w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
-                            <Image
-                              src={user.driver.licenseImageUrl}
-                              alt="Driver License"
-                              fill
-                              className="object-contain"
-                              unoptimized
-                            />
-                          </div>
+                          <a
+                            href={user.driver.licenseImageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block group"
+                          >
+                            <div className="relative w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                              <Image
+                                src={user.driver.licenseImageUrl}
+                                alt="Driver License"
+                                fill
+                                className="object-contain"
+                                unoptimized
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                <span className="opacity-0 group-hover:opacity-100 transition bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                  <Eye size={12} /> View full
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1.5 text-center">Click to view full size</p>
+                          </a>
                         ) : (
                           <div className="w-full h-64 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
                             <div className="text-center text-gray-400">

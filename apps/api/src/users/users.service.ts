@@ -428,6 +428,7 @@ export class UsersService {
                 color: true,
                 isActive: true,
                 registrationImageUrl: true,
+                orImageUrl: true,
                 verificationStatus: true,
                 rejectionReason: true,
                 createdAt: true,
