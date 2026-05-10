@@ -125,6 +125,7 @@ export default function UpdateProfileScreen() {
     }
 
     const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
       quality: 0.8,
     });
 
