@@ -63,9 +63,9 @@ export const driversService = {
     const res = await api.delete(`/drivers/vehicles/${vehicleId}`);
     return res.data;
   },
-  uploadVehicleRegistration: async (vehicleId: string, formData: FormData) => {
+  uploadVehicleRegistration: async (vehicleId: string, formData: FormData, type: "CR" | "OR" = "CR") => {
     const res = await api.post(
-      `/drivers/vehicles/${vehicleId}/upload-registration`,
+      `/drivers/vehicles/${vehicleId}/upload-registration?type=${type}`,
       formData,
       { headers: { "Content-Type": "multipart/form-data" } },
     );

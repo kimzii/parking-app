@@ -377,7 +377,12 @@ export class DriversService {
   }
 
   // Set registration image URL after upload
-  async setVehicleRegistration(userId: string, vehicleId: string, registrationImageUrl: string) {
+  async setVehicleRegistration(
+    userId: string,
+    vehicleId: string,
+    url: string,
+    docType: 'CR' | 'OR' = 'CR',
+  ) {
     const driver = await this.prisma.driver.findUnique({
       where: { userId },
       select: { id: true },
@@ -389,9 +394,14 @@ export class DriversService {
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
+    const data =
+      docType === 'OR'
+        ? { orImageUrl: url, verificationStatus: 'PENDING' as const }
+        : { registrationImageUrl: url, verificationStatus: 'PENDING' as const };
+
     const updated = await this.prisma.driverVehicle.update({
       where: { id: vehicleId },
-      data: { registrationImageUrl, verificationStatus: 'PENDING' },
+      data,
     });
 
     this.notificationsService

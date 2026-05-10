@@ -132,8 +132,13 @@ export class S3Service {
     return `driver-licenses/${userId}.${ext}`;
   }
 
-  /** vehicle-registrations/{plate-number}.jpg */
-  vehicleRegistrationKey(plateNumber: string, ext: string): string {
-    return `vehicle-registrations/${this.slugify(plateNumber)}.${ext}`;
+  /** vehicle-registrations/{vehicle-id}-cr.jpg */
+  vehicleRegistrationKey(vehicleId: string, ext: string): string {
+    return `vehicle-registrations/${vehicleId}-cr.${ext}`;
+  }
+
+  /** vehicle-registrations/{vehicle-id}-or.jpg */
+  vehicleOrKey(vehicleId: string, ext: string): string {
+    return `vehicle-registrations/${vehicleId}-or.${ext}`;
   }
 }

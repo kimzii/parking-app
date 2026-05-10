@@ -123,6 +123,7 @@ model DriverVehicle {
   color                String?
   isActive             Boolean                   @default(true) @map("is_active")
   registrationImageUrl String?                   @map("registration_image_url")
+  orImageUrl           String?                   @map("or_image_url")
   verificationStatus   VehicleVerificationStatus @default(PENDING) @map("verification_status")
   rejectionReason      String?                   @map("rejection_reason")
   deletedAt            DateTime?                 @map("deleted_at")

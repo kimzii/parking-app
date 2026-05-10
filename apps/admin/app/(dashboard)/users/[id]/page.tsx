@@ -65,6 +65,7 @@ interface UserProfile {
       color: string | null;
       isActive: boolean;
       registrationImageUrl: string | null;
+      orImageUrl: string | null;
       verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
       rejectionReason: string | null;
       createdAt: string;
@@ -1528,43 +1529,50 @@ export default function UserProfileView() {
                               </div>
                             </div>
 
-                            {/* Right: registration image */}
-                            <div className="w-52 flex-shrink-0">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                                Certificate of Registration
-                              </p>
-                              {vehicle.registrationImageUrl ? (
-                                <a
-                                  href={vehicle.registrationImageUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block group"
-                                >
-                                  <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-                                    <img
-                                      src={vehicle.registrationImageUrl}
-                                      alt="Certificate of Registration"
-                                      className="w-full object-contain"
-                                      style={{ maxHeight: 200 }}
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
-                                      <span className="opacity-0 group-hover:opacity-100 transition bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-                                        <Eye size={12} /> View full
-                                      </span>
+                            {/* Right: OR + CR images */}
+                            <div className="flex flex-col gap-4 w-52 flex-shrink-0">
+                              {[
+                                { label: "Official Receipt (OR)", url: vehicle.orImageUrl, alt: "Official Receipt" },
+                                { label: "Certificate of Registration (CR)", url: vehicle.registrationImageUrl, alt: "Certificate of Registration" },
+                              ].map(({ label, url, alt }) => (
+                                <div key={label}>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                    {label}
+                                  </p>
+                                  {url ? (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block group"
+                                    >
+                                      <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                                        <img
+                                          src={url}
+                                          alt={alt}
+                                          className="w-full object-contain"
+                                          style={{ maxHeight: 160 }}
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                          <span className="opacity-0 group-hover:opacity-100 transition bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                            <Eye size={12} /> View full
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-gray-400 mt-1.5 text-center">
+                                        Click to view full size
+                                      </p>
+                                    </a>
+                                  ) : (
+                                    <div className="h-28 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-300">
+                                      <AlertCircle size={20} />
+                                      <p className="text-xs font-medium text-center px-3">
+                                        Not uploaded yet
+                                      </p>
                                     </div>
-                                  </div>
-                                  <p className="text-xs text-gray-400 mt-1.5 text-center">
-                                    Click to view full size
-                                  </p>
-                                </a>
-                              ) : (
-                                <div className="h-36 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-300">
-                                  <AlertCircle size={24} />
-                                  <p className="text-xs font-medium text-center px-3">
-                                    No image uploaded yet
-                                  </p>
+                                  )}
                                 </div>
-                              )}
+                              ))}
                             </div>
                           </div>
                         </div>
