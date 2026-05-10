@@ -99,11 +99,7 @@ export class UsersController {
         );
     }
 
-    // Use user name for consistent naming
-    const userName =
-      [profile.firstName, profile.lastName].filter(Boolean).join('-') ||
-      req.user.id;
-    const key = this.s3.profilePictureKey(userName, fileExt);
+    const key = this.s3.profilePictureKey(req.user.id, fileExt);
     await this.s3.upload(key, file.buffer, file.mimetype);
 
     // Add timestamp to bust image cache on the client

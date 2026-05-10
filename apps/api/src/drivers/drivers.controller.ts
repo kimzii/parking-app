@@ -89,13 +89,7 @@ export class DriversController {
     const parts = file.originalname.split('.');
     const fileExt: string = parts.length > 1 ? parts[parts.length - 1] : 'jpg';
 
-    // Use user name for consistent naming
-    const userName = driver?.user
-      ? [driver.user.firstName, driver.user.lastName]
-          .filter(Boolean)
-          .join('-') || req.user.id
-      : req.user.id;
-    const key = this.s3.driverLicenseKey(userName, fileExt);
+    const key = this.s3.driverLicenseKey(req.user.id, fileExt);
     await this.s3.upload(key, file.buffer, file.mimetype);
 
     const url = this.s3.buildUrl(key, true);
