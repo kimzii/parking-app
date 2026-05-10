@@ -89,13 +89,7 @@ export class DriversController {
     const parts = file.originalname.split('.');
     const fileExt: string = parts.length > 1 ? parts[parts.length - 1] : 'jpg';
 
-    // Use user name for consistent naming
-    const userName = driver?.user
-      ? [driver.user.firstName, driver.user.lastName]
-          .filter(Boolean)
-          .join('-') || req.user.id
-      : req.user.id;
-    const key = this.s3.driverLicenseKey(userName, fileExt);
+    const key = this.s3.driverLicenseKey(req.user.id, fileExt);
     await this.s3.upload(key, file.buffer, file.mimetype);
 
     const url = this.s3.buildUrl(key, true);
@@ -205,12 +199,13 @@ export class DriversController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('DRIVER')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-  @ApiOperation({ summary: 'Upload vehicle Certificate of Registration image' })
+  @ApiOperation({ summary: 'Upload vehicle OR or CR image' })
   @ApiParam({ name: 'vehicleId', description: 'Vehicle ID' })
   @ApiResponse({ status: 201, description: 'Registration image uploaded' })
   async uploadVehicleRegistration(
     @Request() req: { user: { id: string } },
     @Param('vehicleId') vehicleId: string,
+    @Query('type') docType: string = 'CR',
     @UploadedFile() file: { originalname: string; mimetype: string; size: number; buffer: Buffer },
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -220,19 +215,21 @@ export class DriversController {
       throw new BadRequestException('Only JPEG, PNG, and WebP images are allowed');
     }
 
+    const isOR = docType === 'OR';
     const vehicle = await this.driversService.getVehicleById(vehicleId);
-    const plate = vehicle?.plateNumber ?? vehicleId;
     const ext = file.originalname.split('.').pop() ?? 'jpg';
-    const key = this.s3.vehicleRegistrationKey(plate, ext);
 
-    if (vehicle?.registrationImageUrl) {
-      await this.s3.deleteByUrl(vehicle.registrationImageUrl).catch(() => {});
-    }
+    const oldUrl = isOR ? vehicle?.orImageUrl : vehicle?.registrationImageUrl;
+    if (oldUrl) await this.s3.deleteByUrl(oldUrl).catch(() => {});
+
+    const key = isOR
+      ? this.s3.vehicleOrKey(vehicleId, ext)
+      : this.s3.vehicleRegistrationKey(vehicleId, ext);
 
     await this.s3.upload(key, file.buffer, file.mimetype);
     const url = this.s3.buildUrl(key, true);
 
-    await this.driversService.setVehicleRegistration(req.user.id, vehicleId, url);
+    await this.driversService.setVehicleRegistration(req.user.id, vehicleId, url, isOR ? 'OR' : 'CR');
     return { url };
   }
 

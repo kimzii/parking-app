@@ -31,6 +31,7 @@ type Vehicle = {
   color: string;
   isActive: boolean;
   registrationImageUrl: string | null;
+  orImageUrl: string | null;
   verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
   rejectionReason: string | null;
 };
@@ -52,8 +53,10 @@ export default function MyVehiclesScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadingCRId, setUploadingCRId] = useState<string | null>(null);
+  const [uploadingORId, setUploadingORId] = useState<string | null>(null);
   const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
+  const [proofImageLabel, setProofImageLabel] = useState<string>("Document");
   // "list" | "add-details" | "add-registration" | "edit"
   const [view, setView] = useState<"list" | "add-details" | "add-registration" | "edit">("list");
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -194,7 +197,7 @@ export default function MyVehiclesScreen() {
     ]);
   };
 
-  const handleUploadRegistration = async (vehicle: Vehicle) => {
+  const handleUploadRegistration = async (vehicle: Vehicle, type: "CR" | "OR") => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permission Required", "Please allow access to your photo library.");
@@ -202,27 +205,23 @@ export default function MyVehiclesScreen() {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      quality: 0.3,
+      quality: 0.5,
     });
     if (result.canceled || !result.assets[0]) return;
 
     const uri = result.assets[0].uri;
-    const filename = uri.split("/").pop() || "registration.jpg";
-    const ext = filename.split(".").pop() || "jpg";
-
-    setUploadingId(vehicle.id);
+    const setUploading = type === "OR" ? setUploadingORId : setUploadingCRId;
+    setUploading(vehicle.id);
     try {
       const formData = new FormData();
-      formData.append("file", { uri, name: filename, type: `image/${ext}` } as any);
-      await driversService.uploadVehicleRegistration(vehicle.id, formData);
-      Alert.alert("Submitted", "Certificate of Registration submitted for review.");
+      formData.append("file", { uri, name: "registration.jpg", type: "image/jpeg" } as any);
+      await driversService.uploadVehicleRegistration(vehicle.id, formData, type);
+      Alert.alert("Submitted", `${type === "OR" ? "Official Receipt" : "Certificate of Registration"} uploaded successfully.`);
       await fetchVehicles();
-      // If we're in the guided registration step, go back to list
-      if (view === "add-registration") setView("list");
     } catch {
-      Alert.alert("Error", "Failed to upload registration image.");
+      Alert.alert("Error", `Failed to upload ${type === "OR" ? "OR" : "CR"} image.`);
     } finally {
-      setUploadingId(null);
+      setUploading(null);
     }
   };
 
@@ -240,7 +239,8 @@ export default function MyVehiclesScreen() {
   const renderVehicleCard = ({ item }: { item: Vehicle }) => {
     const details = [item.brand, item.model].filter(Boolean).join(" ");
     const statusCfg = STATUS_CONFIG[item.verificationStatus] ?? STATUS_CONFIG.PENDING;
-    const isUploading = uploadingId === item.id;
+    const isUploadingCR = uploadingCRId === item.id;
+    const isUploadingOR = uploadingORId === item.id;
 
     return (
       <View style={styles.card}>
@@ -294,24 +294,12 @@ export default function MyVehiclesScreen() {
 
         {/* Registration section */}
         <View style={[styles.regSection, { borderTopColor: statusCfg.border }]}>
-          {/* Top row: Status + View Proof */}
-          <View style={styles.regTopRow}
-          >
+          {/* Status pill */}
+          <View style={styles.regTopRow}>
             <View style={[styles.statusPill, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
               <MaterialIcons name={statusCfg.icon} size={13} color={statusCfg.text} />
               <Text style={[styles.statusPillText, { color: statusCfg.text }]}>{statusCfg.label}</Text>
             </View>
-
-            {item.registrationImageUrl && (
-              <TouchableOpacity
-                style={styles.viewProofBtn}
-                onPress={() => setProofImageUrl(item.registrationImageUrl)}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="image-search" size={15} color="#1976D2" />
-                <Text style={styles.viewProofText}>View Proof</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Rejection reason */}
@@ -322,27 +310,72 @@ export default function MyVehiclesScreen() {
             </View>
           ) : null}
 
-          {/* Registration actions row */}
-          <View style={styles.regActionsRow}>
-            {item.verificationStatus !== "APPROVED" && (
-              <TouchableOpacity
-                style={[styles.uploadRowBtn, isUploading && styles.uploadBlockDisabled]}
-                onPress={() => handleUploadRegistration(item)}
-                disabled={isUploading}
-                activeOpacity={0.8}
-              >
-                {isUploading ? (
-                  <ActivityIndicator size="small" color="#D4501E" />
-                ) : (
-                  <>
-                    <MaterialIcons name="upload-file" size={15} color="#D4501E" />
-                    <Text style={styles.uploadRowBtnText}>
-                      {item.registrationImageUrl ? "Re-upload CR" : "Upload CR"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+          {/* OR row */}
+          <View style={styles.docRow}>
+            <Text style={styles.docLabel}>Official Receipt (OR)</Text>
+            <View style={styles.docActions}>
+              {item.orImageUrl && (
+                <TouchableOpacity
+                  style={styles.viewProofBtn}
+                  onPress={() => { setProofImageLabel("Official Receipt (OR)"); setProofImageUrl(item.orImageUrl); }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="image-search" size={14} color="#1976D2" />
+                  <Text style={styles.viewProofText}>View</Text>
+                </TouchableOpacity>
+              )}
+              {item.verificationStatus !== "APPROVED" && (
+                <TouchableOpacity
+                  style={[styles.uploadRowBtn, isUploadingOR && styles.uploadBlockDisabled]}
+                  onPress={() => handleUploadRegistration(item, "OR")}
+                  disabled={isUploadingOR}
+                  activeOpacity={0.8}
+                >
+                  {isUploadingOR ? (
+                    <ActivityIndicator size="small" color="#D4501E" />
+                  ) : (
+                    <>
+                      <MaterialIcons name="upload-file" size={14} color="#D4501E" />
+                      <Text style={styles.uploadRowBtnText}>{item.orImageUrl ? "Re-upload" : "Upload"}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* CR row */}
+          <View style={styles.docRow}>
+            <Text style={styles.docLabel}>Certificate of Reg. (CR)</Text>
+            <View style={styles.docActions}>
+              {item.registrationImageUrl && (
+                <TouchableOpacity
+                  style={styles.viewProofBtn}
+                  onPress={() => { setProofImageLabel("Certificate of Registration (CR)"); setProofImageUrl(item.registrationImageUrl); }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="image-search" size={14} color="#1976D2" />
+                  <Text style={styles.viewProofText}>View</Text>
+                </TouchableOpacity>
+              )}
+              {item.verificationStatus !== "APPROVED" && (
+                <TouchableOpacity
+                  style={[styles.uploadRowBtn, isUploadingCR && styles.uploadBlockDisabled]}
+                  onPress={() => handleUploadRegistration(item, "CR")}
+                  disabled={isUploadingCR}
+                  activeOpacity={0.8}
+                >
+                  {isUploadingCR ? (
+                    <ActivityIndicator size="small" color="#D4501E" />
+                  ) : (
+                    <>
+                      <MaterialIcons name="upload-file" size={14} color="#D4501E" />
+                      <Text style={styles.uploadRowBtnText}>{item.registrationImageUrl ? "Re-upload" : "Upload"}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -415,9 +448,40 @@ export default function MyVehiclesScreen() {
 
   // ─── Add Registration Step ────────────────────────────────────
   const renderAddRegistration = () => {
-  const target = newlyAddedVehicle ?? vehicles[vehicles.length - 1];
+    const target = newlyAddedVehicle ?? vehicles[vehicles.length - 1];
     if (!target) return null;
-    const isUploading = uploadingId === target.id;
+    const isUploadingCRNow = uploadingCRId === target.id;
+    const isUploadingORNow = uploadingORId === target.id;
+
+    const orDone = !!target.orImageUrl;
+    const crDone = !!target.registrationImageUrl;
+    const anyUploaded = orDone || crDone;
+
+    const renderUploadBlock = (type: "OR" | "CR", isUploading: boolean, uploaded: boolean) => (
+      <TouchableOpacity
+        style={[styles.uploadBlockLarge, isUploading && styles.uploadBlockDisabled, uploaded && styles.uploadBlockDone]}
+        onPress={() => handleUploadRegistration(target, type)}
+        disabled={isUploading}
+        activeOpacity={0.8}
+      >
+        {isUploading ? (
+          <View style={styles.uploadingState}>
+            <ActivityIndicator size="large" color="#D4501E" />
+            <Text style={styles.uploadingText}>Uploading...</Text>
+          </View>
+        ) : (
+          <View style={styles.uploadPlaceholderLarge}>
+            <View style={[styles.uploadIconCircle, uploaded && { backgroundColor: "#E8F5E9" }]}>
+              <MaterialIcons name={uploaded ? "check-circle" : "upload-file"} size={32} color={uploaded ? "#4CAF50" : "#D4501E"} />
+            </View>
+            <Text style={[styles.uploadLargeTitle, uploaded && { color: "#4CAF50" }]}>
+              {type === "OR" ? "Official Receipt (OR)" : "Certificate of Reg. (CR)"}
+            </Text>
+            <Text style={styles.uploadLargeSub}>{uploaded ? "Uploaded — tap to replace" : "Tap to select image"}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
 
     return (
       <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -425,11 +489,10 @@ export default function MyVehiclesScreen() {
           <View style={[styles.stepBadge, { backgroundColor: "#E8F5E9", borderColor: "#A5D6A7" }]}>
             <Text style={[styles.stepBadgeText, { color: "#2E7D32" }]}>Step 2 of 2</Text>
           </View>
-          <Text style={styles.formTitle}>Certificate of Registration</Text>
-          <Text style={styles.formSubtitle}>Upload a clear photo of your vehicle&apos;s CR for admin verification</Text>
+          <Text style={styles.formTitle}>Vehicle Documents</Text>
+          <Text style={styles.formSubtitle}>Upload your OR and CR for admin verification</Text>
         </View>
 
-        {/* Vehicle summary chip */}
         <View style={styles.vehicleSummaryChip}>
           <Image source={TYPE_IMAGES[target.vehicleType] || TYPE_IMAGES.CAR} style={{ width: 32, height: 32, tintColor: "#D4501E" }} resizeMode="contain" />
           <View style={{ flex: 1 }}>
@@ -438,27 +501,8 @@ export default function MyVehiclesScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.uploadBlockLarge, isUploading && styles.uploadBlockDisabled]}
-          onPress={() => handleUploadRegistration(target)}
-          disabled={isUploading}
-          activeOpacity={0.8}
-        >
-          {isUploading ? (
-            <View style={styles.uploadingState}>
-              <ActivityIndicator size="large" color="#D4501E" />
-              <Text style={styles.uploadingText}>Uploading...</Text>
-            </View>
-          ) : (
-            <View style={styles.uploadPlaceholderLarge}>
-              <View style={styles.uploadIconCircle}>
-                <MaterialIcons name="upload-file" size={36} color="#D4501E" />
-              </View>
-              <Text style={styles.uploadLargeTitle}>Tap to Select Image</Text>
-              <Text style={styles.uploadLargeSub}>Accepted: JPEG, PNG, WebP · Max 10MB</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        {renderUploadBlock("OR", isUploadingORNow, orDone)}
+        {renderUploadBlock("CR", isUploadingCRNow, crDone)}
 
         <View style={styles.uploadTips}>
           <Text style={styles.uploadTipsTitle}>Tips for a clear photo:</Text>
@@ -470,8 +514,21 @@ export default function MyVehiclesScreen() {
           ))}
         </View>
 
+        {anyUploaded ? (
+          <TouchableOpacity
+            style={styles.submitBtn}
+            onPress={() => { setView("list"); resetForm(); }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.submitInner}>
+              <MaterialIcons name="check-circle-outline" size={18} color="#fff" />
+              <Text style={styles.submitBtnText}>Done — Submit for Review</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
         <TouchableOpacity style={styles.skipBtn} onPress={() => { setView("list"); resetForm(); }}>
-          <Text style={styles.skipBtnText}>Skip for now — upload later from My Vehicles</Text>
+          <Text style={styles.skipBtnText}>{anyUploaded ? "Go back to vehicles" : "Skip for now — upload later from My Vehicles"}</Text>
         </TouchableOpacity>
       </ScrollView>
     );
@@ -631,7 +688,7 @@ export default function MyVehiclesScreen() {
           <TouchableOpacity style={styles.imageModalClose} onPress={() => setProofImageUrl(null)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <MaterialIcons name="close" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.imageModalTitle}>Certificate of Registration</Text>
+          <Text style={styles.imageModalTitle}>{proofImageLabel}</Text>
           {proofImageUrl && (
             <Image
               source={{ uri: proofImageUrl }}
@@ -713,9 +770,12 @@ const styles = StyleSheet.create({
   imageModalImg: { width: "100%", height: "80%" },
 
   regActionsRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  viewProofBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  docRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingVertical: 4 },
+  docLabel: { fontSize: 12, fontWeight: "600", color: "#6C6C70", flex: 1 },
+  docActions: { flexDirection: "row", alignItems: "center", gap: 6 },
+  viewProofBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
   viewProofText: { fontSize: 12, fontWeight: "700", color: "#1976D2" },
-  uploadRowBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: "#FFF0EC", borderWidth: 1, borderColor: "#D4501E" },
+  uploadRowBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: "#FFF0EC", borderWidth: 1, borderColor: "#D4501E" },
   uploadRowBtnText: { fontSize: 12, fontWeight: "700", color: "#D4501E" },
 
   // ── Forms ─────────────────────────────────────────────────────
@@ -749,7 +809,8 @@ const styles = StyleSheet.create({
   vehicleSummaryName: { fontSize: 14, fontWeight: "700", color: "#232230" },
   vehicleSummaryPlate: { fontSize: 12, color: "#D4501E", fontWeight: "600", marginTop: 2 },
 
-  uploadBlockLarge: { borderWidth: 2, borderColor: "#D4501E", borderStyle: "dashed", borderRadius: 16, minHeight: 180, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFAF9", marginBottom: 20 },
+  uploadBlockLarge: { borderWidth: 2, borderColor: "#D4501E", borderStyle: "dashed", borderRadius: 16, minHeight: 160, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFAF9", marginBottom: 16 },
+  uploadBlockDone: { borderColor: "#4CAF50", backgroundColor: "#F8FFF8" },
   uploadPlaceholderLarge: { alignItems: "center", gap: 10, padding: 24 },
   uploadIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#FFF0EC", justifyContent: "center", alignItems: "center" },
   uploadLargeTitle: { fontSize: 16, fontWeight: "700", color: "#D4501E" },

@@ -122,18 +122,23 @@ export class S3Service {
     return `proof-of-residence/${this.slugify(locationName)}.${ext}`;
   }
 
-  /** profile-pictures/{user-name}.jpg */
-  profilePictureKey(userName: string, ext: string): string {
-    return `profile-pictures/${this.slugify(userName)}.${ext}`;
+  /** profile-pictures/{user-id}.jpg */
+  profilePictureKey(userId: string, ext: string): string {
+    return `profile-pictures/${userId}.${ext}`;
   }
 
-  /** driver-licenses/{user-name}.jpg */
-  driverLicenseKey(userName: string, ext: string): string {
-    return `driver-licenses/${this.slugify(userName)}.${ext}`;
+  /** driver-licenses/{user-id}.jpg */
+  driverLicenseKey(userId: string, ext: string): string {
+    return `driver-licenses/${userId}.${ext}`;
   }
 
-  /** vehicle-registrations/{plate-number}.jpg */
-  vehicleRegistrationKey(plateNumber: string, ext: string): string {
-    return `vehicle-registrations/${this.slugify(plateNumber)}.${ext}`;
+  /** vehicle-registrations/{vehicle-id}-cr.jpg */
+  vehicleRegistrationKey(vehicleId: string, ext: string): string {
+    return `vehicle-registrations/${vehicleId}-cr.${ext}`;
+  }
+
+  /** vehicle-registrations/{vehicle-id}-or.jpg */
+  vehicleOrKey(vehicleId: string, ext: string): string {
+    return `vehicle-registrations/${vehicleId}-or.${ext}`;
   }
 }
