@@ -62,6 +62,7 @@ export default function CompleteProfileScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
